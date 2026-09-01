@@ -12,7 +12,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: yehuoshun/yehuoshun-notify@main
         with:

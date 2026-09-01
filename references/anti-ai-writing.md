@@ -164,7 +164,7 @@
 
 ### 高频AI用词
 
-> 速查词表见 [banned-words.md](../../story-deslop/references/banned-words.md)
+> 速查词表见 [banned-words.md](banned-words.md)
 
 以下为**补充类目**（banned-words.md 未覆盖的高阶替换原则）：
 
@@ -314,7 +314,7 @@
 
 ## 禁用词与句式速查
 
-> 完整禁用词表和句式模板见 [banned-words.md](../../story-deslop/references/banned-words.md)
+> 完整禁用词表和句式模板见 [banned-words.md](banned-words.md)
 
 ### 正确替代示例
 - ❌ '他感到一丝紧张' → ✅ '他的手在抖'
