@@ -254,9 +254,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
    - 参考 [references/hook-techniques.md](references/hook-techniques.md) 确保钩子到位
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」）
 
-**阶段三：9 道门禁校验**（全部自动，不通过则打回 AI 重写）
-10. **写作质量门禁**（6 Gate，已有）：加载 [references/anti-ai-writing.md](references/anti-ai-writing.md) 和 [references/banned-words.md](references/banned-words.md)
-    - Gate 1 禁用词 | Gate 2 AI句式 | Gate 3 心理外化 | Gate 4 节奏 | Gate 5 对话 | Gate 6 结尾
+**阶段三：11 门禁校验**（全部自动，不通过则打回 AI 重写）
+10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-writing.md](references/anti-ai-writing.md)（规则唯一源头）和 [references/banned-words.md](references/banned-words.md)
 11. **引用校验**（新增）：CHANGES 中声明的角色/地点/物品/势力 ID 是否在设定中存在
     - 引用不存在的 ID → 打回，标注"未登记实体：XXX"
 12. **一致性校验**（新增）：CHANGES 的声明是否与事实快照矛盾
@@ -621,7 +620,7 @@ graph LR
 我：写正文 + CHANGES 变更声明
 [实时字数提醒：3500字/4000字]
 ↓
-我：🛡️ 9 道门禁自动执行
+我：🛡️ 11 门禁自动执行
   ✅ Gate 1-6 写作质量：通过
   ✅ 引用校验：通过（CHANGES 引用 5 个实体，均在设定中）
   ✅ 一致性校验：通过
