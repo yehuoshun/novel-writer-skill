@@ -21,7 +21,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - Mermaid关系图自动生成
 - 题材框架 / 风格模块 / 质量检查按需加载
 
-> **已融合精华**：story-deslop（去AI味）、story-long-write（钩子/爽点/大纲/期待感/开头设计）
+> 已融合精华到 `references/` 目录下。写作流程/题材结构/角色情绪/质量润色等参考文件按需加载。
 > 参考文件在 [references/](references/) 目录下，按需加载。
 
 ## 配置
