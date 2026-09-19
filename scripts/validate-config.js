@@ -133,5 +133,11 @@ if (errors.length > 0) {
   process.exit(1);
 } else {
   console.log('✅ 配置文件校验通过');
-  process.exit(0);
+
+// 提示 JSON Schema
+const schemaPath = require('path').join(__dirname, '..', 'configs', 'config.schema.json');
+if (fs.existsSync(schemaPath)) {
+  console.log(`   JSON Schema: configs/config.schema.json`);
+}
+process.exit(0);
 }

@@ -1,4 +1,5 @@
 {
+  "$schema": "config.schema.json",
   "info": {
     "name": "我的小说",
     "type": "玄幻",

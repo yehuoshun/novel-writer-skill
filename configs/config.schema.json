@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/yehuoshun/novel-writer-skill/blob/master/configs/config.schema.json",
+  "title": "Novel Writer Configuration",
+  "description": "配置文件 schema，用于 novel-writer-skill 项目",
+  "type": "object",
+  "required": ["info", "save_location", "writing"],
+
+  "properties": {
+    "info": {
+      "type": "object",
+      "description": "小说基本信息",
+      "required": ["name", "type", "status", "created_at", "current_chapter", "written_chapters", "total_words", "current_volume"],
+      "properties": {
+        "name":      { "type": "string", "description": "小说名" },
+        "type":      { "type": "string", "description": "小说类型（玄幻/都市/科幻等）" },
+        "status":    { "type": "string", "enum": ["ongoing", "completed", "paused"], "description": "写作状态" },
+        "created_at":  { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "创建日期 YYYY-MM-DD" },
+        "current_chapter":  { "type": "integer", "minimum": 0, "description": "当前写到第几章" },
+        "written_chapters": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "description": "已写章节编号列表" },
+        "total_words":    { "type": "integer", "minimum": 0, "description": "总字数" },
+        "current_volume": { "type": "integer", "minimum": 1, "description": "当前卷号" },
+        "last_sweet_spot": {
+          "type": "object",
+          "properties": {
+            "chapter": { "type": "integer" },
+            "type":    { "type": "string" }
+          }
+        },
+        "consecutive_no_spot":   { "type": "integer", "minimum": 0 },
+        "consecutive_same_type": { "type": "integer", "minimum": 0 },
+        "last_hook_start": {
+          "type": "object",
+          "properties": {
+            "chapter": { "type": "integer" },
+            "type":    { "type": "string" },
+            "strength": { "type": "string", "enum": ["弱", "中", "强"] }
+          }
+        },
+        "last_hook_end": {
+          "type": "object",
+          "properties": {
+            "chapter": { "type": "integer" },
+            "type":    { "type": "string" },
+            "strength": { "type": "string", "enum": ["弱", "中", "强"] }
+          }
+        },
+        "consecutive_weak_hooks": { "type": "integer", "minimum": 0 },
+        "last_emotion_peak": {
+          "type": "object",
+          "properties": {
+            "chapter":  { "type": "integer" },
+            "emotion":  { "type": "string" },
+            "intensity": { "type": "integer", "minimum": 1, "maximum": 10 }
+          }
+        },
+        "consecutive_flat_emotion": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "save_location": {
+      "type": "string",
+      "enum": ["yuque", "local", "both"],
+      "description": "默认保存位置"
+    },
+
+    "backup": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["yuque_history", "local"], "description": "备份模式" },
+        "local_path": { "type": ["string", "null"], "description": "本地备份路径（仅 mode=local 时需要）" }
+      }
+    },
+
+    "yuque": {
+      "type": "object",
+      "description": "语雀配置（save_location=yuque/both 时需要）",
+      "required": ["content_book", "settings_book", "groups"],
+      "properties": {
+        "content_book": {
+          "type": "object",
+          "required": ["book_id", "namespace"],
+          "properties": {
+            "book_id":   { "type": "string", "description": "正文知识库 ID" },
+            "namespace": { "type": "string", "description": "正文知识库 namespace" }
+          }
+        },
+        "settings_book": {
+          "type": "object",
+          "required": ["book_id", "namespace"],
+          "properties": {
+            "book_id":   { "type": "string", "description": "设定知识库 ID" },
+            "namespace": { "type": "string", "description": "设定知识库 namespace" }
+          }
+        },
+        "groups": {
+          "type": "object",
+          "description": "语雀分组 UUID 映射",
+          "patternProperties": {
+            "^[a-z_]+$": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "local": {
+      "type": "object",
+      "description": "本地存储配置（save_location=local/both 时需要）",
+      "properties": {
+        "content_path": { "type": "string", "description": "正文保存路径" },
+        "settings_path": { "type": "string", "description": "设定保存路径" }
+      }
+    },
+
+    "writing": {
+      "type": "object",
+      "description": "写作设定",
+      "required": ["pov", "perspective", "style", "narrative_style", "chapter_words"],
+      "properties": {
+        "pov":  { "type": "string", "enum": ["first-person", "third-person"], "description": "人称" },
+        "perspective": { "type": "string", "enum": ["single", "multi"], "description": "视角" },
+        "style": { "type": "string", "description": "文风（classical/modern/humorous/serious 等）" },
+        "narrative_style": { "type": "string", "description": "叙事节奏（fast-paced/slow-burn/detailed 等）" },
+        "chapter_words": {
+          "type": "object",
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "integer", "minimum": 1000, "description": "每章最少字数" },
+            "max": { "type": "integer", "minimum": 1000, "description": "每章最多字数" }
+          }
+        }
+      }
+    }
+  },
+
+  "allOf": [
+    {
+      "description": "save_location=yuque 或 both 时需要 yuque 字段",
+      "if": { "properties": { "save_location": { "enum": ["yuque", "both"] } } },
+      "then": { "required": ["yuque"] }
+    },
+    {
+      "description": "save_location=local 或 both 时需要 local 字段",
+      "if": { "properties": { "save_location": { "enum": ["local", "both"] } } },
+      "then": { "required": ["local"] }
+    }
+  ]
+}
