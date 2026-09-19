@@ -89,8 +89,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
   },
   
   "local": {
-    "content_path": "D:/小说/小说名/正文",
-    "settings_path": "D:/小说/小说名/设定"
+    "content_path": "./小说名/正文",
+    "settings_path": "./小说名/设定"
   },
   
   "writing": {
