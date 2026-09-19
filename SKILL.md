@@ -924,7 +924,8 @@ graph LR
 
 ## 参考资料
 
-以下文件在 `references/` 目录下，按需加载（不全量加载避免 Token 爆炸）：
+以下文件在 `references/` 目录下，按需加载（不全量加载避免 Token 爆炸）。
+**加载优先级速查** → 见 [references/README.md](references/README.md)。
 
 ### 写作流程
 
