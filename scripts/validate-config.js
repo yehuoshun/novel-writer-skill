@@ -66,6 +66,7 @@ function req(path, type, extra) {
 }
 
 function isPositiveInt(n) { return Number.isInteger(n) && n > 0; }
+function isNonNegativeInt(n) { return Number.isInteger(n) && n >= 0; }
 function isBool(v) { return typeof v === 'boolean'; }
 
 // ---- 校验规则 ----
@@ -79,14 +80,16 @@ const checks = [
   }),
   () => req('info.created_at', 'string'),
   () => req('info.current_chapter', 'number', v => {
-    if (!isPositiveInt(v)) errors.push(`非法值: info.current_chapter 应为正整数, 实际是 ${v}`);
+    // 新书未开写时 current_chapter=0 是合法状态（与 config.schema.json minimum:0 一致）
+    if (!isNonNegativeInt(v)) errors.push(`非法值: info.current_chapter 应为非负整数, 实际是 ${v}`);
   }),
   () => req('info.written_chapters', 'array', v => {
     if (!v.every(x => isPositiveInt(x)))
       errors.push(`非法值: info.written_chapters 元素须为正整数`);
   }),
   () => req('info.total_words', 'number', v => {
-    if (!isPositiveInt(v)) errors.push(`非法值: info.total_words 应为正整数, 实际是 ${v}`);
+    // 新书 0 字是合法状态（与 config.schema.json minimum:0 一致）
+    if (!isNonNegativeInt(v)) errors.push(`非法值: info.total_words 应为非负整数, 实际是 ${v}`);
   }),
   () => req('info.current_volume', 'number', v => {
     if (!isPositiveInt(v)) errors.push(`非法值: info.current_volume 应为正整数`);
@@ -117,6 +120,15 @@ if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
   checks.push(() => req('yuque.settings_book.book_id', 'string'));
   checks.push(() => req('yuque.settings_book.namespace', 'string'));
   checks.push(() => req('yuque.groups', 'object'));
+  // v3.0 新增的 snapshot / changes 分组是语雀模式必需，缺了会回写失败
+  checks.push(() => {
+    const g = cfg.yuque && cfg.yuque.groups;
+    if (g && typeof g === 'object') {
+      for (const k of ['snapshot', 'changes']) {
+        if (!g[k]) errors.push(`缺失: yuque.groups.${k} (v3.0 必需分组)`);
+      }
+    }
+  });
 }
 
 if (cfg.save_location === 'local' || cfg.save_location === 'both') {

@@ -26,7 +26,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 配置
 
-配置文件路径：`~/.openclaw/workspace/skills/novel-writer/configs/[小说名].json`
+配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`
 
 ```json
 {
@@ -114,7 +114,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - `backup.local_path`：本地备份路径（仅当 backup.mode=local 时需要）
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
 - `yuque.groups`：语雀分组UUID（仅语雀需要）
-- `local.path`：本地保存路径（仅本地需要）
+- `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
 - `writing`：文风设定，初始化时通过问答确定
 
 **命名约定**：
@@ -150,7 +150,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 10. 生成配置文件，发给你确认
 11. 你确认后，创建设定文档模板
 12. 根据存储方式创建设定目录结构：
-    - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`）自动创建目录分组，获取各分组 UUID 回写配置
+    - **语雀模式**：调用语雀 API（`POST /repos/{book_id}/toc`）自动创建目录分组，获取各分组 UUID 回写配置
       - 新增分组：`snapshot`（状态快照 DOC）+ `changes`（变更记录 TITLE）
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
 13. 开始写全书大纲

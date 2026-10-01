@@ -20,8 +20,8 @@
   },
   "save_location": "local",
   "backup": {
-    "mode": "yuque_history",
-    "local_path": null
+    "mode": "local",
+    "local_path": "./backup"
   },
   "local": {
     "content_path": "./正文",

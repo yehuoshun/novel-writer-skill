@@ -66,4 +66,3 @@
 |------|------|----------|
 | [setup-templates.md](setup-templates.md) | 所有设定文档模板（角色/物品/地点/势力/时间线/伏笔/爽点/钩子/情绪曲线/章节摘要/等级体系/对话记录/变更日志/大纲） | 创建设定时按需加载 |
 | [state-snapshot.md](state-snapshot.md) | 状态快照格式说明 | 写章节时生成/更新快照用 |
-| [changes-protocol.md](changes-protocol.md) | 见 P0 | 见 P0 |

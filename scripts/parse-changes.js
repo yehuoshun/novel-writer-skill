@@ -60,7 +60,8 @@ for (const LINE of LINES) {
   if (currentSection === 'foreshadowing') {
     const isPlant = trimmed.includes('🔨');
     const isHarvest = trimmed.includes('✅');
-    const clean = trimmed.replace(/[🔨✅]\s*/, '').replace(/^-\s*/, '');
+    // 注意：🔨(U+1F528) 是代理对，正则必须加 u flag 才能整词匹配，否则只删一半 code unit 产生乱码
+    const clean = trimmed.replace(/^-\s*/, '').replace(/[🔨✅]\s*(?:埋设|回收)?/u, '').trim();
     const nameMatch = clean.match(/\*\*\[(.+?)\]\*\*/);
     const rest = clean.replace(/\*\*\[.+?\]\*\*/, '').trim();
     RESULT[currentSection].push({
