@@ -2,24 +2,30 @@
 /**
  * 小说写作辅助 — 配置文件校验
  *
+ * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
+ * 本脚本只做两件事：
+ *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
+ *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、v3.0 必需分组）
+ *
  * 用法:
  *   node validate-config.js < config.json
  *   node validate-config.js /path/to/config.json
  *
  * 退出码:
  *   0 — 通过
- *   1 — 字段缺失/类型错误
+ *   1 — 校验失败（字段缺失/类型错误/补充逻辑不过）
  *   2 — 文件不存在/不可读
  */
 
 const fs = require('fs');
+const path = require('path');
 
 function die(msg, code = 1) {
   console.error(`❌ ${msg}`);
   process.exit(code);
 }
 
-// ---- 加载 ----
+// ---- 加载配置 ----
 let raw;
 const arg = process.argv[2];
 if (arg) {
@@ -36,120 +42,110 @@ try {
   die(`JSON 解析失败: ${e.message}`);
 }
 
-let hasError = false;
+// ---- mini JSON Schema validator（draft-07 子集）----
+// 支持: type(含数组)/enum/required/properties/items/minimum/maximum/pattern/patternProperties/allOf(if-then)
+// 未用到的不实现；additionalProperties 默认不限制
 const errors = [];
 
-function req(path, type, extra) {
-  const keys = path.split('.');
-  let val = cfg;
-  for (const k of keys) {
-    if (val == null || typeof val !== 'object') {
-      errors.push(`缺失: ${path} (应为 ${type})`);
-      return;
-    }
-    val = val[k];
-  }
-  if (val === undefined || val === null) {
-    errors.push(`缺失: ${path} (应为 ${type})`);
-    return;
-  }
-  if (type === 'array' && !Array.isArray(val)) {
-    errors.push(`类型错误: ${path} 应为 array, 实际是 ${typeof val}`);
-    return;
-  }
-  if (type !== 'array' && typeof val !== type) {
-    errors.push(`类型错误: ${path} 应为 ${type}, 实际是 ${typeof val}`);
-    return;
-  }
-  // extra validations
-  if (extra) extra(val, path);
+function checkType(schema, val, p, errs) {
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const ok = types.some(t => {
+    if (t === 'object') return val !== null && typeof val === 'object' && !Array.isArray(val);
+    if (t === 'array') return Array.isArray(val);
+    if (t === 'integer') return Number.isInteger(val);
+    if (t === 'number') return typeof val === 'number';
+    if (t === 'string') return typeof val === 'string';
+    if (t === 'boolean') return typeof val === 'boolean';
+    if (t === 'null') return val === null;
+    return true;
+  });
+  if (!ok) errs.push(`${p}: 类型错误，应为 ${schema.type.join('/')}, 实际是 ${val === null ? 'null' : typeof val}`);
 }
 
-function isPositiveInt(n) { return Number.isInteger(n) && n > 0; }
-function isNonNegativeInt(n) { return Number.isInteger(n) && n >= 0; }
-function isBool(v) { return typeof v === 'boolean'; }
-
-// ---- 校验规则 ----
-const checks = [
-  // info block
-  () => req('info.name', 'string'),
-  () => req('info.type', 'string'),
-  () => req('info.status', 'string', v => {
-    if (!['ongoing', 'completed', 'paused'].includes(v))
-      errors.push(`非法值: info.status 应为 ongoing/completed/paused, 实际是 ${v}`);
-  }),
-  () => req('info.created_at', 'string'),
-  () => req('info.current_chapter', 'number', v => {
-    // 新书未开写时 current_chapter=0 是合法状态（与 config.schema.json minimum:0 一致）
-    if (!isNonNegativeInt(v)) errors.push(`非法值: info.current_chapter 应为非负整数, 实际是 ${v}`);
-  }),
-  () => req('info.written_chapters', 'array', v => {
-    if (!v.every(x => isPositiveInt(x)))
-      errors.push(`非法值: info.written_chapters 元素须为正整数`);
-  }),
-  () => req('info.total_words', 'number', v => {
-    // 新书 0 字是合法状态（与 config.schema.json minimum:0 一致）
-    if (!isNonNegativeInt(v)) errors.push(`非法值: info.total_words 应为非负整数, 实际是 ${v}`);
-  }),
-  () => req('info.current_volume', 'number', v => {
-    if (!isPositiveInt(v)) errors.push(`非法值: info.current_volume 应为正整数`);
-  }),
-
-  // save_location
-  () => req('save_location', 'string', v => {
-    if (!['yuque', 'local', 'both'].includes(v))
-      errors.push(`非法值: save_location 应为 yuque/local/both, 实际是 ${v}`);
-  }),
-
-  // writing block
-  () => req('writing.pov', 'string'),
-  () => req('writing.perspective', 'string'),
-  () => req('writing.style', 'string'),
-  () => req('writing.narrative_style', 'string'),
-  () => req('writing.chapter_words.min', 'number'),
-  () => req('writing.chapter_words.max', 'number'),
-  () => req('writing.chapter_words', 'object', v => {
-    if (v.min > v.max) errors.push(`逻辑错误: chapter_words.min(${v.min}) > max(${v.max})`);
-  }),
-];
-
-// ---- 按 save_location 条件校验 ----
-if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
-  checks.push(() => req('yuque.content_book.book_id', 'string'));
-  checks.push(() => req('yuque.content_book.namespace', 'string'));
-  checks.push(() => req('yuque.settings_book.book_id', 'string'));
-  checks.push(() => req('yuque.settings_book.namespace', 'string'));
-  checks.push(() => req('yuque.groups', 'object'));
-  // v3.0 新增的 snapshot / changes 分组是语雀模式必需，缺了会回写失败
-  checks.push(() => {
-    const g = cfg.yuque && cfg.yuque.groups;
-    if (g && typeof g === 'object') {
-      for (const k of ['snapshot', 'changes']) {
-        if (!g[k]) errors.push(`缺失: yuque.groups.${k} (v3.0 必需分组)`);
+function validate(schema, val, p = '', errs = errors) {
+  if (val === undefined) return;
+  if (schema.type) checkType(schema, val, p, errs);
+  if (schema.enum && !schema.enum.includes(val)) {
+    errs.push(`${p}: 非法值，应为 ${schema.enum.join('/')}, 实际是 ${JSON.stringify(val)}`);
+  }
+  if (typeof val === 'number') {
+    if (schema.minimum !== undefined && val < schema.minimum) errs.push(`${p}: 最小值 ${schema.minimum}, 实际是 ${val}`);
+    if (schema.maximum !== undefined && val > schema.maximum) errs.push(`${p}: 最大值 ${schema.maximum}, 实际是 ${val}`);
+  }
+  if (typeof val === 'string' && schema.pattern && !new RegExp(schema.pattern).test(val)) {
+    errs.push(`${p}: 格式不匹配 ${schema.pattern}, 实际是 ${val}`);
+  }
+  if (Array.isArray(val) && schema.items) {
+    val.forEach((item, i) => validate(schema.items, item, `${p}[${i}]`, errs));
+  }
+  if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+    if (schema.required) {
+      for (const k of schema.required) {
+        if (val[k] === undefined) errs.push(`${p}${p ? '.' : ''}${k}: 缺失（必填）`);
       }
     }
-  });
+    if (schema.properties) {
+      for (const [k, sub] of Object.entries(schema.properties)) {
+        if (val[k] !== undefined) validate(sub, val[k], `${p}${p ? '.' : ''}${k}`, errs);
+      }
+    }
+    if (schema.patternProperties) {
+      for (const [k, v] of Object.entries(val)) {
+        for (const [pat, sub] of Object.entries(schema.patternProperties)) {
+          if (new RegExp(pat).test(k)) validate(sub, v, `${p}${p ? '.' : ''}${k}`, errs);
+        }
+      }
+    }
+  }
+  if (schema.allOf) {
+    for (const cond of schema.allOf) {
+      if (cond.if) {
+        // if 命中判定用独立 probe，不污染全局错误
+        const probe = [];
+        validate(cond.if, val, p, probe);
+        if (probe.length === 0) validate(cond.then || {}, val, p, errs);
+      } else {
+        validate(cond, val, p, errs);
+      }
+    }
+  }
 }
 
-if (cfg.save_location === 'local' || cfg.save_location === 'both') {
-  checks.push(() => req('local.content_path', 'string'));
-  checks.push(() => req('local.settings_path', 'string'));
+const schemaPath = path.join(__dirname, '..', 'configs', 'config.schema.json');
+if (!fs.existsSync(schemaPath)) die(`schema 文件不存在: ${schemaPath}`, 2);
+let schema;
+try {
+  schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
+} catch (e) {
+  die(`schema 解析失败: ${e.message}`, 2);
 }
 
-// ---- 执行 ----
-checks.forEach(fn => fn());
+// 用独立 probe 判定 allOf.if（见 validate 内部实现，不污染全局 errors）
+validate(schema, cfg);
+
+// ---- 补充逻辑（schema 表达不了的跨字段/跨结构规则）----
+// 1. chapter_words.min <= max
+const cw = cfg.writing && cfg.writing.chapter_words;
+if (cw && typeof cw.min === 'number' && typeof cw.max === 'number' && cw.min > cw.max) {
+  errors.push(`writing.chapter_words: min(${cw.min}) > max(${cw.max})`);
+}
+// 2. v3.0 必需分组：语雀模式必须有 snapshot / changes（缺了状态回写会失败）
+if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
+  const g = cfg.yuque && cfg.yuque.groups;
+  if (g && typeof g === 'object') {
+    for (const k of ['snapshot', 'changes']) {
+      if (!g[k]) errors.push(`yuque.groups.${k}: 缺失（v3.0 必需分组）`);
+    }
+  }
+}
 
 // ---- 输出 ----
 if (errors.length > 0) {
+  console.error(`❌ 配置校验失败（${errors.length} 处）:`);
   errors.forEach(e => console.error(`  ${e}`));
   process.exit(1);
 } else {
   console.log('✅ 配置文件校验通过');
-
-// 提示 JSON Schema
-const schemaPath = require('path').join(__dirname, '..', 'configs', 'config.schema.json');
-if (fs.existsSync(schemaPath)) {
   console.log(`   JSON Schema: configs/config.schema.json`);
-}
-process.exit(0);
+  process.exit(0);
 }
