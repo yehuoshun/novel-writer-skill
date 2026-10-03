@@ -931,19 +931,34 @@ graph LR
 | 文件 | 何时加载 |
 |------|----------|
 | [references/outline-arrangement.md](references/outline-arrangement.md) | 大纲排布：五步大纲法+故事结构分级+剧情质量控制+升级感+节点设计+矛盾设计 |
+| [references/outline-arrangement-2.md](references/outline-arrangement-2.md) | 进阶：反派视角/黄金五章/断期待诊断/核心梗三分/升级文技法 |
+| [references/outline-arrangement-3.md](references/outline-arrangement-3.md) | 工程化：桥段节奏/多线写长/卖点需求/开篇切入点 |
 | [references/expectation-techniques.md](references/expectation-techniques.md) | 期待感设计：铺垫/爽点/多线期待+信息差+情绪模型 |
-| [references/hook-techniques.md](references/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+期待感理论 |
+| [references/hook-techniques.md](references/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+钩子禁忌 |
+| [references/hook-techniques-2.md](references/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪+断期待 |
+| [references/hook-techniques-3.md](references/hook-techniques-3.md) | 进阶钩子：三翻四震+上瘾模型+狗哨理论+钩子链+金手指替换 |
 | [references/opening-design.md](references/opening-design.md) | 开头设计：黄金一章法则+六大标准+开头模板+诊断 |
 | [references/genre-opening-database.md](references/genre-opening-database.md) | 8大题材开头模板+真实范例+决策树+书名起名法 |
-| [references/style-modules.md](references/style-modules.md) | 风格全流程：对话/打斗/智斗+镜头式+爽点释放+装逼打脸+流派特征+白描+视角 |
+| [references/style-modules.md](references/style-modules.md) | 风格模块：幽默/悬疑/言情/推理/恐怖/奇幻/现实/升级流 8 大题材风格 |
+| [references/style-modules-2.md](references/style-modules-2.md) | 代入感/期待/装逼/爽点/爱情线/毒点/救赎/边界感 |
+| [references/style-modules-3.md](references/style-modules-3.md) | 轻小说/沙雕/赛博朋克/盘点/模拟/直播/网站差异/打斗智斗 |
+| [references/style-modules-4.md](references/style-modules-4.md) | 镜头式写作/基础技巧/舞台搭建/战斗描写/文笔 |
+| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法 |
+| [references/style-modules-6.md](references/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
 
 ### 题材与结构
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/genre-frameworks-unified.md](references/genre-frameworks-unified.md) | 题材框架：核心梗解析+事业线/爱情线设计+长篇短篇双视角 |
-| [references/story-structure.md](references/story-structure.md) | 故事结构：八节点框架+循环写法+并列式+节奏控制+情绪驱动 |
+| [references/genre-frameworks-unified.md](references/genre-frameworks-unified.md) | 题材框架：追妻/重生/婚恋/世情/仙侠/高武/霸总/同人/脑洞/凡人流/历史/文娱 |
+| [references/genre-frameworks-unified-2.md](references/genre-frameworks-unified-2.md) | 核心梗解析+事业线/爱情线设计 |
+| [references/genre-frameworks-unified-3.md](references/genre-frameworks-unified-3.md) | 扩展题材：规则怪谈/长生流/西幻/新媒体/搞笑/飞卢/刺猬猫+进阶补充 |
+| [references/story-structure.md](references/story-structure.md) | 故事结构：大纲设计/循环写法/并列式/节奏控制/情绪驱动/爽点/双线/分镜 |
+| [references/story-structure-2.md](references/story-structure-2.md) | 剧情过渡/拉长剧情/换地图/长线节奏/矛盾设计 |
+| [references/story-structure-3.md](references/story-structure-3.md) | 八节点结构+实用技巧（五重驱动/真相逆推/细纲实务） |
+| [references/story-structure-4.md](references/story-structure-4.md) | 经验笔记（上）：卖报/拆书/三幕五幕/主线类型/冲突结构 |
+| [references/story-structure-5.md](references/story-structure-5.md) | 经验笔记（下）：故事本质论/核心梗/阵营手牌/矛盾理论/悬念冲突 |
 | [references/advanced-plot-techniques.md](references/advanced-plot-techniques.md) | 高级技法：小纲四步法+高潮逆推+情绪拉扯+金手指+双线+AB交织法 |
 | [references/micro-innovation.md](references/micro-innovation.md) | 题材微创新+差异化设计 |
 
@@ -951,7 +966,10 @@ graph LR
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/character-design.md](references/character-design.md) | 人物全流程：设定主角/配角/反派+人物元素提取+关系映射+动机链+群像 |
+| [references/character-design.md](references/character-design.md) | 人物全流程：主角/配角/反派+人物关系+动机链+性格体系+配角功能 |
+| [references/character-design-2.md](references/character-design-2.md) | 角色成长：主角调子/反派分量/感情流/男频女频/群像 |
+| [references/character-design-3.md](references/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课 |
+| [references/character-design-4.md](references/character-design-4.md) | 经验笔记（下）：男频恋爱文/装逼打脸/移情标签/爽点模板 |
 | [references/emotional-arc-design.md](references/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
 | [references/reversal-toolkit.md](references/reversal-toolkit.md) | 反转类型+时机+误导底层路径 |
 
