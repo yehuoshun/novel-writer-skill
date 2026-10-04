@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 打包 zip（tag 时刻完整内容）
+        run: git archive --format=zip -o "novel-writer-skill-${GITHUB_REF_NAME}.zip" "${GITHUB_REF_NAME}"
+
+      - name: 创建 release 并上传 zip
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "novel-writer-skill-${GITHUB_REF_NAME}.zip"
+          generate_release_notes: true
+
+      - name: 钉钉通知
+        uses: yehuoshun/yehuoshun-notify@v1.2.0
+        with:
+          webhook: ${{ secrets.DINGTALK_WEBHOOK }}
