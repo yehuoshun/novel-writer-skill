@@ -19,11 +19,31 @@ jobs:
       - name: 打包 zip（tag 时刻完整内容）
         run: git archive --format=zip -o "novel-writer-skill-${GITHUB_REF_NAME}.zip" "${GITHUB_REF_NAME}"
 
+      - name: 生成发布说明（git log 中文）
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV=$(git describe --abbrev=0 --tags "${TAG}^" 2>/dev/null || echo "")
+          BODY="## 📦 novel-writer-skill ${TAG}"
+          BODY+=$'\n\n### 更新内容'
+          if [ -n "$PREV" ]; then
+            LOG=$(git log --oneline --no-merges "${PREV}..${TAG}" | sed 's/^/- /')
+            BODY+=$'\n'"${LOG}"
+          else
+            BODY+=$'\n\n首次发布'
+          fi
+          BODY+=$'\n\n[查看文档](https://github.com/yehuoshun/novel-writer-skill#readme)'
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$BODY"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: 创建 release 并上传 zip
         uses: softprops/action-gh-release@v2
         with:
           files: "novel-writer-skill-${{ github.ref_name }}.zip"
-          generate_release_notes: true
+          body: ${{ steps.notes.outputs.body }}
 
       - name: 钉钉通知
         uses: yehuoshun/yehuoshun-notify@v1.2.0
