@@ -10,7 +10,7 @@
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
 | [changes-protocol.md](changes-protocol.md) | 写/续写章节时 | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型 |
-| [anti-ai-writing.md](anti-ai-writing.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、去 AI 味三遍法、改写范例 |
+| [anti-ai-gates.md](anti-ai-gates.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、质量维度、禁用词速查、7 种 AI 模式检测 |
 | [banned-words.md](banned-words.md) | 门禁校验时同场加载 | AI 禁用词表（检测和替换时用） |
 
 ## P1 — 大纲相关
@@ -75,6 +75,8 @@
 | [style-modules-6.md](style-modules-6.md) | 经验参考（下） | 黄金三章/市场定位/题材本质/期待感/文笔解析/新人全流程/梗收集 |
 | [dialogue-mastery.md](dialogue-mastery.md) | 对话场景写作时 | 对话节奏、潜台词、信息控制、对话模式数据库 |
 | [quality-checklist.md](quality-checklist.md) | 完本/阶段性检查时 | 质量检查清单、毒点排查、常见问题速查 |
+| [anti-ai-polish.md](anti-ai-polish.md) | 门禁打回/润色/重写时 | 去 AI 三遍法、补充技法、全套改写范例 |
+| [writing-craft.md](writing-craft.md) | 按需偶读 | 写作心法、补充技巧、题材策略、长篇结构管理、毒点清单、断期待、三翻四震、心态 |
 
 ## P6 — 写作心理（放松时读）
 

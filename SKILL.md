@@ -256,7 +256,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」）
 
 **阶段三：12 门禁校验**（全部自动，不通过则打回 AI 重写）
-10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-writing.md](references/anti-ai-writing.md)（规则唯一源头）和 [references/banned-words.md](references/banned-words.md)
+10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-gates.md](references/anti-ai-gates.md)（门禁规则唯一源头）和 [references/banned-words.md](references/banned-words.md)；被门禁打回需重写/润色时，加载 [references/anti-ai-polish.md](references/anti-ai-polish.md)（去AI三遍法+改写范例）
 11. **引用校验**（新增）：CHANGES 中声明的角色/地点/物品/势力 ID 是否在设定中存在
     - 引用不存在的 ID → 打回，标注"未登记实体：XXX"
 12. **一致性校验**（新增）：CHANGES 的声明是否与事实快照矛盾
@@ -993,7 +993,9 @@ graph LR
 | 文件 | 何时加载 |
 |------|----------|
 | [references/quality-checklist.md](references/quality-checklist.md) | 质量检查+毒点排查+常见问题速查 |
-| [references/anti-ai-writing.md](references/anti-ai-writing.md) | 去AI味三遍法+6 Gate门禁+改写范例 |
+| [references/anti-ai-gates.md](references/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测（门禁必读） |
+| [references/anti-ai-polish.md](references/anti-ai-polish.md) | 去AI味三遍法+改写范例库（门禁打回/润色/重写时读） |
+| [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待+三翻四震+心态（按需） |
 | [references/banned-words.md](references/banned-words.md) | AI禁用词表（检测和替换时） |
 | [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯 |
 
