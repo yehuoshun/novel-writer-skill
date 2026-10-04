@@ -282,8 +282,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - 伏笔埋设后 10 章未推进且未回收 → 警告「伏笔 vX 已埋设 N 章未推进」
 
 **阶段四：落地 + 状态回写**
-16. 门禁全部通过后 → 上传语雀/本地
-17. **从 CHANGES 块提取变更**，自动更新设定：
+17. 门禁全部通过后 → 上传语雀/本地
+18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
       - 语雀模式：更新 `snapshot` 分组下的 DOC，用 `PUT /repos/{id}/docs/{doc_id}` 覆盖
       - 本地模式：覆盖 `设定/状态快照.md`
@@ -293,14 +293,14 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
       - 语雀模式：在 `changes` TITLE 节点下创建 DOC
       - 本地模式：保存到 `设定/changes/ch{N}-changes.md`
     - 更新各角色/地点/物品/势力/伏笔设定文档
-18. **冲突检测**：状态回写后自动跑冲突检测（位置/时间线/角色状态/物品），有冲突则提示
-19. 反馈更新内容（含门禁结果摘要 + 冲突检测结果）
-20. 更新 `info.written_chapters` 列表
-21. 更新配置追踪字段：
+19. **冲突检测**：状态回写后自动跑冲突检测（位置/时间线/角色状态/物品），有冲突则提示
+20. 反馈更新内容（含门禁结果摘要 + 冲突检测结果）
+21. 更新 `info.written_chapters` 列表
+22. 更新配置追踪字段：
     - `info.last_sweet_spot` / `consecutive_no_spot` / `consecutive_same_type`
     - `info.last_hook_start` / `last_hook_end` / `consecutive_weak_hooks`
     - `info.last_emotion_peak` / `consecutive_flat_emotion`
-22. 更新章节摘要（含爽点类型+铺放比、钩子类型+强度、情绪基调强度链）
+23. 更新章节摘要（含爽点类型+铺放比、钩子类型+强度、情绪基调强度链）
 
 **门禁结果输出格式**：
 ```

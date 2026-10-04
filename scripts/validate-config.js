@@ -129,7 +129,7 @@ const cw = cfg.writing && cfg.writing.chapter_words;
 if (cw && typeof cw.min === 'number' && typeof cw.max === 'number' && cw.min > cw.max) {
   errors.push(`writing.chapter_words: min(${cw.min}) > max(${cw.max})`);
 }
-// 2. v3.0 必需分组：语雀模式必须有 snapshot / changes（缺了状态回写会失败）
+// 2. 必需分组：语雀模式必须有 snapshot / changes（缺了状态回写会失败）
 if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
   const g = cfg.yuque && cfg.yuque.groups;
   if (g && typeof g === 'object') {
