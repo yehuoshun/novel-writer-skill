@@ -23,7 +23,7 @@ jobs:
         id: notes
         run: |
           TAG="${GITHUB_REF_NAME}"
-          PREV=$(git describe --abbrev=0 --tags "${TAG}^" 2>/dev/null || echo "")
+          PREV=$(git describe --abbrev=0 --tags --match 'v[0-9]*' "${TAG}^" 2>/dev/null || echo "")
           BODY="## 📦 novel-writer-skill ${TAG}"
           BODY+=$'\n\n### 更新内容'
           if [ -n "$PREV" ]; then
