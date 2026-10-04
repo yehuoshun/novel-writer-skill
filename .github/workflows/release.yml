@@ -22,7 +22,7 @@ jobs:
       - name: 创建 release 并上传 zip
         uses: softprops/action-gh-release@v2
         with:
-          files: "novel-writer-skill-${GITHUB_REF_NAME}.zip"
+          files: "novel-writer-skill-${{ github.ref_name }}.zip"
           generate_release_notes: true
 
       - name: 钉钉通知
