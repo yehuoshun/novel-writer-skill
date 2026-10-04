@@ -8,6 +8,8 @@
  *
  * 输入: 包含 ---CHANGES--- ... ---END CHANGES--- 块的文本
  * 输出: 结构化 JSON (stdout)
+ *
+ * 支持伏笔四态（🔨埋设/➡️推进/✅回收/❌废弃）与下章交接包（<!-- 交接包 -->）
  */
 
 const INPUT = require('fs').readFileSync('/dev/stdin', 'utf-8');
@@ -26,7 +28,13 @@ const SECTIONS = [
   { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
   { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
   { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
-  { key: 'foreshadowing', pattern: /<!-- 伏笔动作 -->/, re: /^-(?: ✅| 🔨)?\s*\*\*\[(.+?)\]\*\*(.*)/ },
+  {
+    key: 'foreshadowing',
+    pattern: /<!--\s*伏笔动作/,  // 兼容带说明后缀的标题：<!-- 伏笔动作（四态，必须引用伏笔ID） -->
+    // 四态：🔨埋设/➡️推进/✅回收/❌废弃 + 名称段 **vX 伏笔名**（兼容旧格式 **伏笔名**）
+    re: /^-\s*(🔨埋设|➡️推进|✅回收|❌废弃)\s*\*\*([^*]+)\*\*(.*)/
+  },
+  { key: 'handoff', pattern: /<!--\s*交接包/, re: /^- ([^：]+)：(.*)/ },  // 兼容 <!-- 交接包（给下一章 AI 的交接单） -->
   { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
   { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
   { key: 'timeProgress', pattern: /<!-- 时间推进 -->/, re: /^- (.*)/ },
@@ -58,18 +66,35 @@ for (const LINE of LINES) {
   if (!currentSection) continue;
 
   if (currentSection === 'foreshadowing') {
-    const isPlant = trimmed.includes('🔨');
-    const isHarvest = trimmed.includes('✅');
-    // 注意：🔨(U+1F528) 是代理对，正则必须加 u flag 才能整词匹配，否则只删一半 code unit 产生乱码
-    const clean = trimmed.replace(/^-\s*/, '').replace(/[🔨✅]\s*(?:埋设|回收)?/u, '').trim();
-    const nameMatch = clean.match(/\*\*\[(.+?)\]\*\*/);
-    const rest = clean.replace(/\*\*\[.+?\]\*\*/, '').trim();
+    const m = trimmed.match(/^-\s*(🔨埋设|➡️推进|✅回收|❌废弃)\s*\*\*([^*]+)\*\*(.*)/);
+    if (!m) {
+      RESULT[currentSection].push({ raw: trimmed });
+      continue;
+    }
+    const action = m[1];
+    const namePart = m[2].trim();
+    const detail = m[3].trim();
+    // 名称段解析：优先 vX 前缀 → { id: 'v1', name: '假死真相' }；无 ID 时 name 为整段
+    const idMatch = namePart.match(/^(v\d+)\s+(.+)$/);
     RESULT[currentSection].push({
-      type: isHarvest ? 'harvest' : isPlant ? 'plant' : 'unknown',
-      name: nameMatch ? nameMatch[1] : null,
-      detail: rest,
+      type: action.includes('🔨') ? 'plant'
+        : action.includes('➡️') ? 'progress'
+        : action.includes('✅') ? 'harvest'
+        : 'abandon',
+      id: idMatch ? idMatch[1] : null,
+      // 兼容旧格式 **【伏笔名】** / **[伏笔名]**（无 vX ID）
+      name: idMatch ? idMatch[2] : namePart.replace(/^\[|\]$/g, ''),
+      detail: detail.replace(/^\|/, '').trim(),
       raw: trimmed
     });
+  } else if (currentSection === 'handoff') {
+    // 交接包：`- 键：值` 逐行解析
+    const m = trimmed.match(/^- ([^：]+)：(.*)/);
+    if (m) {
+      RESULT[currentSection].push({ key: m[1].trim(), value: m[2].trim(), raw: trimmed });
+    } else {
+      RESULT[currentSection].push({ raw: trimmed });
+    }
   } else if (currentSection === 'timeProgress') {
     const raw = trimmed.replace(/^-\s*/, '');
     const parts = {};
