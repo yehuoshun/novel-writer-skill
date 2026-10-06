@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.2.6
+version: 3.2.7
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -198,6 +198,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | 2 | 首战立威 | 装逼打脸 | 冲突钩 | 新角色钩 | 3200 |
 ```
 
+> 细纲附**蓝图出场清单**（必出场角色/势力/地点 + 戏份要求），格式与填写规则见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」；写章节后按蓝图逐项核对出场（门禁 15）。
+
 #### 查大纲
 ```
 查大纲
@@ -245,7 +247,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - 阈值：一章 ≤ 5 个新实体（区分有剧情作用的 vs 龙套）
     - 龙套（店小二、路人甲，出场 < 2 句且无姓名）不计入
     - 超阈值 → 打回，标注"新增实体过多：XXX"
-15. **蓝图出场合规**（新增）：细纲/蓝图指定的角色/势力/地点是否在正文中实际出现
+15. **蓝图出场合规**（新增）：细纲/蓝图指定的角色/势力/地点是否在正文中实际出现（蓝图出场清单格式见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」）
     - 蓝图列出张三、李四、王五 → 正文只写了张三 → 缺额 > 阈值 → 打回
     - 视角角色仅出现 1 次 → 警告「叙事力度不足」
 16. **伏笔闭环校验**（新增）：伏笔动作与伏笔状态机的一致性
@@ -459,13 +461,30 @@ graph LR
     └── ...
 ```
 
-**语雀 groups 映射**（配置文件 `yuque.groups`）：
-| key | TITLE 节点 | 用途 |
+**语雀 groups 映射**（配置文件 `yuque.groups`，21 个 key 全必填，与「21 个分组全建」一一对应）：
+| key | 分组节点 | 用途 |
 |-----|-----------|------|
+| `characters_protagonist` | 角色设定/主角组/（TITLE） | 主角档案 |
+| `characters_antagonist` | 角色设定/反派组/（TITLE） | 反派档案 |
+| `characters_supporting` | 角色设定/配角组/（TITLE） | 配角档案 |
+| `characters_deceased` | 角色设定/已故角色/（TITLE） | 已故角色档案 |
+| `items` | 物品设定/（TITLE） | 物品档案 |
+| `locations` | 地点设定/（TITLE） | 地点档案 |
+| `factions` | 势力设定/（TITLE） | 势力档案 |
+| `foreshadowing` | 伏笔追踪/（TITLE） | 伏笔文档（vX-伏笔名.md） |
+| `timeline` | 时间线/（TITLE） | 时间线文档 |
+| `outline` | 大纲/（TITLE） | 大纲分组节点（含全书大纲/卷大纲/章节大纲） |
+| `detailed_outline` | 大纲/细纲/（TITLE，嵌套） | 细纲分组节点（旧库若平级建过则复用） |
+| `dialogs` | 关键对话/（TITLE） | 关键对话记录 |
+| `level_system` | 等级体系/（TITLE） | 等级体系文档 |
+| `change_log` | 变更日志/（TITLE） | 按日期的变更记录（手动修正/写作后记录） |
+| `sweet_spot_tracking` | 爽点追踪/（TITLE） | 爽点追踪文档 |
+| `hook_tracking` | 钩子追踪/（TITLE） | 钩子追踪文档 |
+| `emotion_arc` | 情绪曲线/（TITLE） | 情绪曲线文档 |
+| `world_view` | 世界观/（TITLE） | 世界观文档 |
+| `mermaid_graph` | Mermaid关系图/（TITLE） | 关系图文档 |
 | `snapshot` | 状态快照（DOC） | `状态快照.md` 的 UUID |
-| `changes` | 变更记录/（TITLE） | `changes/` 分组节点的 UUID |
-| `world_view` | 世界观/（TITLE） | `世界观/` 分组节点的 UUID |
-| `mermaid_graph` | Mermaid关系图/（TITLE） | `Mermaid关系图/` 分组节点的 UUID |
+| `changes` | 变更记录/（TITLE） | chXXX-changes 增量文档（永久保留） |
 
 ### 本地设定文件夹
 
@@ -981,4 +1000,4 @@ graph LR
 
 ---
 
-_版本：v3.2.6_
+_版本：v3.2.7_
