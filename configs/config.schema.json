@@ -125,8 +125,8 @@
       "type": "object",
       "description": "本地存储配置（save_location=local/both 时需要）",
       "properties": {
-        "content_path": { "type": "string", "description": "正文保存路径" },
-        "settings_path": { "type": "string", "description": "设定保存路径" }
+        "content_path": { "type": "string", "description": "正文保存路径（统一格式：./小说名/正文；相对路径以运行 cwd 为基准）" },
+        "settings_path": { "type": "string", "description": "设定保存路径（统一格式：./小说名/设定；相对路径以运行 cwd 为基准）" }
       }
     },
 

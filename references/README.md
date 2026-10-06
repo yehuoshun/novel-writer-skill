@@ -60,7 +60,7 @@
 | [character-design-2.md](character-design-2.md) | 角色成长设计时 | 主角调子/反派分量/人推事件/感情流/男频女频/主角逼格/群像 |
 | [character-design-3.md](character-design-3.md) | 经验参考（上） | 九维人设/以梗塑造/情绪调动/金手指与人设/万订大师课/实操方法 |
 | [character-design-4.md](character-design-4.md) | 经验参考（下） | 男频恋爱文攻略/装逼打脸/移情与标签/高级爽点模板 |
-| [emotional-arc-design.md](emotional-arc-design.md) | 情绪追踪/设计高潮时 | 情绪曲线模板、期待感管理、题材赛道策略 |
+| [emotional-arc-design.md](emotional-arc-design.md) | 情绪追踪/设计高潮时 | 情绪弧线模板（6种）+ 期待感管理 + 情绪调动 + 题材赛道策略 |
 | [reversal-toolkit.md](reversal-toolkit.md) | 设计反转时 | 反转类型、时机、误导底层路径 |
 
 ## P5 — 风格与润色（按需加载）

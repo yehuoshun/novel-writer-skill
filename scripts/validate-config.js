@@ -5,7 +5,7 @@
  * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
  * 本脚本只做两件事：
  *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
- *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、v3.0 必需分组）
+ *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、19 个必需分组兜底）
  *
  * 用法:
  *   node validate-config.js < config.json
