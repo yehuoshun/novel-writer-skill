@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.2.16
+version: 3.2.17
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -227,7 +227,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 7. 你确认/修改
 
 **阶段二：写作 + 变更声明**
-8. 写正文（实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2000字）
+8. 写正文（实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2000字；排版规范：全角标点“ ”、段首缩进两全角空格、不用半角标点，见 [references/anti-ai-gates.md](references/anti-ai-gates.md) Gate 5）
    - 参考 [references/style-modules.md](references/style-modules.md) 确保文风一致
    - 参考 [references/hook-techniques.md](references/hook-techniques.md) 确保钩子到位
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」）
@@ -1050,4 +1050,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.2.16_
+_版本：v3.2.17_
