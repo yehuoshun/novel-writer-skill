@@ -14,7 +14,7 @@
 
 const INPUT = require('fs').readFileSync('/dev/stdin', 'utf-8');
 
-const MATCH = INPUT.match(/---CHANGES---\n([\s\S]*?)\n---END CHANGES---/);
+const MATCH = INPUT.match(/---CHANGES---\r?\n([\s\S]*?)\r?\n---END CHANGES---/);
 if (!MATCH) {
   console.error('No CHANGES block found');
   process.exit(1);
@@ -25,21 +25,21 @@ const BLOCK = MATCH[1];
 const RESULT = {};
 
 const SECTIONS = [
-  { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
-  { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
-  { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
+  { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
   {
     key: 'foreshadowing',
     pattern: /<!--\s*伏笔动作/,  // 兼容带说明后缀的标题：<!-- 伏笔动作（四态，必须引用伏笔ID） -->
     // 四态：🔨埋设/➡️推进/✅回收/❌废弃 + 名称段 **vX 伏笔名**（兼容旧格式 **伏笔名**）
     re: /^-\s*(🔨埋设|➡️推进|✅回收|❌废弃)\s*\*\*([^*]+)\*\*(.*)/
   },
-  { key: 'handoff', pattern: /<!--\s*交接包/, re: /^- ([^：]+)：(.*)/ },  // 兼容 <!-- 交接包（给下一章 AI 的交接单） -->
-  { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
-  { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
+  { key: 'handoff', pattern: /<!--\s*交接包/, re: /^- ([^：:]+)[：:](.*)/ },  // 兼容 <!-- 交接包（给下一章 AI 的交接单） -->
+  { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
   { key: 'timeProgress', pattern: /<!-- 时间推进 -->/, re: /^- (.*)/ },
-  { key: 'characterMoves', pattern: /<!-- 角色移动 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
-  { key: 'itemTransfers', pattern: /<!-- 物品流转 -->/, re: /^- \*\*\[(.+?)\]\*\*：(.+)/ },
+  { key: 'characterMoves', pattern: /<!-- 角色移动 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'itemTransfers', pattern: /<!-- 物品流转 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
 ];
 
 const LINES = BLOCK.split('\n');
@@ -75,7 +75,8 @@ for (const LINE of LINES) {
     const namePart = m[2].trim();
     const detail = m[3].trim();
     // 名称段解析：优先 vX 前缀 → { id: 'v1', name: '假死真相' }；无 ID 时 name 为整段
-    const idMatch = namePart.match(/^(v\d+)\s+(.+)$/);
+    // 分隔符兼容：空格 / 连字符 / 破折号（v1 假死真相 / v1-假死真相 / v1—假死真相）
+    const idMatch = namePart.match(/^(v\d+)(?:[\s\-—]+)(.+)$/);
     RESULT[currentSection].push({
       type: action.includes('🔨') ? 'plant'
         : action.includes('➡️') ? 'progress'
@@ -88,8 +89,8 @@ for (const LINE of LINES) {
       raw: trimmed
     });
   } else if (currentSection === 'handoff') {
-    // 交接包：`- 键：值` 逐行解析
-    const m = trimmed.match(/^- ([^：]+)：(.*)/);
+    // 交接包：`- 键：值` 逐行解析（兼容半角冒号）
+    const m = trimmed.match(/^- ([^：:]+)[：:](.*)/);
     if (m) {
       RESULT[currentSection].push({ key: m[1].trim(), value: m[2].trim(), raw: trimmed });
     } else {
@@ -99,12 +100,17 @@ for (const LINE of LINES) {
     const raw = trimmed.replace(/^-\s*/, '');
     const parts = {};
     raw.split('|').forEach(p => {
-      const [k, ...v] = p.trim().split('：');
-      if (k && v.length) parts[k.trim()] = v.join('：').trim();
+      // 首个冒号切分（兼容全/半角），值里剩余的冒号原样保留
+      const idx = p.search(/[：:]/);
+      if (idx > 0) {
+        const k = p.slice(0, idx).trim();
+        const v = p.slice(idx + 1).trim();
+        if (k) parts[k] = v;
+      }
     });
     RESULT[currentSection].push(parts);
   } else {
-    const m = trimmed.match(/^- \*\*\[(.+?)\]\*\*：(.+)/);
+    const m = trimmed.match(/^- \*\*\[(.+?)\]\*\*[:：](.+)/);
     if (m) {
       RESULT[currentSection].push({ name: m[1].trim(), detail: m[2].trim(), raw: trimmed });
     } else {
