@@ -5,7 +5,7 @@
  * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
  * 本脚本只做两件事：
  *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
- *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、21 个必需分组兜底）
+ *   2. 跑 3 条 schema 表达不了的补充逻辑（min<=max、21 个必需分组兜底、written_chapters 语义）
  *
  * 用法:
  *   node validate-config.js < config.json
@@ -143,6 +143,18 @@ if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
         if (!dup) errors.push(`yuque.groups.${k}: 缺失（${REQUIRED_GROUPS.length} 个必需分组之一）`);
       }
     }
+  }
+}
+// 3. written_chapters 语义：无重复 + current_chapter 不落后于已写列表
+const wc = cfg.info && cfg.info.written_chapters;
+if (Array.isArray(wc) && wc.length > 0) {
+  const uniq = new Set(wc);
+  if (uniq.size !== wc.length) {
+    errors.push(`info.written_chapters: 存在重复章节号（${wc.length} 项去重后 ${uniq.size} 项）`);
+  }
+  const maxW = Math.max(...wc);
+  if (typeof cfg.info.current_chapter === 'number' && cfg.info.current_chapter < maxW) {
+    errors.push(`info.current_chapter(${cfg.info.current_chapter}) < written_chapters 最大值(${maxW})：当前章号落后于已写列表`);
   }
 }
 
