@@ -161,6 +161,16 @@
       "description": "save_location=local 或 both 时需要 local 字段",
       "if": { "properties": { "save_location": { "enum": ["local", "both"] } } },
       "then": { "required": ["local"] }
+    },
+    {
+      "description": "backup.mode=local 时 local_path 必填",
+      "if": { "properties": { "backup": { "properties": { "mode": { "enum": ["local"] } } } } },
+      "then": { "properties": { "backup": { "required": ["local_path"] } } }
+    },
+    {
+      "description": "save_location=yuque 时 backup.mode 只能是 yuque_history（语雀存储不做本地备份）",
+      "if": { "properties": { "save_location": { "enum": ["yuque"] }, "backup": { "properties": { "mode": { "enum": ["local"] } } } } },
+      "then": { "properties": { "backup": { "properties": { "mode": { "enum": ["yuque_history"] } } } } }
     }
   ]
 }
