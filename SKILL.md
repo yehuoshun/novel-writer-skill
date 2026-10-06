@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.2.11
+version: 3.2.12
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -485,6 +485,53 @@ graph LR
 | `mermaid_graph` | Mermaid关系图/（TITLE） | 关系图文档 |
 | `snapshot` | 状态快照（DOC） | `状态快照.md` 的 UUID |
 | `changes` | 变更记录/（TITLE） | chXXX-changes 增量文档（永久保留） |
+
+### 语雀 API 调用速查（2026-10-07 实弹验证）
+
+> 优先使用 yuque-mcp 工具（`yuque_update_toc` / `yuque_create_doc` 等封装，自动处理参数与同名复用）；MCP 不可用时按下方裸 API 调用。
+> 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
+
+**建分组（新建小说 21 组 / 旧库缺组补建）**：
+
+```
+PUT /repos/{book_id}/toc
+{
+  "action": "createTitle",   // 建分组；同名节点自动复用，无需先查再建
+  "action_mode": "title",    // 按 title 定位（action/action_mode 均为必填）
+  "type": "TITLE",
+  "title": "角色设定"
+}
+```
+
+- 21 个分组循环调用；建完用 `GET /repos/{book_id}/toc` 拉全量节点，取各分组 `uuid` 回写 `yuque.groups`
+- 字段细节以 yuque-mcp 封装为准（支持 createTitle/appendNode/moveNode/removeNode/prependDoc 等 action）
+
+**创建文档（设定模板 / chXXX 变更记录）**：
+
+```
+POST /repos/{book_id}/docs
+{
+  "title": "张三",
+  "body": "...",
+  "slug": "zhangsan",        // 可选，kebab-case；不传自动生成
+  "parent_uuid": "<分组uuid>"  // 挂到分组下；不传挂根
+}
+```
+
+**更新文档（状态快照覆盖等）**：
+
+```
+PUT /repos/{book_id}/docs/{doc_id}
+// doc_id = 文档数字 id 或 slug，均可
+{ "title": "...", "body": "...", "slug": "..." }
+```
+
+**读目录（查分组/取 uuid）**：
+
+```
+GET /repos/{book_id}/toc
+// 返回节点数组，含 type(TITLE/DOC)/uuid/title
+```
 
 ### 本地设定文件夹
 
@@ -1002,4 +1049,4 @@ graph LR
 
 ---
 
-_版本：v3.2.11_
+_版本：v3.2.12_
