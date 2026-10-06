@@ -50,6 +50,8 @@
       "hook_tracking": "uuid",
       "detailed_outline": "uuid",
       "emotion_arc": "uuid",
+      "world_view": "uuid",
+      "mermaid_graph": "uuid",
       "snapshot": "uuid",
       "changes": "uuid"
     }

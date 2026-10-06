@@ -5,7 +5,7 @@
  * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
  * 本脚本只做两件事：
  *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
- *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、19 个必需分组兜底）
+ *   2. 跑 2 条 schema 表达不了的补充逻辑（min<=max、21 个必需分组兜底）
  *
  * 用法:
  *   node validate-config.js < config.json
@@ -129,8 +129,8 @@ const cw = cfg.writing && cfg.writing.chapter_words;
 if (cw && typeof cw.min === 'number' && typeof cw.max === 'number' && cw.min > cw.max) {
   errors.push(`writing.chapter_words: min(${cw.min}) > max(${cw.max})`);
 }
-// 2. 必需分组：语雀模式必须有全部 19 个分组（缺了运行时会炸）
-const REQUIRED_GROUPS = ['characters_protagonist', 'characters_antagonist', 'characters_supporting', 'characters_deceased', 'items', 'locations', 'factions', 'foreshadowing', 'timeline', 'outline', 'dialogs', 'level_system', 'change_log', 'sweet_spot_tracking', 'hook_tracking', 'detailed_outline', 'emotion_arc', 'snapshot', 'changes'];
+// 2. 必需分组：语雀模式必须有全部 21 个分组（缺了运行时会炸）
+const REQUIRED_GROUPS = ['characters_protagonist', 'characters_antagonist', 'characters_supporting', 'characters_deceased', 'items', 'locations', 'factions', 'foreshadowing', 'timeline', 'outline', 'dialogs', 'level_system', 'change_log', 'sweet_spot_tracking', 'hook_tracking', 'detailed_outline', 'emotion_arc', 'world_view', 'mermaid_graph', 'snapshot', 'changes'];
 if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
   const g = cfg.yuque && cfg.yuque.groups;
   if (!g || typeof g !== 'object' || Array.isArray(g)) {
