@@ -11,7 +11,6 @@
 |------|----------|------|
 | [changes-protocol.md](changes-protocol.md) | 写/续写章节时 | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型 |
 | [anti-ai-gates.md](anti-ai-gates.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、质量维度、禁用词速查、7 种 AI 模式检测 |
-| [banned-words.md](banned-words.md) | 门禁校验时同场加载 | AI 禁用词表（检测和替换时用） |
 
 ## P1 — 大纲相关
 

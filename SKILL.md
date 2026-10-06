@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.2.19
+version: 3.2.20
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -233,7 +233,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」）
 
 **阶段三：12 门禁校验**（全部自动，不通过则打回 AI 重写）
-10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-gates.md](references/anti-ai-gates.md)（门禁规则唯一源头）和 [references/banned-words.md](references/banned-words.md)；本地模式可跑 `node scripts/scan-banned-words.js < 正文文件.md` 机器扫描（一级 0 容忍 / 二级 ≥3 次）；被门禁打回需重写/润色时，加载 [references/anti-ai-polish.md](references/anti-ai-polish.md)（可编辑范围分级+信息账本+修补顺序+三遍法+改写范例）
+10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-gates.md](references/anti-ai-gates.md)（门禁规则唯一源头）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md` 机器体检（口语虚词/断句呼吸/修饰分布/认知句/标点硬伤，词无定性分布是判据）；被门禁打回需重写/润色时，加载 [references/anti-ai-polish.md](references/anti-ai-polish.md)（可编辑范围分级+信息账本+修补顺序+三遍法+改写范例）
 11. **引用校验**（新增）：CHANGES 中声明的角色/地点/物品/势力 ID 是否在设定中存在
     - 引用不存在的 ID → 打回，标注"未登记实体：XXX"
 12. **一致性校验**（新增）：CHANGES 的声明是否与事实快照矛盾
@@ -1045,9 +1045,9 @@ GET /repos/{book_id}/toc
 | [references/anti-ai-gates.md](references/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测（门禁必读） |
 | [references/anti-ai-polish.md](references/anti-ai-polish.md) | 去AI味：可编辑范围分级+信息账本+修补顺序+三遍法+改写范例库（门禁打回/润色/重写时读） |
 | [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待+三翻四震+心态（按需） |
-| [references/banned-words.md](references/banned-words.md) | AI禁用词表（检测和替换时） |
+
 | [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯 |
 
 ---
 
-_版本：v3.2.19_
+_版本：v3.2.20_
