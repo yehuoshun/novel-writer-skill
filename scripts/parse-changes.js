@@ -83,7 +83,7 @@ for (const LINE of LINES) {
         : 'abandon',
       id: idMatch ? idMatch[1] : null,
       // 兼容旧格式 **【伏笔名】** / **[伏笔名]**（无 vX ID）
-      name: idMatch ? idMatch[2].replace(/^\[|\]$/g, '') : namePart.replace(/^\[|\]$/g, ''),
+      name: idMatch ? idMatch[2].replace(/^[\[【]|[\]】]$/g, '') : namePart.replace(/^[\[【]|[\]】]$/g, ''),
       detail: detail.replace(/^\|/, '').trim(),
       raw: trimmed
     });
