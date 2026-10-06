@@ -18,14 +18,41 @@
     "last_emotion_peak": { "chapter": 10, "emotion": "震撼", "intensity": 9 },
     "consecutive_flat_emotion": 0
   },
-  "save_location": "local",
+  "save_location": "yuque",
   "backup": {
-    "mode": "local",
-    "local_path": "./我的小说/backup"
+    "mode": "yuque_history",
+    "local_path": null
   },
-  "local": {
-    "content_path": "./我的小说/正文",
-    "settings_path": "./我的小说/设定"
+  "yuque": {
+    "content_book": {
+      "book_id": "12345678",
+      "namespace": "yehuoshun/novel-content"
+    },
+    "settings_book": {
+      "book_id": "87654321",
+      "namespace": "yehuoshun/novel-settings"
+    },
+    "groups": {
+      "characters_protagonist": "uuid",
+      "characters_antagonist": "uuid",
+      "characters_supporting": "uuid",
+      "characters_deceased": "uuid",
+      "items": "uuid",
+      "locations": "uuid",
+      "factions": "uuid",
+      "foreshadowing": "uuid",
+      "timeline": "uuid",
+      "outline": "uuid",
+      "dialogs": "uuid",
+      "level_system": "uuid",
+      "change_log": "uuid",
+      "sweet_spot_tracking": "uuid",
+      "hook_tracking": "uuid",
+      "detailed_outline": "uuid",
+      "emotion_arc": "uuid",
+      "snapshot": "uuid",
+      "changes": "uuid"
+    }
   },
   "writing": {
     "pov": "third-person",

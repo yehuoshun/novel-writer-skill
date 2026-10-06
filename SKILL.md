@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.1.4
+version: 3.2.0
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -27,7 +27,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 配置
 
-配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`
+配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式）
+
+> ⚠️ 实际配置不入 git 仓库，skill 重装/更新前注意备份 `configs/[小说名].json`
 
 ```json
 {
@@ -50,43 +52,11 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     "consecutive_flat_emotion": 0
   },
   
-  "save_location": "yuque",
+  "save_location": "local",
   
   "backup": {
-    "mode": "yuque_history",
-    "local_path": null
-  },
-  
-  "yuque": {
-    "content_book": {
-      "book_id": "12345678",
-      "namespace": "yehuoshun/novel-content"
-    },
-    "settings_book": {
-      "book_id": "87654321",
-      "namespace": "yehuoshun/novel-settings"
-    },
-    "groups": {
-      "characters_protagonist": "uuid",
-      "characters_antagonist": "uuid",
-      "characters_supporting": "uuid",
-      "characters_deceased": "uuid",
-      "items": "uuid",
-      "locations": "uuid",
-      "factions": "uuid",
-      "foreshadowing": "uuid",
-      "timeline": "uuid",
-      "outline": "uuid",
-      "dialogs": "uuid",
-      "level_system": "uuid",
-      "change_log": "uuid",
-      "sweet_spot_tracking": "uuid",
-      "hook_tracking": "uuid",
-      "detailed_outline": "uuid",
-      "emotion_arc": "uuid",
-      "snapshot": "uuid",
-      "changes": "uuid"
-    }
+    "mode": "local",
+    "local_path": "./小说名/backup"
   },
   
   "local": {
@@ -108,7 +78,10 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 ```
 
 **配置说明**：
-- `save_location`：默认保存位置（yuque / local / both）
+- `save_location`：保存位置（yuque / local / both）
+  - `yuque`：正文+设定都存语雀（两个知识库）
+  - `local`：正文+设定都存本地（两个目录）
+  - `both`：双写——正文/设定同时写语雀和本地，互为备份；读取优先本地，本地缺则回退语雀
 - `backup.mode`：备份模式
   - `yuque_history`（默认）：依赖语雀历史版本功能，不另做本地备份
   - `local`：在指定本地路径自动生成备份快照
@@ -116,6 +89,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
 - `yuque.groups`：语雀分组UUID（仅语雀需要）
 - `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
+- 本地路径统一格式：`./小说名/正文` / `./小说名/设定`（相对路径以运行时的当前工作目录为基准；推荐绝对路径避免歧义）
+- 配置里 `yuque` 和 `local` 两个块只需填当前 save_location 对应的块；both 时两个块都必填
 - `writing`：文风设定，初始化时通过问答确定
 
 **命名约定**：
@@ -133,28 +108,27 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 ```
 **流程**：
 1. 问：「小说类型是？」
-2. 问：「正文保存到语雀还是本地？」
-   - 语雀 → 问：「正文知识库ID和namespace」
-   - 本地 → 问：「正文保存路径」（默认：小说名/正文/）
-3. 问：「设定保存到语雀还是本地？」
-   - 语雀 → 问：「设定知识库ID和namespace」
-   - 本地 → 问：「设定保存路径」（默认：小说名/设定/）
-4. 问：「人称？（第一人称/第三人称）」
-5. 问：「视角？（单主角/多主角/群像）」
-6. 问：「文风？（古风/现代/幽默/严肃）」
-7. 问：「叙事节奏？（快节奏/慢热/细腻）」
-8. 问：「每章字数范围？（默认2000-4000）」
-9. 问：「小说类型相关设定」（每道题标注「可随时输入"够了"跳过」）
+2. 问：「保存到哪？A 语雀 B 本地 C 语雀+本地」（正文和设定同一处）
+   - A 语雀 → 问：「正文知识库ID和namespace」「设定知识库ID和namespace」
+   - B 本地 → 问：「正文保存路径」（默认：./小说名/正文/）「设定保存路径」（默认：./小说名/设定/）
+   - C 语雀+本地（双写）→ 语雀知识库和本地路径都问，正文/设定两处都写
+3. 问：「人称？（第一人称/第三人称）」
+4. 问：「视角？（单主角/多主角/群像）」
+5. 问：「文风？（古风/现代/幽默/严肃）」
+6. 问：「叙事节奏？（快节奏/慢热/细腻）」
+7. 问：「每章字数范围？（默认2000-4000）」
+8. 问：「小说类型相关设定」（每道题标注「可随时输入"够了"跳过」）
    - 玄幻/修仙：修炼体系、等级设定...
    - 都市：势力关系、职业设定...
    - 科幻：科技水平、世界观...
-10. 生成配置文件，发给你确认
-11. 你确认后，创建设定文档模板
-12. 根据存储方式创建设定目录结构：
+9. 生成配置文件，发给你确认
+10. 你确认后，创建设定文档模板
+11. 根据存储方式创建设定目录结构：
     - **语雀模式**：调用语雀 API（`POST /repos/{book_id}/toc`）自动创建目录分组，获取各分组 UUID 回写配置
       - 新增分组：`snapshot`（状态快照 DOC）+ `changes`（变更记录 TITLE）
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
-13. 开始写全书大纲
+    - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
+12. 开始写全书大纲
 
 **设定问答中途停止**：
 - 用户输入「够了」→ 用已有信息生成设定
@@ -282,17 +256,19 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - 伏笔埋设后 10 章未推进且未回收 → 警告「伏笔 vX 已埋设 N 章未推进」
 
 **阶段四：落地 + 状态回写**
-17. 门禁全部通过后 → 上传语雀/本地
+17. 门禁全部通过后 → 上传（按 save_location：语雀 / 本地 / 双写）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
       - 语雀模式：更新 `snapshot` 分组下的 DOC，用 `PUT /repos/{id}/docs/{doc_id}` 覆盖
       - 本地模式：覆盖 `设定/状态快照.md`
+      - 双写模式：两处都更新
     - **覆盖 `## 下章交接包` 整段**（旧包作废）：从 CHANGES 的 `<!-- 交接包 -->` 声明生成，供下一章读取
     - **按伏笔状态机更新伏笔状态表**：🔨埋设→新增行（已埋设）；➡️推进→状态改已推进+追加推进章；✅回收→状态改已回收+写揭晓章；❌废弃→状态改已废弃
     - 保存 `ch{N}-changes.md` 到 `变更记录/` 分组（增量日志，永久保留）
       - 语雀模式：在 `changes` TITLE 节点下创建 DOC
       - 本地模式：保存到 `设定/changes/ch{N}-changes.md`
-    - 更新各角色/地点/物品/势力/伏笔设定文档
+      - 双写模式：两处都保存
+    - 更新各角色/地点/物品/势力/伏笔设定文档（双写模式两处都更新）
 19. **冲突检测**：状态回写后自动跑冲突检测（位置/时间线/角色状态/物品），有冲突则提示
 20. 反馈更新内容（含门禁结果摘要 + 冲突检测结果）
 21. 更新 `info.written_chapters` 列表
@@ -566,17 +542,14 @@ graph LR
 我：小说类型是？（玄幻/都市/科幻...）（可随时输入"够了"跳过剩余问题）
 用户：玄幻修仙
 ↓
-我：正文保存到语雀还是本地？
-用户：语雀
+我：保存到哪？（A 语雀 / B 本地 / C 语雀+本地）
+用户：A 语雀
 ↓
 我：正文知识库ID？
 用户：12345678
 ↓
 我：正文知识库namespace？
 用户：yehuoshun/tianlong-content
-↓
-我：设定保存到语雀还是本地？
-用户：语雀
 ↓
 我：设定知识库ID？
 用户：87654321

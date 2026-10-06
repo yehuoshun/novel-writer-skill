@@ -129,12 +129,15 @@ const cw = cfg.writing && cfg.writing.chapter_words;
 if (cw && typeof cw.min === 'number' && typeof cw.max === 'number' && cw.min > cw.max) {
   errors.push(`writing.chapter_words: min(${cw.min}) > max(${cw.max})`);
 }
-// 2. 必需分组：语雀模式必须有 snapshot / changes（缺了状态回写会失败）
+// 2. 必需分组：语雀模式必须有全部 19 个分组（缺了运行时会炸）
+const REQUIRED_GROUPS = ['characters_protagonist', 'characters_antagonist', 'characters_supporting', 'characters_deceased', 'items', 'locations', 'factions', 'foreshadowing', 'timeline', 'outline', 'dialogs', 'level_system', 'change_log', 'sweet_spot_tracking', 'hook_tracking', 'detailed_outline', 'emotion_arc', 'snapshot', 'changes'];
 if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
   const g = cfg.yuque && cfg.yuque.groups;
-  if (g && typeof g === 'object') {
-    for (const k of ['snapshot', 'changes']) {
-      if (!g[k]) errors.push(`yuque.groups.${k}: 缺失（v3.0 必需分组）`);
+  if (!g || typeof g !== 'object' || Array.isArray(g)) {
+    errors.push('yuque.groups: 缺失或非对象（语雀模式必需）');
+  } else {
+    for (const k of REQUIRED_GROUPS) {
+      if (!g[k]) errors.push(`yuque.groups.${k}: 缺失（${REQUIRED_GROUPS.length} 个必需分组之一）`);
     }
   }
 }

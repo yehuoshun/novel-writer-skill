@@ -17,4 +17,5 @@ temp/
 # 用户小说配置（含语雀 book_id/namespace，勿提交到公开仓库）
 configs/*.json
 !configs/example.json
+!configs/example-yuque.json
 !configs/config.schema.json

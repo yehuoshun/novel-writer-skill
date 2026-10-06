@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/yehuoshun/novel-writer-skill/blob/master/configs/config.schema.json",
   "title": "Novel Writer Configuration",
   "description": "配置文件 schema，用于 novel-writer-skill 项目",
   "type": "object",
@@ -61,7 +60,7 @@
     "save_location": {
       "type": "string",
       "enum": ["yuque", "local", "both"],
-      "description": "默认保存位置"
+      "description": "保存位置：yuque=正文/设定存语雀；local=存本地；both=双写（两处都写，读优先本地）"
     },
 
     "backup": {
@@ -95,10 +94,29 @@
         },
         "groups": {
           "type": "object",
-          "description": "语雀分组 UUID 映射",
-          "patternProperties": {
-            "^[a-z_]+$": { "type": "string" }
-          }
+          "description": "语雀分组 UUID 映射（19 个固定 key 全必填）",
+          "properties": {
+            "characters_protagonist": { "type": "string" },
+            "characters_antagonist": { "type": "string" },
+            "characters_supporting": { "type": "string" },
+            "characters_deceased": { "type": "string" },
+            "items": { "type": "string" },
+            "locations": { "type": "string" },
+            "factions": { "type": "string" },
+            "foreshadowing": { "type": "string" },
+            "timeline": { "type": "string" },
+            "outline": { "type": "string" },
+            "dialogs": { "type": "string" },
+            "level_system": { "type": "string" },
+            "change_log": { "type": "string" },
+            "sweet_spot_tracking": { "type": "string" },
+            "hook_tracking": { "type": "string" },
+            "detailed_outline": { "type": "string" },
+            "emotion_arc": { "type": "string" },
+            "snapshot": { "type": "string" },
+            "changes": { "type": "string" }
+          },
+          "required": ["characters_protagonist", "characters_antagonist", "characters_supporting", "characters_deceased", "items", "locations", "factions", "foreshadowing", "timeline", "outline", "dialogs", "level_system", "change_log", "sweet_spot_tracking", "hook_tracking", "detailed_outline", "emotion_arc", "snapshot", "changes"]
         }
       }
     },
