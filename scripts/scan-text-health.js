@@ -83,6 +83,31 @@ for (const [re, label] of patterns) {
 }
 if (patHits.length) notes.push(`认知句模式 ${patHits.join(' / ')} — 可保留 1 处，成簇时替换为直接动作/引述`);
 
+// ---- 4.5 语句通顺 ----
+// 同主语连发：连续 3 句以上同一句首词（他/她/然后）→ 单调
+const starts = body.split(/[。！？!?]/).map(s => s.trim()).filter(s => s.length > 2);
+let sameStart = 0;
+let runStart = '';
+for (const s of starts) {
+  const first = s.slice(0, 2);
+  if (first === runStart) {
+    sameStart++;
+    if (sameStart === 2) notes.push(`连续 3+ 句同一开头「${first}…」— 句首单调，变化一下主语或换承接`);
+  } else {
+    sameStart = 0;
+    runStart = first;
+  }
+}
+// 连接词滥用：然后/接着/于是 密度
+const connectors = (body.match(/然后|接着|于是|接下来/g) || []).length;
+if (connectors / zhCount * 1000 > 2) notes.push(`连接词密度 ${(connectors / zhCount * 1000).toFixed(1)}/千字（然后/接着/于是）— 检查因果链是否靠连接词硬串`);
+// 「的」字句密度（是…的 结构滥用）
+const deSents = (body.match(/是[^。！？!?]{2,15}的/g) || []).length;
+if (deSents >= 3) notes.push(`「是…的」结构 ${deSents} 处 — 书面判断腔，换直接叙述`);
+// 废话填充：明显空转（不由分说/二话不说/只见/但见）
+const filler = (body.match(/不由分说|二话不说|只见|但见/g) || []).length;
+if (filler) notes.push(`填充词 ${filler} 处（不由分说/二话不说/只见）— 删掉句子意思不变`);
+
 // ---- 5. 标点硬伤 ----
 let hard = 0;
 const half = body.match(/[",:;!?()]/g);
