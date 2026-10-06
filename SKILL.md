@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.2.12
+version: 3.2.13
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -124,9 +124,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 9. 生成配置文件，发给你确认
 10. 你确认后，创建设定文档模板
 11. 根据存储方式创建设定目录结构：
-    - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`，body 带 action=createTitle/appendNode 及 title/type，同名节点自动复用）自动创建目录分组，获取各分组 UUID 回写配置
+    - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`，body 带 action=appendNode、action_mode=child 及 title/type）自动创建目录分组，**从响应 data 直接取各分组 UUID 回写配置（无需再读）**
       - **21 个分组全建**：角色/反派/配角/已故/物品/地点/势力/伏笔/时间线/大纲/关键对话/等级体系/变更日志/爽点/钩子/细纲/情绪曲线/世界观/Mermaid关系图/快照/变更记录
-      - 旧库缺组时自动补建：检查 TOC 是否存在同名节点，存在则复用 UUID、缺失才创建（尤其 `世界观`、`Mermaid关系图`）
+      - 旧库缺组时自动补建：**先 `GET /toc` 查同名节点**（裸 API 同名不复用），存在则复用 UUID、缺失才 appendNode 创建（尤其 `世界观`、`Mermaid关系图`）
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
     - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
 12. 开始写全书大纲
@@ -488,23 +488,24 @@ graph LR
 
 ### 语雀 API 调用速查（2026-10-07 实弹验证）
 
-> 优先使用 yuque-mcp 工具（`yuque_update_toc` / `yuque_create_doc` 等封装，自动处理参数与同名复用）；MCP 不可用时按下方裸 API 调用。
+> 优先使用 yuque-mcp 工具（`yuque_update_toc` / `yuque_create_doc` 等封装；注意 MCP 的 `createTitle` 是封装层 action，裸 API 不认）；MCP 不可用时按下方裸 API 调用。
 > 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
 
-**建分组（新建小说 21 组 / 旧库缺组补建）**：
+**建分组（新建小说 21 组）**：
 
 ```
 PUT /repos/{book_id}/toc
 {
-  "action": "createTitle",   // 建分组；同名节点自动复用，无需先查再建
-  "action_mode": "title",    // 按 title 定位（action/action_mode 均为必填）
+  "action": "appendNode",   // 合法枚举：appendNode/prependNode/appendChild/moveAfter/...
+  "action_mode": "child",    // 仅 sibling/child 二选一（必填）
   "type": "TITLE",
   "title": "角色设定"
 }
 ```
 
-- 21 个分组循环调用；建完用 `GET /repos/{book_id}/toc` 拉全量节点，取各分组 `uuid` 回写 `yuque.groups`
-- 字段细节以 yuque-mcp 封装为准（支持 createTitle/appendNode/moveNode/removeNode/prependDoc 等 action）
+- **响应 `data` 直接返回节点数组（含新节点 uuid），取 uuid 回写 `yuque.groups`，无需再 GET**
+- ⚠️ 裸 API **同名不复用**：重复建同名会生成重复节点；旧库缺组补建必须**先 `GET /toc` 查同名**，有则复用 uuid、无才建
+- 删除节点：`{"action":"removeNode","action_mode":"child","node_uuid":"<uuid>"}`
 
 **创建文档（设定模板 / chXXX 变更记录）**：
 
@@ -1049,4 +1050,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.2.12_
+_版本：v3.2.13_
