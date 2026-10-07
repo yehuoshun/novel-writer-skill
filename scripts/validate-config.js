@@ -59,7 +59,7 @@ function checkType(schema, val, p, errs) {
     if (t === 'null') return val === null;
     return true;
   });
-  if (!ok) errs.push(`${p}: 类型错误，应为 ${schema.type.join('/')}, 实际是 ${val === null ? 'null' : typeof val}`);
+  if (!ok) errs.push(`${p}: 类型错误，应为 ${types.join('/')}, 实际是 ${val === null ? 'null' : typeof val}`);
 }
 
 function validate(schema, val, p = '', errs = errors) {

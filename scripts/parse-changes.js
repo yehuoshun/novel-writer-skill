@@ -106,6 +106,10 @@ for (const LINE of LINES) {
         const k = p.slice(0, idx).trim();
         const v = p.slice(idx + 1).trim();
         if (k) parts[k] = v;
+      } else {
+        // 无冒号裸值（如「第5天」）：不丢弃，归入 _raw 保留，供消费端自行理解
+        const t = p.trim();
+        if (t) parts._raw = parts._raw ? `${parts._raw} | ${t}` : t;
       }
     });
     RESULT[currentSection].push(parts);
