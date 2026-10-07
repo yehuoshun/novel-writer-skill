@@ -5,7 +5,7 @@
  * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
  * 本脚本只做两件事：
  *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
- *   2. 跑 4 条 schema 表达不了的补充逻辑（min<=max、22 个必需分组兜底、book 二选一、written_chapters 语义）
+ *   2. 跑 5 条 schema 表达不了的补充逻辑（min<=max、22 个必需分组兜底、book 二选一、written_chapters 语义、name 非空）
  *
  * 用法:
  *   node validate-config.js < config.json
@@ -165,6 +165,12 @@ if (Array.isArray(wc) && wc.length > 0) {
   if (typeof cfg.info.current_chapter === 'number' && cfg.info.current_chapter < maxW) {
     errors.push(`info.current_chapter(${cfg.info.current_chapter}) < written_chapters 最大值(${maxW})：当前章号落后于已写列表`);
   }
+}
+
+// 5. info.name 非空（schema 的 type:string 挡不住空串，mini validator 不支持 minLength）
+const n = cfg.info && cfg.info.name;
+if (!n || !String(n).trim()) {
+  errors.push('info.name: 小说名不能为空');
 }
 
 // ---- 输出 ----
