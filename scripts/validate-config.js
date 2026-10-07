@@ -129,9 +129,9 @@ const cw = cfg.writing && cfg.writing.chapter_words;
 if (cw && typeof cw.min === 'number' && typeof cw.max === 'number' && cw.min > cw.max) {
   errors.push(`writing.chapter_words: min(${cw.min}) > max(${cw.max})`);
 }
-// 2. 必需分组：语雀模式必须有全部 21 个分组（缺了运行时会炸）
+// 2. 必需分组：语雀模式必须有全部 22 个分组（21 设定组 + content 正文组，缺了运行时会炸）
 //    schema.required 已报「缺失（必填）」，这里避免重复报同一 key，仅作第二道防线
-const REQUIRED_GROUPS = ['characters_protagonist', 'characters_antagonist', 'characters_supporting', 'characters_deceased', 'items', 'locations', 'factions', 'foreshadowing', 'timeline', 'outline', 'dialogs', 'level_system', 'change_log', 'sweet_spot_tracking', 'hook_tracking', 'detailed_outline', 'emotion_arc', 'world_view', 'mermaid_graph', 'snapshot', 'changes'];
+const REQUIRED_GROUPS = ['content', 'characters_protagonist', 'characters_antagonist', 'characters_supporting', 'characters_deceased', 'items', 'locations', 'factions', 'foreshadowing', 'timeline', 'outline', 'dialogs', 'level_system', 'change_log', 'sweet_spot_tracking', 'hook_tracking', 'detailed_outline', 'emotion_arc', 'world_view', 'mermaid_graph', 'snapshot', 'changes'];
 if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
   const g = cfg.yuque && cfg.yuque.groups;
   if (!g || typeof g !== 'object' || Array.isArray(g)) {
