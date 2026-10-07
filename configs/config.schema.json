@@ -73,29 +73,22 @@
 
     "yuque": {
       "type": "object",
-      "description": "语雀配置（save_location=yuque/both 时需要）",
-      "required": ["content_book", "settings_book", "groups"],
+      "description": "语雀配置（save_location=yuque/both 时需要；单知识库模式，正文+设定同库）",
+      "required": ["book", "groups"],
       "properties": {
-        "content_book": {
+        "book": {
           "type": "object",
           "required": ["book_id", "namespace"],
           "properties": {
-            "book_id":   { "type": "string", "description": "正文知识库 ID" },
-            "namespace": { "type": "string", "description": "正文知识库 namespace" }
-          }
-        },
-        "settings_book": {
-          "type": "object",
-          "required": ["book_id", "namespace"],
-          "properties": {
-            "book_id":   { "type": "string", "description": "设定知识库 ID" },
-            "namespace": { "type": "string", "description": "设定知识库 namespace" }
+            "book_id":   { "type": "string", "description": "小说知识库 ID（正文+设定同一个库）" },
+            "namespace": { "type": "string", "description": "小说知识库 namespace" }
           }
         },
         "groups": {
           "type": "object",
-          "description": "语雀分组 UUID 映射（21 个固定 key 全必填）",
+          "description": "语雀分组 UUID 映射（22 个固定 key 全必填：content 正文组 + 21 个设定组）",
           "properties": {
+            "content": { "type": "string", "description": "正文分组（TITLE，正文章节文档）" },
             "characters_protagonist": { "type": "string" },
             "characters_antagonist": { "type": "string" },
             "characters_supporting": { "type": "string" },

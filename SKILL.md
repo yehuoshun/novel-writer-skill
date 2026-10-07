@@ -79,7 +79,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 **配置说明**：
 - `save_location`：保存位置（yuque / local / both）
-  - `yuque`：正文+设定都存语雀（两个知识库）
+  - `yuque`：正文+设定都存语雀（同一个知识库，TOC 分组区分正文/设定）
   - `local`：正文+设定都存本地（两个目录）
   - `both`：双写——正文/设定同时写语雀和本地，互为备份；读取优先本地，本地缺则回退语雀
 - `backup.mode`：备份模式
@@ -87,6 +87,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
   - `local`：在指定本地路径自动生成备份快照
 - `backup.local_path`：本地备份路径（仅当 backup.mode=local 时需要）
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
+- `yuque.book`：小说知识库 ID + namespace（正文+设定同库，仅语雀需要）
 - `yuque.groups`：语雀分组UUID（仅语雀需要）
 - `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
 - 本地路径统一格式：`./小说名/正文` / `./小说名/设定`（相对路径以运行时的当前工作目录为基准；推荐绝对路径避免歧义）
@@ -109,9 +110,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 **流程**：
 1. 问：「小说类型是？」
 2. 问：「保存到哪？A 语雀 B 本地 C 语雀+本地」（正文和设定同一处）
-   - A 语雀 → 问：「正文知识库ID和namespace」「设定知识库ID和namespace」
+   - A 语雀 → 问：「知识库ID和namespace」（正文+设定同一个知识库）
    - B 本地 → 问：「正文保存路径」（默认：./小说名/正文/）「设定保存路径」（默认：./小说名/设定/）
-   - C 语雀+本地（双写）→ 语雀知识库和本地路径都问，正文/设定两处都写
+   - C 语雀+本地（双写）→ 语雀知识库（单个）和本地路径都问，正文/设定两处都写
 3. 问：「人称？（第一人称/第三人称）」
 4. 问：「视角？（单主角/多主角/群像）」
 5. 问：「文风？（古风/现代/幽默/严肃）」（选定后映射风格模块：古风→奇幻玄幻、现代→现实世情、幽默→幽默/轻小说、严肃→悬疑/推理/恐怖，加载指引见 [references/style-modules.md](references/style-modules.md)）
@@ -125,7 +126,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 10. 你确认后，创建设定文档模板
 11. 根据存储方式创建设定目录结构：
     - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`，body 带 action=appendNode、action_mode=child 及 title/type）自动创建目录分组，**从响应 data 直接取各分组 UUID 回写配置（无需再读）**
-      - **21 个分组全建**：角色/反派/配角/已故/物品/地点/势力/伏笔/时间线/大纲/关键对话/等级体系/变更日志/爽点/钩子/细纲/情绪曲线/世界观/Mermaid关系图/快照/变更记录
+      - **22 个分组全建**：正文/角色/反派/配角/已故/物品/地点/势力/伏笔/时间线/大纲/关键对话/等级体系/变更日志/爽点/钩子/细纲/情绪曲线/世界观/Mermaid关系图/快照/变更记录
+      - `content`（正文）分组存正文章节文档（挂 `第XXX章` DOC），建组时优先创建保证 TOC 置顶
       - 旧库缺组时自动补建：**先 `GET /toc` 查同名节点**（裸 API 同名不复用），存在则复用 UUID、缺失才 appendNode 创建（尤其 `世界观`、`Mermaid关系图`）
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
     - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
@@ -268,6 +270,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 **阶段四：落地 + 状态回写**
 17. 门禁全部通过后 → 上传（按 save_location：语雀 / 本地 / 双写）
+    - 语雀模式：正文 DOC 创建到 `content` 分组下（`POST /repos/{book_id}/docs`，body 带 title/body/parent_uuid=content 分组 UUID）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
       - 语雀模式：更新 `snapshot` 分组下的 DOC，用 `PUT /repos/{book_id}/docs/{doc_id}` 覆盖（doc_id 为文档数字 id 或 slug，均可）
@@ -431,13 +434,14 @@ graph LR
 
 ## 设定文档结构
 
-### 语雀设定知识库
+### 语雀知识库（单库模式）
 
 > 语雀没有文件夹概念，用 TOC 树实现：TITLE 节点 = 分组目录，DOC 节点 = 文档。
-> 下面的树中，`/` 结尾的是 TITLE 分组节点，`.md` 结尾的是独立 DOC 文档。
+> 正文和设定存同一个知识库，下面的树中，`/` 结尾的是 TITLE 分组节点，`.md` 结尾的是独立 DOC 文档。
 
 ```
-设定知识库（根）
+小说知识库（根）
+├── [TITLE] 正文/             ← 正文章节 DOC（第001章、第002章…）
 ├── [TITLE] 角色设定/
 │   ├── [TITLE] 主角组/
 │   ├── [TITLE] 反派组/
@@ -468,9 +472,10 @@ graph LR
     └── ...
 ```
 
-**语雀 groups 映射**（配置文件 `yuque.groups`，21 个 key 全必填，与「21 个分组全建」一一对应）：
+**语雀 groups 映射**（配置文件 `yuque.groups`，22 个 key 全必填，与「22 个分组全建」一一对应）：
 | key | 分组节点 | 用途 |
 |-----|-----------|------|
+| `content` | 正文/（TITLE） | 正文章节文档 |
 | `characters_protagonist` | 角色设定/主角组/（TITLE） | 主角档案 |
 | `characters_antagonist` | 角色设定/反派组/（TITLE） | 反派档案 |
 | `characters_supporting` | 角色设定/配角组/（TITLE） | 配角档案 |
@@ -498,7 +503,7 @@ graph LR
 > 优先使用 yuque-mcp 工具（`yuque_update_toc` / `yuque_create_doc` 等封装；注意 MCP 的 `createTitle` 是封装层 action，裸 API 不认）；MCP 不可用时按下方裸 API 调用。
 > 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
 
-**建分组（新建小说 21 组）**：
+**建分组（新建小说 22 组，含正文组）**：
 
 ```
 PUT /repos/{book_id}/toc
@@ -625,17 +630,11 @@ GET /repos/{book_id}/toc
 我：保存到哪？（A 语雀 / B 本地 / C 语雀+本地）
 用户：A 语雀
 ↓
-我：正文知识库ID？
+我：知识库ID？（正文+设定同一个知识库）
 用户：12345678
 ↓
-我：正文知识库namespace？
-用户：yehuoshun/tianlong-content
-↓
-我：设定知识库ID？
-用户：87654321
-↓
-我：设定知识库namespace？
-用户：yehuoshun/tianlong-settings
+我：知识库namespace？
+用户：yehuoshun/tianlong-novel
 ↓
 我：人称？（第一人称/第三人称）
 用户：第三人称

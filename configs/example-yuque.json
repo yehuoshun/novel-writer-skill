@@ -24,15 +24,12 @@
     "local_path": null
   },
   "yuque": {
-    "content_book": {
+    "book": {
       "book_id": "12345678",
-      "namespace": "yehuoshun/novel-content"
-    },
-    "settings_book": {
-      "book_id": "87654321",
-      "namespace": "yehuoshun/novel-settings"
+      "namespace": "yehuoshun/novel"
     },
     "groups": {
+      "content": "uuid",
       "characters_protagonist": "uuid",
       "characters_antagonist": "uuid",
       "characters_supporting": "uuid",
