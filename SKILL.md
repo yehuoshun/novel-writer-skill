@@ -198,7 +198,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | 2 | 首战立威 | 装逼打脸 | 冲突钩 | 新角色钩 | 3200 |
 ```
 
-> 细纲附**蓝图出场清单**（必出场角色/势力/地点 + 戏份要求），格式与填写规则见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」；写章节后按蓝图逐项核对出场（门禁 15，即下方阶段三 12 门禁之蓝图出场合规）。
+> 细纲附**蓝图出场清单**（必出场角色/势力/地点 + 戏份要求），格式与填写规则见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」；写章节后按蓝图逐项核对出场（12 门禁之蓝图出场合规，即下方阶段三条目 15）。
 
 #### 查大纲
 ```
