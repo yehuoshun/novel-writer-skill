@@ -160,8 +160,10 @@ if (Array.isArray(wc) && wc.length > 0) {
 
 // ---- 输出 ----
 if (errors.length > 0) {
-  console.error(`❌ 配置校验失败（${errors.length} 处）:`);
-  errors.forEach(e => console.error(`  ${e}`));
+  // 全局去重：同一错误可能被顶层 properties 与 allOf 多约束叠加重复报告，输出前收敛为一条
+  const uniq = [...new Set(errors)];
+  console.error(`❌ 配置校验失败（${uniq.length} 处）:`);
+  uniq.forEach(e => console.error(`  ${e}`));
   process.exit(1);
 } else {
   console.log('✅ 配置文件校验通过');
