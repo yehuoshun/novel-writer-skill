@@ -78,10 +78,10 @@
       "properties": {
         "book": {
           "type": "object",
-          "required": ["book_id", "namespace"],
+          "description": "小说知识库标识：book_id 与 namespace 二选一，至少填其一（语雀 API repo 标识两者均可）",
           "properties": {
-            "book_id":   { "type": "string", "description": "小说知识库 ID（正文+设定同一个库）" },
-            "namespace": { "type": "string", "description": "小说知识库 namespace" }
+            "book_id":   { "type": "string", "description": "小说知识库数字 ID（与 namespace 二选一）" },
+            "namespace": { "type": "string", "description": "小说知识库 namespace（如 yehuoshun/xxx，与 book_id 二选一）" }
           }
         },
         "groups": {

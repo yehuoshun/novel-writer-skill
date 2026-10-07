@@ -5,7 +5,7 @@
  * 规则唯一源头：configs/config.schema.json（JSON Schema draft-07 子集）
  * 本脚本只做两件事：
  *   1. 用内置 mini validator 校验 JSON Schema（零依赖，覆盖本项目用到的关键字）
- *   2. 跑 3 条 schema 表达不了的补充逻辑（min<=max、21 个必需分组兜底、written_chapters 语义）
+ *   2. 跑 4 条 schema 表达不了的补充逻辑（min<=max、22 个必需分组兜底、book 二选一、written_chapters 语义）
  *
  * 用法:
  *   node validate-config.js < config.json
@@ -145,7 +145,16 @@ if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
     }
   }
 }
-// 3. written_chapters 语义：无重复 + current_chapter 不落后于已写列表
+// 3. 语雀模式 book：book_id 与 namespace 二选一（repo 标识两者均可，但至少填其一）
+if (cfg.save_location === 'yuque' || cfg.save_location === 'both') {
+  const b = cfg.yuque && cfg.yuque.book;
+  const hasId = !!(b && b.book_id && String(b.book_id).trim());
+  const hasNs = !!(b && b.namespace && String(b.namespace).trim());
+  if (!hasId && !hasNs) {
+    errors.push('yuque.book: book_id 与 namespace 至少填其一（语雀 repo 标识二选一）');
+  }
+}
+// 4. written_chapters 语义：无重复 + current_chapter 不落后于已写列表
 const wc = cfg.info && cfg.info.written_chapters;
 if (Array.isArray(wc) && wc.length > 0) {
   const uniq = new Set(wc);

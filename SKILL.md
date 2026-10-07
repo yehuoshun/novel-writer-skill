@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.2
+version: 3.3.3
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -87,7 +87,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
   - `local`：在指定本地路径自动生成备份快照
 - `backup.local_path`：本地备份路径（仅当 backup.mode=local 时需要）
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
-- `yuque.book`：小说知识库 ID + namespace（正文+设定同库，仅语雀需要）
+- `yuque.book`：小说知识库 ID 或 namespace（二选一，至少填其一；正文+设定同库，仅语雀需要）
 - `yuque.groups`：语雀分组UUID（仅语雀需要）
 - `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
 - 本地路径统一格式：`./小说名/正文` / `./小说名/设定`（相对路径以运行时的当前工作目录为基准；推荐绝对路径避免歧义）
@@ -236,7 +236,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 **阶段三：12 门禁校验**（全部自动，不通过则打回 AI 重写）
 > 注：下方条目编号 10-16 为阶段三自有序号，其中条目 10 涵盖 6 个写作质量 Gate（Gate 1-6），全流程合计 **12 门禁**（6 写作质量 + 6 专项）。
-10. **写作质量门禁**（6 Gate）：加载 [references/anti-ai-gates.md](references/anti-ai-gates.md)（门禁规则唯一源头）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md` 自检（词无定性，分布是判据）：
+10. **写作质量门禁**（6 Gate，全名见 [references/anti-ai-gates.md](references/anti-ai-gates.md)：Gate 1 文本健康 / Gate 2 AI句式 / Gate 3 心理外化 / Gate 4 节奏 / Gate 5 对话 / Gate 6 结尾）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md` 自检 Gate 1（词无定性，分布是判据），下列为 Gate 1 检测维度：
     - **断句检测**：逗号链（单句 ≥6 逗号警告）、句长分布（25 字+ 占比、≤8 字碎片）
     - **语句通顺检测**：口语虚词密度（净句警告）、同主语连发（连续 3+ 句同一开头）、连接词滥用（然后/接着/于是）、「是…的」书面判断腔、填充词
     - **修饰分布**：比喻密度、「只有/仅仅/恰好」封闭逻辑词（优先「还有/又」开放叙述）
@@ -1053,4 +1053,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.1_
+_版本：v3.3.3_
