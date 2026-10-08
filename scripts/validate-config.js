@@ -32,7 +32,7 @@ if (arg) {
   if (!fs.existsSync(arg)) die(`文件不存在: ${arg}`, 2);
   raw = fs.readFileSync(arg, 'utf-8');
 } else {
-  raw = fs.readFileSync('/dev/stdin', 'utf-8');
+  raw = fs.readFileSync(0, 'utf-8');
 }
 
 let cfg;

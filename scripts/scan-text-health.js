@@ -24,7 +24,7 @@ if (arg) {
   if (!fs.existsSync(arg)) { console.error(`❌ 文件不存在: ${arg}`); process.exit(2); }
   raw = fs.readFileSync(arg, 'utf-8');
 } else {
-  raw = fs.readFileSync('/dev/stdin', 'utf-8');
+  raw = fs.readFileSync(0, 'utf-8');
 }
 
 // 取正文（去掉 ---CHANGES--- 块）

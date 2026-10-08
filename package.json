@@ -1,0 +1,9 @@
+{
+  "name": "novel-writer-skill",
+  "version": "3.3.16",
+  "private": true,
+  "description": "OpenClaw 小说写作辅助 skill（零运行时依赖，测试用 node 内置 test runner）",
+  "scripts": {
+    "test": "node --test"
+  }
+}

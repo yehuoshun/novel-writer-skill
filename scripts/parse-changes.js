@@ -12,7 +12,7 @@
  * 支持伏笔四态（🔨埋设/➡️推进/✅回收/❌废弃）与下章交接包（<!-- 交接包 -->）
  */
 
-const INPUT = require('fs').readFileSync('/dev/stdin', 'utf-8');
+const INPUT = require('fs').readFileSync(0, 'utf-8');
 
 const MATCH = INPUT.match(/---CHANGES---\r?\n([\s\S]*?)\r?\n---END CHANGES---/);
 if (!MATCH) {
