@@ -55,9 +55,8 @@ function walk(d) {
 }
 const settingFiles = walk(setDir);
 const stems = settingFiles.map(f => path.basename(f, '.md'));
-const hasEntity = (name) =>
-  stems.some(s => s === name || s.endsWith('_' + name)) ||
-  settingFiles.some(f => fs.readFileSync(f, 'utf8').includes(name));
+// 实体档案按文件名匹配（命名约定：文档名=实体名，允许「地点前缀_实体名」）
+const hasEntity = (name) => stems.some(s => s === name || s.endsWith('_' + name));
 
 // ---- 门禁 1：引用校验 ----
 const refs = [

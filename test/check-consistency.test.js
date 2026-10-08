@@ -53,6 +53,17 @@ test('冲突章节 → 拦三类问题（exit 1）', () => {
   assert.match(r.stderr, /未登记伏笔：v9/);
 });
 
+test('实体仅被他档提及、无自有档案 → 仍判未登记', () => {
+  const { dir, set, snap } = setup();
+  fs.appendFileSync(path.join(set, '角色设定', '主角', '林山.md'), '\n- 关系：师父（青云子）\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[青云子]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /未登记实体：青云子/);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);
