@@ -10,7 +10,7 @@
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
 | [changes-protocol.md](changes-protocol.md) | 写/续写章节时 | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型 |
-| [anti-ai-gates.md](anti-ai-gates.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、质量维度、7 种 AI 模式检测、旧「禁用词」概念说明（Gate 1 已替代） |
+| [anti-ai-gates.md](anti-ai-gates.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、质量维度、7 种 AI 模式检测、高压区 1-7（含揭晓体/结构性重写）、朱雀实测校准、旧「禁用词」概念说明 |
 
 ## P1 — 大纲相关
 
