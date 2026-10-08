@@ -64,6 +64,36 @@ test('实体仅被他档提及、无自有档案 → 仍判未登记', () => {
   assert.match(r.stderr, /未登记实体：青云子/);
 });
 
+test('推进/回收 已终结伏笔 → 拦（状态不可回退）', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 9 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已回收 | 1 | 2 | 8 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **v1 断锋来历** | 又推\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /不可回退/);
+});
+
+test('已死角色出现 → 拦', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 9 |\n' +
+    '| 王老 | — | — | 已死亡 | — | 5 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[王老]**：死亡→复活\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /已死角色出现：王老/);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);

@@ -74,10 +74,16 @@ for (const r of new Set(refs)) {
 const snap = fs.readFileSync(snapPath, 'utf8');
 const posSection = (snap.split(/^##\s*角色状态/m)[1] || '').split(/^##\s/m)[0];
 const posOf = {};
+const statusOf = {};
+for (const m of posSection.matchAll(/^\|\s*([^|]+?)\s*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
+  const name = m[1].trim(), st = m[2].trim();
+  if (/^角色$|^-+$/.test(name)) continue;
+  statusOf[name] = st;              // 第 4 列：状态
+}
 for (const m of posSection.matchAll(/^\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
   const name = m[1].trim(), pos = m[2].trim();
   if (/^角色$|^-+$/.test(name)) continue;
-  posOf[name] = pos;
+  posOf[name] = pos;                // 第 3 列：当前位置
 }
 for (const mv of changes.characterMoves || []) {
   const m = mv.detail && mv.detail.match(/^(.+?)→(.+)$/);
@@ -87,6 +93,21 @@ for (const mv of changes.characterMoves || []) {
   if (cur && from && !cur.includes(from) && !from.includes(cur)) {
     problems.push(`[一致性] ${mv.name} 从「${from}」出发，但快照记录其在「${cur}」`);
   }
+}
+// 已死角色出现
+for (const name of new Set([
+  ...(changes.characterStates || []).map(x => x.name),
+  ...(changes.characterMoves || []).map(x => x.name),
+].filter(Boolean))) {
+  const st = statusOf[name];
+  if (st && /已死|死亡|已阵亡/.test(st)) problems.push(`[一致性] 已死角色出现：${name}（快照状态：${st}）`);
+}
+
+// 快照：伏笔当前状态（第 5 列）
+const fstateSection = (snap.split(/^##\s*伏笔状态/m)[1] || '').split(/^##\s/m)[0];
+const stateOf = {};
+for (const m of fstateSection.matchAll(/^\|\s*(v\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
+  stateOf[m[1]] = m[2].trim();
 }
 
 // ---- 门禁 3：伏笔闭环 ----
@@ -98,6 +119,8 @@ for (const f of changes.foreshadowing || []) {
   if (['progress', 'harvest', 'abandon'].includes(f.type)) {
     if (!f.id || !registered.includes(f.id)) {
       problems.push(`[伏笔闭环] 未登记伏笔：${f.id || '(无ID)'}（${f.type}）`);
+    } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
+      problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
     }
   }
 }
