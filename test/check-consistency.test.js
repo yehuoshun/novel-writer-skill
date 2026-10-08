@@ -121,6 +121,27 @@ test('蓝图出场合规：缺额 ≤1 不拦', () => {
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+test('描写一致性：正文发色与档案矛盾 → 拦', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n- 瞳色：深褐\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '张三的金色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /描写一致性.*张三.*金发/);
+});
+
+test('描写一致性：与档案一致 → 不拦', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '张三的黑色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);
