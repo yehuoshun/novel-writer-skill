@@ -31,6 +31,9 @@ if (arg) {
 const body = raw.split('---CHANGES---')[0];
 const zhCount = (body.match(/[\u4e00-\u9fff]/g) || []).length;
 if (zhCount < 100) { console.log('⚠️ 文本过短（<100 汉字），检测参考意义有限'); }
+// 密度类指标按「千字」算，对短文本会虚高；样本不足时跳过，避免误报
+const MIN_SAMPLE = 1500;
+const enough = zhCount >= MIN_SAMPLE;
 
 const issues = [];
 const notes = [];
@@ -40,8 +43,8 @@ const particles = ['得', '还', '甚至', '又', '也', '就', '都', '才', '�
 let pCount = 0;
 for (const p of particles) pCount += (body.match(new RegExp(p, 'g')) || []).length;
 const perK = pCount / zhCount * 1000;
-if (perK < 15) notes.push(`口语虚词偏少（${perK.toFixed(1)}/千字，参考 15-60）— 句子可能太「净」，缺人在说话的口气`);
-else if (perK > 60) notes.push(`口语虚词偏多（${perK.toFixed(1)}/千字）— 检查是否啰嗦`);
+if (enough && perK < 15) notes.push(`口语虚词偏少（${perK.toFixed(1)}/千字，参考 15-60）— 句子可能太「净」，缺人在说话的口气`);
+else if (enough && perK > 60) notes.push(`口语虚词偏多（${perK.toFixed(1)}/千字）— 检查是否啰嗦`);
 
 // ---- 2. 断句呼吸 ----
 // 逗号链：单句内连续逗号 ≥6
@@ -64,7 +67,7 @@ else notes.push(`句长分布健康（长句 ${longPct.toFixed(0)}%，短碎片 
 
 // ---- 3. 修饰分布 ----
 const metaphors = (body.match(/像|仿佛/g) || []).length;
-if (metaphors / zhCount * 1000 > 4) notes.push(`比喻词密度 ${(metaphors / zhCount * 1000).toFixed(1)}/千字（阈值 ≤4）— 比喻偏密`);
+if (enough && metaphors / zhCount * 1000 > 4) notes.push(`比喻词密度 ${(metaphors / zhCount * 1000).toFixed(1)}/千字（阈值 ≤4）— 比喻偏密`);
 const closedWords = (body.match(/只有|仅仅|恰好|刚好|唯一|无非/g) || []).length;
 if (closedWords >= 3) notes.push(`封闭逻辑词 ${closedWords} 处（只有/仅仅/恰好…）— 检查叙述是否过于精确，可用「还有/又」替换`);
 
@@ -100,7 +103,7 @@ for (const s of starts) {
 }
 // 连接词滥用：然后/接着/于是 密度
 const connectors = (body.match(/然后|接着|于是|接下来/g) || []).length;
-if (connectors / zhCount * 1000 > 2) notes.push(`连接词密度 ${(connectors / zhCount * 1000).toFixed(1)}/千字（然后/接着/于是）— 检查因果链是否靠连接词硬串`);
+if (enough && connectors / zhCount * 1000 > 2) notes.push(`连接词密度 ${(connectors / zhCount * 1000).toFixed(1)}/千字（然后/接着/于是）— 检查因果链是否靠连接词硬串`);
 // 「的」字句密度（是…的 结构滥用）
 const deSents = (body.match(/是[^。！？!?]{2,15}的/g) || []).length;
 if (deSents >= 3) notes.push(`「是…的」结构 ${deSents} 处 — 书面判断腔，换直接叙述`);
@@ -122,6 +125,7 @@ if (openQ !== closeQ) { issues.push(`引号不成对（“ ${openQ} / ” ${clos
 const noIndent = body.split('\n').filter(l => l.startsWith('　　')).length;
 const totalParas = body.split('\n').filter(l => l.trim()).length;
 if (totalParas && noIndent < totalParas * 0.9) notes.push(`首行缩进缺失（${noIndent}/${totalParas} 段有缩进）`);
+if (!enough) notes.push(`字数 ${zhCount} < ${MIN_SAMPLE}：密度类指标（口语虚词/比喻/连接词）样本不足未判，仅供参考`);
 
 // ---- 输出 ----
 console.log('🏥 文本健康检测报告\n');
