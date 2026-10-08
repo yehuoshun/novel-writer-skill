@@ -63,7 +63,7 @@ else if (longPct < 15) notes.push(`长句占比仅 ${longPct.toFixed(0)}% — �
 else notes.push(`句长分布健康（长句 ${longPct.toFixed(0)}%，短碎片 ${shortS.length} 句）`);
 
 // ---- 3. 修饰分布 ----
-const metaphors = (body.match(/[像如]|仿佛/g) || []).length;
+const metaphors = (body.match(/像|仿佛/g) || []).length;
 if (metaphors / zhCount * 1000 > 4) notes.push(`比喻词密度 ${(metaphors / zhCount * 1000).toFixed(1)}/千字（阈值 ≤4）— 比喻偏密`);
 const closedWords = (body.match(/只有|仅仅|恰好|刚好|唯一|无非/g) || []).length;
 if (closedWords >= 3) notes.push(`封闭逻辑词 ${closedWords} 处（只有/仅仅/恰好…）— 检查叙述是否过于精确，可用「还有/又」替换`);
@@ -110,8 +110,12 @@ if (filler) notes.push(`填充词 ${filler} 处（不由分说/二话不说/只�
 
 // ---- 5. 标点硬伤 ----
 let hard = 0;
-const half = body.match(/[",:;!?()]/g);
-if (half) { issues.push(`半角标点混入: ${[...new Set(half)].join(' ')}（${half.length} 处）`); hard = 1; }
+// 硬伤：半角引号/逗号/叹号/问号（中文正文一律用全角）
+const halfHard = body.match(/[",!?]/g);
+if (halfHard) { issues.push(`半角标点混入: ${[...new Set(halfHard)].join(' ')}（${halfHard.length} 处）`); hard = 1; }
+// 软提示：半角括号/冒号/分号（正文少见，也可能是「3:1」类比例，仅提醒不判硬伤）
+const halfSoft = body.match(/[:;()]/g);
+if (halfSoft) { notes.push(`半角括号/冒号 ${halfSoft.length} 处（: ; ( )）— 若非数字比例等特例，应改全角`); }
 const openQ = (body.match(/“/g) || []).length;
 const closeQ = (body.match(/”/g) || []).length;
 if (openQ !== closeQ) { issues.push(`引号不成对（“ ${openQ} / ” ${closeQ}）`); hard = 1; }

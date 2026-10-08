@@ -45,6 +45,7 @@ const SECTIONS = [
 const LINES = BLOCK.split('\n');
 
 let currentSection = null;
+const unknownMarkers = [];
 
 for (const LINE of LINES) {
   const trimmed = LINE.trim();
@@ -61,6 +62,12 @@ for (const LINE of LINES) {
     }
   }
   if (found) continue;
+
+  // 未识别的分节标记（<!-- xxx -->）→ 记录后报错，避免静默吞入上一分节
+  if (/^<!--.*-->$/.test(trimmed)) {
+    unknownMarkers.push(trimmed);
+    continue;
+  }
 
   // Parse line based on current section
   if (!currentSection) continue;
@@ -122,6 +129,12 @@ for (const LINE of LINES) {
       RESULT[currentSection].push({ raw: trimmed });
     }
   }
+}
+
+if (unknownMarkers.length) {
+  console.error(`未识别的 CHANGES 分节标记（${unknownMarkers.length} 处）: ${unknownMarkers.join(' / ')}`);
+  console.error('请核对 references/changes-protocol.md 的标准标记');
+  process.exit(1);
 }
 
 console.log(JSON.stringify(RESULT, null, 2));
