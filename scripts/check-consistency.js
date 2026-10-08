@@ -3,12 +3,13 @@
  * 一致性 / 引用 / 伏笔闭环 门禁（可执行实现）
  *
  * 用法:
- *   node check-consistency.js <状态快照.md> <章节.md> <设定目录>
+ *   node check-consistency.js <状态快照.md> <章节.md> <设定目录> [细纲.md]
  *
- * 三道门禁（对应 SKILL「12 门禁」之 11/12/16）：
+ * 四道门禁：
  *   1. 引用校验：CHANGES 声明的角色/地点/物品/势力 是否有对应设定文档
- *   2. 一致性校验：角色移动的出发地是否与「上一章快照」记录的位置一致
- *   3. 伏笔闭环：➡️推进/✅回收/❌废弃 引用的伏笔 ID 是否已登记（vX-*.md）
+ *   2. 一致性校验：角色移动出发地是否与「上一章快照」一致；已死角色是否登场
+ *   3. 伏笔闭环：➡️推进/✅回收/❌废弃 引用的伏笔 ID 是否已登记、状态是否可回退
+ *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
  *
  * ⚠️ 快照必须是「上一章落地后、本章回写前」的版本。回写后快照已更新为目标态，
  *    再跑一致性校验会误报（出发地=旧值 vs 快照=新值）。
@@ -22,7 +23,7 @@ const { execFileSync, } = require('child_process');
 
 function die(msg, code) { console.error(`❌ ${msg}`); process.exit(code); }
 
-const [snapPath, chapPath, setDir] = process.argv.slice(2);
+const [snapPath, chapPath, setDir, outlinePath] = process.argv.slice(2);
 if (!snapPath || !chapPath || !setDir) {
   die('用法: node check-consistency.js <状态快照.md> <章节.md> <设定目录>', 2);
 }
@@ -121,6 +122,23 @@ for (const f of changes.foreshadowing || []) {
       problems.push(`[伏笔闭环] 未登记伏笔：${f.id || '(无ID)'}（${f.type}）`);
     } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
+    }
+  }
+}
+
+// ---- 门禁 15：蓝图出场合规（可选，传细纲文件时启用）----
+if (outlinePath) {
+  if (!fs.existsSync(outlinePath)) die(`细纲文件不存在: ${outlinePath}`, 2);
+  const chNo = (path.basename(chapPath).match(/第\s*(\d+)\s*章/) || [])[1];
+  if (chNo) {
+    const body = fs.readFileSync(chapPath, 'utf8').split('---CHANGES---')[0];
+    for (const line of fs.readFileSync(outlinePath, 'utf8').split('\n')) {
+      const m = line.match(/^\|\s*第?\s*(\d+)\s*章?\s*\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|/);
+      if (!m || Number(m[1]) !== Number(chNo)) continue;
+      // 第2/4/5 列 = 必出场角色/地点/势力（第3列是戏份要求，跳过）
+      const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean);
+      const missing = names.filter(n => !body.includes(n));
+      if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）`);
     }
   }
 }

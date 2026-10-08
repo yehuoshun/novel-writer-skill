@@ -94,6 +94,33 @@ test('已死角色出现 → 拦', () => {
   assert.match(r.stderr, /已死角色出现：王老/);
 });
 
+test('蓝图出场合规：必出角色缺失 >1 → 拦', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '## 第3章 细纲\n| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山、青云子、三师兄 | 各≥1 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 试.md');
+  fs.writeFileSync(chap, '林山走在路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /蓝图未出场：青云子、三师兄/);
+});
+
+test('蓝图出场合规：缺额 ≤1 不拦', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山、青云子 | 各≥1 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 试.md');
+  fs.writeFileSync(chap, '林山走在青云山的路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);
