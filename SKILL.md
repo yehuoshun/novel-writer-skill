@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.14
+version: 3.3.15
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -692,7 +692,7 @@ GET /repos/{book_id}/toc
   ✅ 未知实体检测：通过（新增 1 个：黑风寨-已登记）
   ✅ 蓝图出场合规：通过（指定 3 人出场，实际 3 人）
 ↓
-我：上传章节 + 保存 changes/ch10-changes.md
+我：上传章节 + 保存 changes/ch010-changes.md
 ↓
 我：状态回写完成。冲突检测：无冲突。
   更新摘要：
@@ -993,6 +993,14 @@ GET /repos/{book_id}/toc
 以下文件在 `references/` 目录下，按需加载（不全量加载避免 Token 爆炸）。
 **加载优先级速查** → 见 [references/README.md](references/README.md)。
 
+### 核心协议
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/changes-protocol.md](references/changes-protocol.md) | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型（写/续写章节时） |
+| [references/state-snapshot.md](references/state-snapshot.md) | 状态快照格式与更新规则（写章节回写 / 续写读交接包时） |
+| [references/setup-templates.md](references/setup-templates.md) | 所有设定文档模板（新建小说 / 补建设定时） |
+
 ### 写作流程
 
 | 文件 | 何时加载 |
@@ -1052,4 +1060,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.14_
+_版本：v3.3.15_
