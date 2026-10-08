@@ -142,6 +142,19 @@ test('描写一致性：与档案一致 → 不拦', () => {
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+test('描写一致性：名字子串不误报（张三 vs 张三丰）', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n');
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三丰.md'), '# 张三丰\n- 发色：黑\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '张三丰的金色长发垂到腰际。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三丰]**：健康→健康\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /张三丰 正文写「金发」/);
+  assert.ok(!/张三 正文写/.test(r.stderr), `误报张三:\n${r.stderr}`);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);

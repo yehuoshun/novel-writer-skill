@@ -146,23 +146,33 @@ if (outlinePath) {
 }
 
 // ---- 门禁 13：描写一致性（正文发色/瞳色 vs 角色档案）----
-const COLOR = '(黑|白|金|银|红|蓝|绿|紫|灰|棕|褐|青|橙|粉|黄)';
-for (const pf of settingFiles.filter(p => p.includes(`${path.sep}角色设定${path.sep}`))) {
-  const name = path.basename(pf, '.md');
-  if (!name || !chapterBody.includes(name)) continue;
-  const txt = fs.readFileSync(pf, 'utf8');
-  const hair = (txt.match(/发色\s*[：:]\s*([^\n]+)/) || [])[1];
-  const eye = (txt.match(/瞳色\s*[：:]\s*([^\n]+)/) || [])[1];
-  const check = (val, nounRe, label) => {
-    if (!val) return;
-    const want = (val.match(new RegExp(COLOR)) || [])[1];
-    if (!want) return;
-    for (const m of chapterBody.matchAll(new RegExp(name + '[^。！？\n]{0,12}?(' + COLOR + ')色?' + nounRe, 'g'))) {
-      if (m[1] !== want) problems.push(`[描写一致性] ${name} 正文写「${m[1]}${label}」，档案记「${val.replace(/\s/g, '')}」`);
+const COLOR = '黑|白|金|银|红|蓝|绿|紫|灰|棕|褐|青|橙|粉|黄';
+const HAIR = '发丝|头发|长发|短发|卷发|刘海|发';
+const EYE = '眼眸|双眸|眸子|瞳孔|瞳|眼睛|眼';
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const profOf = (name) => {
+  const f = settingFiles.find(p => { const s = path.basename(p, '.md'); return s === name || s.endsWith('_' + name); });
+  return f ? fs.readFileSync(f, 'utf8') : null;
+};
+// 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
+const profNames = [...new Set(settingFiles
+  .filter(p => p.includes(`${path.sep}角色设定${path.sep}`))
+  .map(p => path.basename(p, '.md'))
+  .filter(Boolean))].sort((a, b) => b.length - a.length);
+if (profNames.length) {
+  const re = new RegExp(`(${profNames.map(escRe).join('|')})[^。！？\n]{0,12}?(${COLOR})色?(${HAIR}|${EYE})`, 'g');
+  for (const m of chapterBody.matchAll(re)) {
+    const who = m[1], got = m[2], noun = m[3];
+    const txt = profOf(who);
+    if (!txt) continue;
+    const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);
+    const val = (txt.match(isHair ? /发色\s*[：:]\s*([^\n]+)/ : /瞳色\s*[：:]\s*([^\n]+)/) || [])[1];
+    if (!val) continue;
+    const want = (val.match(new RegExp('(?:' + COLOR + ')')) || [])[0];
+    if (want && got !== want) {
+      problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，档案记「${val.replace(/\s/g, '')}」`);
     }
-  };
-  check(hair, '(发丝|头发|长发|短发|卷发|刘海|发)', '发');
-  check(eye, '(眼眸|双眸|眸子|瞳孔|瞳|眼睛|眼)', '瞳');
+  }
 }
 
 if (problems.length) {
