@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.10
+version: 3.3.11
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「更新设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」时触发。
 ---
 
@@ -51,19 +51,19 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     "last_emotion_peak": { "chapter": 10, "emotion": "震撼", "intensity": 9 },
     "consecutive_flat_emotion": 0
   },
-  
+
   "save_location": "local",
-  
+
   "backup": {
     "mode": "local",
     "local_path": "./小说名/backup"
   },
-  
+
   "local": {
     "content_path": "./小说名/正文",
     "settings_path": "./小说名/设定"
   },
-  
+
   "writing": {
     "pov": "first-person/third-person",
     "perspective": "single/multi",
@@ -1052,4 +1052,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.10_
+_版本：v3.3.11_
