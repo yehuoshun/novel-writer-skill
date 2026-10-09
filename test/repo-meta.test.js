@@ -64,7 +64,7 @@ test('版本号一致：frontmatter == 末尾标注 == package.json', () => {
 });
 
 test('无未识别的 CHANGES 分节标记', () => {
-  const KNOWN = /^(角色状态变化|冲突进度|新剧情节点|伏笔动作|交接包|地点状态变化|势力状态变化|时间推进|角色移动|物品流转)/;
+  const KNOWN = /^(角色状态变化|冲突进度|新剧情节点|伏笔动作|交接包|地点状态变化|势力状态变化|时间推进|角色移动|物品流转|语雀渲染占位)/;
   const bad = [];
   for (const f of MD) {
     for (const m of fs.readFileSync(f, 'utf-8').matchAll(/<!--\s*([^>]+?)\s*-->/g)) {
