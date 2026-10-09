@@ -45,7 +45,5 @@ jobs:
           files: "novel-writer-skill-${{ github.ref_name }}.zip"
           body: ${{ steps.notes.outputs.body }}
 
-      - name: 钉钉通知
-        uses: yehuoshun/yehuoshun-notify@v1.2.0
-        with:
-          webhook: ${{ secrets.DINGTALK_WEBHOOK }}
+      # 钉钉通知不在此发：tag push 事件无 commits，会生成「0 提交」空消息。
+      # 改由 notify.yml 监听 release 事件（published）发送，携带完整 changelog。
