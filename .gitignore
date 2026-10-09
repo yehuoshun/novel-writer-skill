@@ -20,5 +20,7 @@ configs/*.json
 !configs/example-yuque.json
 !configs/example-both.json
 !configs/config.schema.json
+# 仓库测试资产（测试用小说配置，无敏感字段，随仓库走）
+!configs/测试-*.json
 # 生命周期模拟临时目录（误提交防护）
 nw-lifecycle.*

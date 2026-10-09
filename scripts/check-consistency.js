@@ -57,7 +57,7 @@ const chapterBody = fs.readFileSync(chapPath, 'utf8').split('---CHANGES---')[0];
 // ---- 交接包必填（changes-protocol.md「交接包类别每章必填」）----
 // 缺失 → 打回：下一章的交接单断了，属于真实流程断裂，不静默放过
 if (!changes.handoff || changes.handoff.length === 0) {
-  problems.push('[交接包] 缺少 <!-- 交接包 --> 声明（协议要求每章必填，供下一章读取）');
+  problems.push('[交接包] 缺少 <!-- 交接包 --> 声明（协议要求每章必填，供下一章读取）——请在 CHANGES 块补写 <!-- 交接包 --> 声明后重跑');
 }
 
 // ---- 收集设定目录下所有实体名（文件名 stem + 正文出现的名字）----
@@ -84,7 +84,7 @@ const refs = [
   ...(changes.factionChanges || []).map(x => x.name),
 ].filter(Boolean);
 for (const r of new Set(refs)) {
-  if (!hasEntity(r)) problems.push(`[引用校验] 未登记实体：${r}`);
+  if (!hasEntity(r)) problems.push(`[引用校验] 未登记实体：${r}——先创建对应设定档案（角色/地点/物品/势力目录）再写章`);
 }
 
 // ---- 门禁 2：一致性（角色移动出发地 vs 快照当前位置）----
@@ -118,7 +118,7 @@ for (const mv of changes.characterMoves || []) {
   // 快照位置为「—」/空/未知时无对照基准，不判矛盾
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
-    problems.push(`[一致性] ${mv.name} 从「${from}」出发，但快照记录其在「${cur}」`);
+    problems.push(`[一致性] ${mv.name} 从「${from}」出发，但快照记录其在「${cur}」——核对 CHANGES 出发地或先更新快照`);
   }
 }
 // 已死角色出现
@@ -127,7 +127,7 @@ for (const name of new Set([
   ...(changes.characterMoves || []).map(x => x.name),
 ].filter(Boolean))) {
   const st = statusOf[name];
-  if (st && /已死|死亡|已阵亡/.test(st)) problems.push(`[一致性] 已死角色出现：${name}（快照状态：${st}）`);
+  if (st && /已死|死亡|已阵亡/.test(st)) problems.push(`[一致性] 已死角色出现：${name}（快照状态：${st}）——已死角色不得登场，修正剧情或改快照`);
 }
 
 // 快照：伏笔当前状态（第 5 列）
@@ -161,7 +161,7 @@ for (const f of changes.foreshadowing || []) {
     if (!registered.includes(f.id)) {
       problems.push(`[伏笔闭环] 未登记伏笔：${f.id}（${f.type}）——如已在快照伏笔状态表登记，请检查是否漏建 ${path.join('伏笔追踪', f.id + '-*.md')} 文档`);
     } else if (stateOf[f.id] && /已回收|已废弃|resolved|abandoned/i.test(stateOf[f.id])) {
-      problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
+      problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）——终态伏笔只能留在快照，不可再动作`);
     }
   }
 }
@@ -186,7 +186,7 @@ for (const lc of changes.locationChanges || []) {
   const cur = locStateOf[lc.name];
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
-    problems.push(`[一致性] ${lc.name} 状态从「${from}」变化，但快照记录其当前状态为「${cur}」`);
+    problems.push(`[一致性] ${lc.name} 状态从「${from}」变化，但快照记录其当前状态为「${cur}」——核对 CHANGES 出发态或先更新快照`);
   }
 }
 
@@ -208,7 +208,7 @@ for (const it of changes.itemTransfers || []) {
   const cur = ownerOf[it.name];
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
-    problems.push(`[一致性] 物品「${it.name}」原持有者「${from}」，但快照记录持有者为「${cur}」`);
+    problems.push(`[一致性] 物品「${it.name}」原持有者「${from}」，但快照记录持有者为「${cur}」——核对 CHANGES 原持有者或先更新快照`);
   }
 }
 
@@ -237,7 +237,7 @@ if (outlinePath) {
       // 第2/4/5 列 = 必出场角色/地点/势力（第3列是戏份要求，跳过）
       const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean);
       const missing = names.filter(n => !body.includes(n));
-      if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）`);
+      if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）——补写该角色/地点/势力出场戏份，或调整蓝图清单`);
     }
     // 细纲存在但蓝图清单无本章行 → 警告（文档要求每章附蓝图，漏附会让门禁空转）
     if (!blueprintMatched) {
@@ -319,7 +319,7 @@ if (profNames.length) {
     const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);
     const want = colorOf(who, isHair);
     if (want && normColor(got) !== normColor(want)) {
-      problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，设定记「${want}${isHair ? '发' : '瞳'}」`);
+      problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，设定记「${want}${isHair ? '发' : '瞳'}」——改正文描述或更新档案/快照外貌表`);
     }
   }
 }

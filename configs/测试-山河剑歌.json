@@ -1,0 +1,20 @@
+{
+  "info": {
+    "name": "山河剑歌", "type": "玄幻", "status": "ongoing", "created_at": "2026-10-09",
+    "current_chapter": 2, "written_chapters": [1, 2], "total_words": 641, "current_volume": 1,
+    "last_sweet_spot": { "chapter": 2, "type": "信息差碾压" },
+    "consecutive_no_spot": 0, "consecutive_same_type": 0,
+    "last_hook_start": { "chapter": 2, "type": "悬念钩", "strength": "中" },
+    "last_hook_end": { "chapter": 2, "type": "悬念钩", "strength": "强" },
+    "consecutive_weak_hooks": 0,
+    "last_emotion_peak": { "chapter": 2, "emotion": "惊疑", "intensity": 6 },
+    "consecutive_flat_emotion": 0
+  },
+  "save_location": "local",
+  "backup": { "mode": "local", "local_path": "./山河剑歌/backup" },
+  "local": { "content_path": "./山河剑歌/正文", "settings_path": "./山河剑歌/设定" },
+  "writing": {
+    "pov": "third-person", "perspective": "single", "style": "classical", "narrative_style": "fast-paced",
+    "chapter_words": { "min": 2000, "max": 4000 }
+  }
+}
