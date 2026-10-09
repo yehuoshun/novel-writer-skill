@@ -24,7 +24,7 @@
           "description": "最近爽点；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
-            "type":    { "type": "string" }
+            "type":    { "type": "string", "enum": ["装逼打脸", "逆袭反转", "获得机缘", "信息差碾压", "情感满足", "扮猪吃虎"], "description": "爽点 6 类（SKILL.md 爽点类型速查）" }
           }
         },
         "consecutive_no_spot":   { "type": "integer", "minimum": 0 },
@@ -34,7 +34,7 @@
           "description": "最近章首钩子；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
-            "type":    { "type": "string" },
+            "type":    { "type": "string", "enum": ["悬念钩", "冲突钩", "反差钩", "代入钩", "信息差钩", "反转钩", "新信息钩", "新角色钩", "危机钩", "决策钩"], "description": "钩子追踪类 10 个唯一类（SKILL.md 钩子追踪表去重；悬念钩章首/章尾共用）" },
             "strength": { "type": "string", "enum": ["弱", "中", "强"] }
           }
         },
@@ -43,7 +43,7 @@
           "description": "最近章尾钩子；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
-            "type":    { "type": "string" },
+            "type":    { "type": "string", "enum": ["悬念钩", "冲突钩", "反差钩", "代入钩", "信息差钩", "反转钩", "新信息钩", "新角色钩", "危机钩", "决策钩"], "description": "钩子追踪类 10 个唯一类（SKILL.md 钩子追踪表去重；悬念钩章首/章尾共用）" },
             "strength": { "type": "string", "enum": ["弱", "中", "强"] }
           }
         },

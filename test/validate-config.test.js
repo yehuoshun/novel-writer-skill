@@ -117,3 +117,19 @@ test('文件不存在 → 退出码 2', () => {
   const r = runFile(path.join(ROOT, 'configs', '__nope__.json'));
   assert.strictEqual(r.status, 2);
 });
+
+test('钩子类型乱填（非追踪类词汇）→ 失败', () => {
+  const c = clone();
+  c.info.last_hook_start = { chapter: 4, type: '悬念钩子', strength: '强' };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /悬念钩子/);
+});
+
+test('爽点类型乱填 → 失败', () => {
+  const c = clone();
+  c.info.last_sweet_spot = { chapter: 3, type: '爽歪歪' };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /爽歪歪/);
+});
