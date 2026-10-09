@@ -188,6 +188,15 @@ if (cfg.save_location === 'local' || cfg.save_location === 'both') {
   }
 }
 
+// 7. backup.mode=local 时 local_path 必填非空（schema 的 required 只挡 undefined，
+//    null/空串会漏 —— v3.3.44 实弹暴露）
+if (cfg.backup && cfg.backup.mode === 'local') {
+  const lp = cfg.backup.local_path;
+  if (!lp || !String(lp).trim()) {
+    errors.push('backup.local_path: 缺失或为空（backup.mode=local 时需要非空路径）');
+  }
+}
+
 // ---- 输出 ----
 if (errors.length > 0) {
   // 全局去重：同一错误可能被顶层 properties 与 allOf 多约束叠加重复报告，输出前收敛为一条

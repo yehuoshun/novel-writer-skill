@@ -135,6 +135,32 @@ test('local 模式缺 settings_path → 失败', () => {
   assert.match(r.stderr, /local.settings_path: 缺失/);
 });
 
+test('book_id 用数字（API 接受数字 id）→ 通过', () => {
+  const c = clone();
+  c.save_location = 'yuque';
+  c.yuque = {
+    book: { book_id: 12345678 },
+    groups: { content: 'u1', characters_protagonist: 'u2', characters_antagonist: 'u3', characters_supporting: 'u4', characters_deceased: 'u5', items: 'u6', locations: 'u7', factions: 'u8', foreshadowing: 'u9', timeline: 'u10', outline: 'u11', dialogs: 'u12', level_system: 'u13', change_log: 'u14', sweet_spot_tracking: 'u15', hook_tracking: 'u16', detailed_outline: 'u17', emotion_arc: 'u18', world_view: 'u19', mermaid_graph: 'u20', snapshot: 'u21', changes: 'u22' },
+  };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+test('backup.mode=local + local_path=null → 失败（schema required 挡不住 null）', () => {
+  const c = clone();
+  c.backup = { mode: 'local', local_path: null };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /backup.local_path: 缺失或为空/);
+});
+
+test('backup.mode=local + local_path 正常 → 通过', () => {
+  const c = clone();
+  c.backup = { mode: 'local', local_path: './x/backup' };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 test('文件不存在 → 退出码 2', () => {
   const r = runFile(path.join(ROOT, 'configs', '__nope__.json'));
   assert.strictEqual(r.status, 2);

@@ -82,9 +82,9 @@
       "properties": {
         "book": {
           "type": "object",
-          "description": "小说知识库标识：book_id 与 namespace 二选一，至少填其一（语雀 API repo 标识两者均可）",
+          "description": "小说知识库标识：book_id 与 namespace 二选一，至少填其一（语雀 API repo 标识两者均可；book_id 用数字 id 或字符串均可）",
           "properties": {
-            "book_id":   { "type": "string", "description": "小说知识库数字 ID（与 namespace 二选一）" },
+            "book_id":   { "type": ["string", "integer"], "description": "小说知识库数字 ID（与 namespace 二选一；API 接受数字，JSON 里写 123 或 \"123\" 均可）" },
             "namespace": { "type": "string", "description": "小说知识库 namespace（如 yehuoshun/xxx，与 book_id 二选一）" }
           }
         },
