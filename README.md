@@ -80,6 +80,12 @@ node --test        # 或 npm test
 
 覆盖三个脚本的输入输出（CHANGES 解析四态、配置校验正负例、文本健康扫描回归）+ 仓库元数据自检（链接、表格、版本、命名、换行）。CI（`.github/workflows/test.yml`）在 push / PR 时自动跑。
 
+集成回归（5 章全生命周期：埋设→推进→回收、新角色建档、终态回退、重复埋设）：
+
+```bash
+bash tools/simulate-lifecycle.sh
+```
+
 ## 许可
 
 MIT
