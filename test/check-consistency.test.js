@@ -155,6 +155,21 @@ test('描写一致性：名字子串不误报（张三 vs 张三丰）', () => {
   assert.ok(!/张三 正文写/.test(r.stderr), `误报张三:\n${r.stderr}`);
 });
 
+test('伏笔埋设 10 章未推进 → 警告（不阻断，exit 0）', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已埋设 | 1 | — | 待定 |\n');
+  const chap = path.join(dir, '第012章 x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /v1 已埋设 11 章未推进/);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);

@@ -12,6 +12,8 @@
  *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
  *   5. 描写一致性：正文中发色/瞳色描写是否与角色档案矛盾（如档案黑发、正文写「金色长发」）
  *
+ * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进且未回收。
+ *
  * ⚠️ 快照必须是「上一章落地后、本章回写前」的版本。回写后快照已更新为目标态，
  *    再跑一致性校验会误报（出发地=旧值 vs 快照=新值）。
  *
@@ -44,6 +46,7 @@ try {
 }
 
 const problems = [];
+const warnings = [];
 const chapterBody = fs.readFileSync(chapPath, 'utf8').split('---CHANGES---')[0];
 
 // ---- 收集设定目录下所有实体名（文件名 stem + 正文出现的名字）----
@@ -109,8 +112,10 @@ for (const name of new Set([
 // 快照：伏笔当前状态（第 5 列）
 const fstateSection = (snap.split(/^##\s*伏笔状态/m)[1] || '').split(/^##\s/m)[0];
 const stateOf = {};
-for (const m of fstateSection.matchAll(/^\|\s*(v\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
+const plantChapter = {};
+for (const m of fstateSection.matchAll(/^\|\s*(v\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|/gm)) {
   stateOf[m[1]] = m[2].trim();
+  plantChapter[m[1]] = (m[3].match(/\d+/) || [])[0];
 }
 
 // ---- 门禁 3：伏笔闭环 ----
@@ -175,6 +180,23 @@ if (profNames.length) {
   }
 }
 
+// ---- 警告（不阻断）：伏笔埋设后 10 章未推进且未回收 ----
+const curCh = (path.basename(chapPath).match(/第\s*(\d+)\s*章/) || [])[1];
+if (curCh) {
+  for (const [id, st] of Object.entries(stateOf)) {
+    if (/^已埋设$|^open$/i.test(st)) {
+      const pc = plantChapter[id];
+      if (pc && Number(curCh) - Number(pc) >= 10) {
+        warnings.push(`[伏笔闭环] 伏笔 ${id} 已埋设 ${Number(curCh) - Number(pc)} 章未推进（埋设于第${pc}章）`);
+      }
+    }
+  }
+}
+
+if (warnings.length) {
+  console.log(`⚠️ 警告（${warnings.length} 项，不阻断）:`);
+  warnings.forEach(w => console.log(`  ${w}`));
+}
 if (problems.length) {
   console.error(`❌ 门禁不通过（${problems.length} 项）:`);
   problems.forEach(p => console.error(`  ${p}`));
