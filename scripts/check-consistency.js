@@ -7,10 +7,12 @@
  *
  * 五道门禁：
  *   1. 引用校验：CHANGES 声明的角色/地点/物品/势力 是否有对应设定文档
- *   2. 一致性校验：角色移动出发地是否与「上一章快照」一致；已死角色是否登场
+ *   2. 一致性校验：角色移动出发地是否与「上一章快照」一致；已死角色是否登场；
+ *      地点状态变化出发态 vs 快照地点状态表；物品流转原持有者 vs 快照物品归属表（v3.3.40+）
  *   3. 伏笔闭环：➡️推进/✅回收/❌废弃 引用的伏笔 ID 是否已登记、状态是否可回退
  *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
  *   5. 描写一致性：正文中发色/瞳色描写是否与快照「角色外貌」表/角色档案矛盾（如黑发、正文写「金色长发」）
+ *      ——支持「色/白+的+发」变体（银色头发/银白的长发）与双色词主色归一化（银白≈银）
  *
  * 另：交接包必填（changes-protocol.md「每章必填」，缺失 → 打回，防下一章无交接单）
  *
@@ -125,7 +127,8 @@ const fstateSection = (snap.split(/^##\s*伏笔状态/m)[1] || '').split(/^##\s/
 const stateOf = {};
 const plantChapter = {};
 for (const m of fstateSection.matchAll(/^\|\s*(v\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|/gm)) {
-  stateOf[m[1]] = m[2].trim();
+  // 状态列可能带备注（如「已埋设（第1章埋设）」）→ 剥括号备注，避免状态机判断静默失效
+  stateOf[m[1]] = m[2].trim().replace(/[（(][^）)]*[）)]$/, '');
   plantChapter[m[1]] = (m[3].match(/\d+/) || [])[0];
 }
 
@@ -146,6 +149,52 @@ for (const f of changes.foreshadowing || []) {
     } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
     }
+  }
+}
+
+// ---- 门禁 12 增强：地点状态一致性（CHANGES 地点状态变化 出发态 vs 快照地点状态表）----
+// SKILL.md 门禁 13 承诺「正文中地点描写与地点特征档案矛盾 → 打回」——自由文本特征无法规则判定，
+// 可枚举的「地点状态」矛盾由这里兜底（与角色移动出发地同构）：
+//   - **[古庙]**：破败→被探查，快照地点状态「破败」→ 一致
+//   - **[古庙]**：平静→紧张，快照地点状态「破败」→ 矛盾 → 打回
+const locStateSection = (snap.split(/^##\s*地点状态/m)[1] || '').split(/^##\s/m)[0];
+const locStateOf = {};
+// 地点状态表是 4 列：地点 | 当前状态 | 触发事件 | 相关章节 → 取第 1、2 列
+for (const m of locStateSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm)) {
+  const name = m[1].trim();
+  if (/^(地点|-+)$/.test(name)) continue;
+  locStateOf[name] = m[2].trim();
+}
+for (const lc of changes.locationChanges || []) {
+  const m = lc.detail && lc.detail.match(/^(.+?)→(.+)$/);
+  if (!m) continue;
+  const from = m[1].trim();
+  const cur = locStateOf[lc.name];
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
+    problems.push(`[一致性] ${lc.name} 状态从「${from}」变化，但快照记录其当前状态为「${cur}」`);
+  }
+}
+
+// ---- 门禁 12 增强：物品归属一致性（CHANGES 物品流转 原持有者 vs 快照物品归属表）----
+//   - **[断锋剑]**：林山→林山，快照持有者「林山」→ 一致
+//   - **[断锋剑]**：赵无极→赵无极，快照持有者「林山」→ 矛盾 → 打回
+const itemSection = (snap.split(/^##\s*物品归属/m)[1] || '').split(/^##\s/m)[0];
+const ownerOf = {};
+// 物品归属表是 3 列：物品 | 持有者 | 状态 → 取第 1、2 列（与角色状态表取第 1、3 列不同）
+for (const m of itemSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm)) {
+  const name = m[1].trim();
+  if (/^(物品|-+)$/.test(name)) continue;
+  ownerOf[name] = m[2].trim();
+}
+for (const it of changes.itemTransfers || []) {
+  const m = it.detail && it.detail.match(/^(.+?)→(.+)$/);
+  if (!m) continue;
+  const from = m[1].trim();
+  const cur = ownerOf[it.name];
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
+    problems.push(`[一致性] 物品「${it.name}」原持有者「${from}」，但快照记录持有者为「${cur}」`);
   }
 }
 
@@ -184,7 +233,11 @@ if (outlinePath) {
 }
 
 // ---- 门禁 13：描写一致性（正文发色/瞳色 vs 快照外貌表 / 角色档案）----
-const COLOR = '黑|白|金|银|红|蓝|绿|紫|灰|棕|褐|青|橙|粉|黄';
+// 双色词在前（银白/乌黑…），避免「银白」被拆成「银」；单色词在后兜底
+const COLOR = '银白|灰白|金棕|棕黑|乌黑|银灰|青灰|火红|深蓝|浅蓝|天蓝|墨黑|雪白|惨白|金黄|橘红|暗红|紫黑|黑|白|金|银|红|蓝|绿|紫|灰|棕|褐|青|橙|粉|黄';
+// 双色词 → 主色（比较前归一化，避免「银白发 vs 银发」这种语义等价被误拦）
+const COLOR_NORM = { 银白: '银', 灰白: '灰', 金棕: '棕', 棕黑: '黑', 乌黑: '黑', 银灰: '灰', 青灰: '灰', 火红: '红', 深蓝: '蓝', 浅蓝: '蓝', 天蓝: '蓝', 墨黑: '黑', 雪白: '白', 惨白: '白', 金黄: '金', 橘红: '橙', 暗红: '红', 紫黑: '紫' };
+const normColor = (c) => COLOR_NORM[c] || c;
 const HAIR = '发丝|头发|长发|短发|卷发|刘海|发';
 const EYE = '眼眸|双眸|眸子|瞳孔|瞳|眼睛|眼';
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -215,7 +268,8 @@ const colorOf = (name, isHair) => {
   // 2) setup-templates 档案模板是自由文本「## 外貌描述」（无标签字段）：
   //    从描述提取「X发/X瞳」颜色，避免快照无「角色外貌」表时门禁静默失效（老书/手动维护场景）
   const desc = txt.split(/^## /m).find(s => s.startsWith('外貌描述')) || '';
-  const m = desc.match(new RegExp(`(?:${COLOR})色?(?:${isHair ? HAIR : EYE})`));
+  // 「色」与「发/瞳」之间允许「的」：银色头发 / 银白的长发 都要能命中
+  const m = desc.match(new RegExp(`(?:${COLOR})色?(?:的)?(?:${isHair ? HAIR : EYE})`));
   return m ? (m[0].match(new RegExp('(?:' + COLOR + ')')) || [])[0] : null;
 };
 // 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
@@ -234,7 +288,8 @@ const profNames = [...new Set([
 ])].sort((a, b) => b.length - a.length);
 if (profNames.length) {
   const NAME_RE = new RegExp(`(${profNames.map(escRe).join('|')})`, 'g');
-  const ATTR_RE = new RegExp(`(${COLOR})色?(${HAIR}|${EYE})`, 'g');
+  // 允许「色/白」与「发/瞳」之间带「的」：黑色长发 / 银色的头发 / 银白的长发 都要能命中（v3.3.40 实弹漏检修复）
+  const ATTR_RE = new RegExp(`(${COLOR})色?(?:的)?(${HAIR}|${EYE})`, 'g');
   for (const m of chapterBody.matchAll(ATTR_RE)) {
     const idx = m.index, got = m[1], noun = m[2];
     // 取「颜色词」所在句内、前 12 字窗口，归属给其中最靠后的角色名
@@ -249,7 +304,7 @@ if (profNames.length) {
     if (win.slice(whoEnd).indexOf('的') > 0) continue;
     const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);
     const want = colorOf(who, isHair);
-    if (want && got !== want) {
+    if (want && normColor(got) !== normColor(want)) {
       problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，设定记「${want}${isHair ? '发' : '瞳'}」`);
     }
   }

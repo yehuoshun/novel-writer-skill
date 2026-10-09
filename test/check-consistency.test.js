@@ -405,3 +405,147 @@ test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ �
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
+
+// ---- 描写一致性「色+的+发」漏检修复（v3.3.40，实弹测试暴露）----
+test('描写一致性：「银色的头发」也能命中（设定黑发 → 拦）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | 炼气一层 | 龙城 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的银色的头发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*张三.*银发/);
+});
+
+test('描写一致性：「银白的长发」双色词命中，档案同色不误报', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '苏瑶.md'), '# 苏瑶\n- 发色：银白\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 苏瑶 | 筑基期 | 天剑宗 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '苏瑶的银白的长发垂到腰际。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('描写一致性：双色词归一化（档案银白 vs 正文银发 → 一致不误报）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '苏瑶.md'), '# 苏瑶\n- 发色：银白\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 苏瑶 | 筑基期 | 天剑宗 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '苏瑶的银发在晨雾里泛着冷光。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('描写一致性：「银白的长发」双色词命中，换金发被拦', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '苏瑶.md'), '# 苏瑶\n- 发色：银白\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 苏瑶 | 筑基期 | 天剑宗 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '苏瑶的金色的长发垂到腰际。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*苏瑶.*金发/);
+});
+
+// ---- 伏笔状态列带备注（v3.3.40 实弹暴露：10 章警告静默失效）----
+test('伏笔状态列带括号备注 → 10 章未推进警告仍触发', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已埋设（第1章埋设） | 1 | — | 待定 |\n');
+  const chap = path.join(dir, '第012章 x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /v1 已埋设 11 章未推进/);
+});
+
+// ---- 门禁 12 增强：地点状态 / 物品归属 一致性（v3.3.40 实弹暴露）----
+test('地点状态一致性：出发态与快照矛盾 → 拦', () => {
+  const { dir, set } = setup();
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 地点状态\n| 地点 | 当前状态 | 触发事件 | 相关章节 |\n' +
+    '|------|----------|----------|----------|\n| 青云山 | 破败 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 地点状态变化 -->\n- **[青云山]**：平静→紧张 | 触发事件：大战\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /青云山 状态从「平静」变化，但快照记录其当前状态为「破败」/);
+});
+
+test('地点状态一致性：出发态与快照一致 → 通过', () => {
+  const { dir, set } = setup();
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 地点状态\n| 地点 | 当前状态 | 触发事件 | 相关章节 |\n' +
+    '|------|----------|----------|----------|\n| 青云山 | 平静 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 地点状态变化 -->\n- **[青云山]**：平静→紧张 | 触发事件：大战\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('物品归属一致性：原持有者与快照矛盾 → 拦', () => {
+  const { dir, set } = setup();
+  fs.mkdirSync(path.join(set, '物品设定'), { recursive: true });
+  fs.writeFileSync(path.join(set, '物品设定', '断锋剑.md'), '# 断锋剑\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 物品归属\n| 物品 | 持有者 | 状态 |\n|------|--------|------|\n| 断锋剑 | 林山 | active |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 物品流转 -->\n- **[断锋剑]**：赵无极→赵无极 | 方式：赠送\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /物品「断锋剑」原持有者「赵无极」，但快照记录持有者为「林山」/);
+});
+
+test('物品归属一致性：原持有者与快照一致 → 通过', () => {
+  const { dir, set } = setup();
+  fs.mkdirSync(path.join(set, '物品设定'), { recursive: true });
+  fs.writeFileSync(path.join(set, '物品设定', '断锋剑.md'), '# 断锋剑\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 物品归属\n| 物品 | 持有者 | 状态 |\n|------|--------|------|\n| 断锋剑 | 林山 | active |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 物品流转 -->\n- **[断锋剑]**：林山→林山 | 方式：— | 完好\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
