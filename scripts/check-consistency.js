@@ -10,7 +10,7 @@
  *   2. 一致性校验：角色移动出发地是否与「上一章快照」一致；已死角色是否登场
  *   3. 伏笔闭环：➡️推进/✅回收/❌废弃 引用的伏笔 ID 是否已登记、状态是否可回退
  *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
- *   5. 描写一致性：正文中发色/瞳色描写是否与角色档案矛盾（如档案黑发、正文写「金色长发」）
+ *   5. 描写一致性：正文中发色/瞳色描写是否与快照「角色外貌」表/角色档案矛盾（如黑发、正文写「金色长发」）
  *
  * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进；旧格式伏笔（无 vX ID）。
  *
@@ -168,7 +168,7 @@ if (outlinePath) {
   }
 }
 
-// ---- 门禁 13：描写一致性（正文发色/瞳色 vs 角色档案）----
+// ---- 门禁 13：描写一致性（正文发色/瞳色 vs 快照外貌表 / 角色档案）----
 const COLOR = '黑|白|金|银|红|蓝|绿|紫|灰|棕|褐|青|橙|粉|黄';
 const HAIR = '发丝|头发|长发|短发|卷发|刘海|发';
 const EYE = '眼眸|双眸|眸子|瞳孔|瞳|眼睛|眼';
@@ -177,16 +177,40 @@ const profOf = (name) => {
   const f = settingFiles.find(p => { const s = path.basename(p, '.md'); return s === name || s.endsWith('_' + name); });
   return f ? fs.readFileSync(f, 'utf8') : null;
 };
+// 取数源（按文档约定）：优先「状态快照 → 角色外貌」表（state-snapshot.md 明确其
+// 「用于描写一致性校验」）；无该表时回退角色档案的「发色/瞳色」标签（兼容旧快照/单测）。
+const lookSection = (snap.split(/^##\s*角色外貌/m)[1] || '').split(/^##\s/m)[0];
+const colorMap = {};
+for (const m of lookSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]*?)\s*\|\s*([^|]*?)\s*\|/gm)) {
+  const nm = m[1].trim();
+  if (/^角色$|^-+$/.test(nm)) continue;
+  colorMap[nm] = {
+    hair: (m[2].match(new RegExp(`(?:${COLOR})`)) || [])[0],
+    eye: (m[3].match(new RegExp(`(?:${COLOR})`)) || [])[0],
+  };
+}
+const colorOf = (name, isHair) => {
+  const cm = colorMap[name];
+  if (cm) { const c = isHair ? cm.hair : cm.eye; if (c) return c; }
+  const txt = profOf(name);
+  if (!txt) return null;
+  const val = (txt.match(isHair ? /发色\s*[：:]\s*([^\n]+)/ : /瞳色\s*[：:]\s*([^\n]+)/) || [])[1];
+  return val ? (val.match(new RegExp('(?:' + COLOR + ')')) || [])[0] : null;
+};
 // 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
-// 命名约定允许「地点前缀_实体名」（如 龙城_张三.md），去前缀后也要能命中正文
-const profNames = [...new Set(settingFiles
-  .filter(p => p.includes(`${path.sep}角色设定${path.sep}`))
-  .flatMap(p => {
-    const s = path.basename(p, '.md');
-    if (!s) return [];
-    const i = s.lastIndexOf('_');
-    return i > 0 ? [s, s.slice(i + 1)] : [s];
-  }))].sort((a, b) => b.length - a.length);
+// 命名约定允许「地点前缀_实体名」（如 龙城_张三.md），去前缀后也要能命中正文；
+// 快照外貌表里的角色同样纳入（可能无独立档案）
+const profNames = [...new Set([
+  ...settingFiles
+    .filter(p => p.includes(`${path.sep}角色设定${path.sep}`))
+    .flatMap(p => {
+      const s = path.basename(p, '.md');
+      if (!s) return [];
+      const i = s.lastIndexOf('_');
+      return i > 0 ? [s, s.slice(i + 1)] : [s];
+    }),
+  ...Object.keys(colorMap),
+])].sort((a, b) => b.length - a.length);
 if (profNames.length) {
   const NAME_RE = new RegExp(`(${profNames.map(escRe).join('|')})`, 'g');
   const ATTR_RE = new RegExp(`(${COLOR})色?(${HAIR}|${EYE})`, 'g');
@@ -202,14 +226,10 @@ if (profNames.length) {
     if (!who) continue;
     // 名字与颜色之间若出现「…的」（不紧贴名字），发/瞳归属方是另一个名词 → 跳过
     if (win.slice(whoEnd).indexOf('的') > 0) continue;
-    const txt = profOf(who);
-    if (!txt) continue;
     const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);
-    const val = (txt.match(isHair ? /发色\s*[：:]\s*([^\n]+)/ : /瞳色\s*[：:]\s*([^\n]+)/) || [])[1];
-    if (!val) continue;
-    const want = (val.match(new RegExp('(?:' + COLOR + ')')) || [])[0];
+    const want = colorOf(who, isHair);
     if (want && got !== want) {
-      problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，档案记「${val.replace(/\s/g, '')}」`);
+      problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，设定记「${want}${isHair ? '发' : '瞳'}」`);
     }
   }
 }

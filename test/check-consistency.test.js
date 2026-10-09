@@ -280,3 +280,42 @@ test('一致性：快照位置未知「—」时不误判移动矛盾', () => {
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
+
+// ---- 描写一致性取数源回归（v3.3.32）：快照「角色外貌」表 ----
+test('描写一致性：从快照「角色外貌」表取数（档案只有自由文本）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  // 按 setup-templates 角色模板：外貌是自由文本，无「发色：」标签
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n\n## 外貌描述\n黑发黑瞳，剑眉星目。\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | 炼气一层 | 龙城 | 健康 | — | 1 |\n\n' +
+    '## 角色外貌（用于描写一致性校验）\n| 角色 | 发色 | 瞳色 | 外貌特征 | 性格标签 |\n' +
+    '|------|------|------|----------|----------|\n| 张三 | 黑 | 黑 | 剑眉星目 | 果决 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的金色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, '快照外貌表未被读取：\n' + r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*张三.*金发/);
+});
+
+test('描写一致性：快照外貌表优先于档案标签', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n- 瞳色：黑\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | 炼气一层 | 龙城 | 健康 | — | 1 |\n\n' +
+    '## 角色外貌（用于描写一致性校验）\n| 角色 | 发色 | 瞳色 | 外貌特征 | 性格标签 |\n' +
+    '|------|------|------|----------|----------|\n| 张三 | 银 | 蓝 | — | — |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的银色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, '应以快照外貌表（银）为准：\n' + r.stdout + r.stderr);
+});
