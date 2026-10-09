@@ -370,3 +370,38 @@ test('伏笔快照已登记但目录无文档 → 报未登记 + 建档自纠提
   assert.match(r.stderr, /未登记伏笔：v2/);
   assert.match(r.stderr, /漏建/);
 });
+
+// ---- 描写一致性：自由文本外貌描述回退（v3.3.39，老书/无快照外貌表场景）----
+test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ 正文金发被拦', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  // setup-templates 模板：外貌是自由文本，无「发色：」标签；快照也无角色外貌表（老书）
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n\n## 外貌描述\n黑发黑瞳，剑眉星目。\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | 炼气一层 | 龙城 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的金色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, '自由文本回退未生效：\n' + r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*张三.*金发/);
+});
+
+test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ 正文黑发不误报', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n\n## 外貌描述\n黑发黑瞳，剑眉星目。\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | 炼气一层 | 龙城 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的黑色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});

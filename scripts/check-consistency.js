@@ -209,8 +209,14 @@ const colorOf = (name, isHair) => {
   if (cm) { const c = isHair ? cm.hair : cm.eye; if (c) return c; }
   const txt = profOf(name);
   if (!txt) return null;
-  const val = (txt.match(isHair ? /发色\s*[：:]\s*([^\n]+)/ : /瞳色\s*[：:]\s*([^\n]+)/) || [])[1];
-  return val ? (val.match(new RegExp('(?:' + COLOR + ')')) || [])[0] : null;
+  // 1) 旧档案标签：发色：/瞳色：
+  const label = (txt.match(isHair ? /发色\s*[：:]+\s*([^\n]+)/ : /瞳色\s*[：:]+\s*([^\n]+)/) || [])[1];
+  if (label) return (label.match(new RegExp('(?:' + COLOR + ')')) || [])[0] || null;
+  // 2) setup-templates 档案模板是自由文本「## 外貌描述」（无标签字段）：
+  //    从描述提取「X发/X瞳」颜色，避免快照无「角色外貌」表时门禁静默失效（老书/手动维护场景）
+  const desc = txt.split(/^## /m).find(s => s.startsWith('外貌描述')) || '';
+  const m = desc.match(new RegExp(`(?:${COLOR})色?(?:${isHair ? HAIR : EYE})`));
+  return m ? (m[0].match(new RegExp('(?:' + COLOR + ')')) || [])[0] : null;
 };
 // 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
 // 命名约定允许「地点前缀_实体名」（如 龙城_张三.md），去前缀后也要能命中正文；
