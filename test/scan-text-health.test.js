@@ -51,3 +51,19 @@ test('干净长文 → 退出码 0', () => {
   assert.strictEqual(r.status, 0);
   assert.match(r.stdout, /无标点硬伤/);
 });
+
+// ---- 密度/句式分支补强（v3.3.35）----
+test('认知句成簇（他总觉得 ×N）→ 提示认知句模式', () => {
+  const r = run('他总觉得这件事不简单。风从谷口灌进来，带着焦糊的气味。'.repeat(60));
+  assert.match(r.stdout, /认知句模式.*他总觉得/);
+});
+
+test('逗号链（单句 ≥6 逗号）→ 提示长逗号链', () => {
+  const r = run('他走啊走，走啊走，走啊走，走啊走，走啊走，走啊走，走啊走。'.repeat(50));
+  assert.match(r.stdout, /长逗号链/);
+});
+
+test('同主语连发（连续 3+ 句同一开头）→ 提示句首单调', () => {
+  const r = run('他走了。他走了。他走了。他走了。他走了。他走了。'.repeat(40));
+  assert.match(r.stdout, /同一开头/);
+});
