@@ -33,6 +33,7 @@ jobs:
             BODY+=$'\n\n首次发布'
           fi
           BODY+=$'\n\n[查看文档](https://github.com/yehuoshun/novel-writer-skill#readme)'
+          printf '%s' "$BODY" > release_body.md
           {
             echo "body<<CHANGELOG_EOF"
             echo "$BODY"
@@ -45,5 +46,12 @@ jobs:
           files: "novel-writer-skill-${{ github.ref_name }}.zip"
           body: ${{ steps.notes.outputs.body }}
 
-      # 钉钉通知不在此发：tag push 事件无 commits，会生成「0 提交」空消息。
-      # 改由 notify.yml 监听 release 事件（published）发送，携带完整 changelog。
+      # 钉钉通知：tag push 事件无 commits，action 的 push() 会发「0 提交」空消息；
+      # 且默认 GITHUB_TOKEN 创建的 release 不会级联触发监听 release 事件的 workflow。
+      # 故在此自包含发送（带完整 changelog）。
+      - name: 钉钉通知（Release）
+        env:
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: python3 tools/notify-release.py release_body.md
