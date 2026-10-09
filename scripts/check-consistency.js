@@ -12,7 +12,10 @@
  *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
  *   5. 描写一致性：正文中发色/瞳色描写是否与快照「角色外貌」表/角色档案矛盾（如黑发、正文写「金色长发」）
  *
- * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进；旧格式伏笔（无 vX ID）。
+ * 另：交接包必填（changes-protocol.md「每章必填」，缺失 → 打回，防下一章无交接单）
+ *
+ * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进；旧格式伏笔（无 vX ID）；
+ *     细纲存在但蓝图清单无本章行（outline-arrangement.md 要求每章附蓝图）。
  *
  * ⚠️ 快照必须是「上一章落地后、本章回写前」的版本。回写后快照已更新为目标态，
  *    再跑一致性校验会误报（出发地=旧值 vs 快照=新值）。
@@ -48,6 +51,12 @@ try {
 const problems = [];
 const warnings = [];
 const chapterBody = fs.readFileSync(chapPath, 'utf8').split('---CHANGES---')[0];
+
+// ---- 交接包必填（changes-protocol.md「交接包类别每章必填」）----
+// 缺失 → 打回：下一章的交接单断了，属于真实流程断裂，不静默放过
+if (!changes.handoff || changes.handoff.length === 0) {
+  problems.push('[交接包] 缺少 <!-- 交接包 --> 声明（协议要求每章必填，供下一章读取）');
+}
 
 // ---- 收集设定目录下所有实体名（文件名 stem + 正文出现的名字）----
 function walk(d) {
@@ -151,6 +160,7 @@ if (outlinePath) {
     const lines = fs.readFileSync(outlinePath, 'utf8').split('\n');
     const isSep = (s) => /^\s*\|[\s:|-]+\|\s*$/.test(s || '');
     let inBlueprint = false;
+    let blueprintMatched = false;  // 本章是否有蓝图行（无 → 警告，见下方）
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!/^\s*\|/.test(line)) { inBlueprint = false; continue; }
@@ -160,10 +170,15 @@ if (outlinePath) {
       if (!inBlueprint) continue;
       const m = line.match(/^\|\s*第?\s*(\d+)\s*章?\s*\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|/);
       if (!m || Number(m[1]) !== Number(chNo)) continue;
+      blueprintMatched = true;
       // 第2/4/5 列 = 必出场角色/地点/势力（第3列是戏份要求，跳过）
       const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean);
       const missing = names.filter(n => !body.includes(n));
       if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）`);
+    }
+    // 细纲存在但蓝图清单无本章行 → 警告（文档要求每章附蓝图，漏附会让门禁空转）
+    if (!blueprintMatched) {
+      warnings.push(`[蓝图出场合规] 细纲蓝图清单无第 ${chNo} 章的行（outline-arrangement.md 要求每章附蓝图出场清单）`);
     }
   }
 }

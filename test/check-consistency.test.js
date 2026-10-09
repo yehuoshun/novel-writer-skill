@@ -28,7 +28,8 @@ function setup() {
   fs.writeFileSync(good,
     '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n' +
     '<!-- 角色移动 -->\n- **[林山]**：青云山后山→青云山前殿\n' +
-    '<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **v1 断锋来历** | 新线索\n---END CHANGES---\n');
+    '<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **v1 断锋来历** | 新线索\n' +
+    '<!-- 交接包 -->\n- 剧情当前位置：后山\n---END CHANGES---\n');
   const bad = path.join(dir, 'bad.md');
   fs.writeFileSync(bad,
     '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[赵无极]**：健康\n' +
@@ -116,7 +117,7 @@ test('蓝图出场合规：缺额 ≤1 不拦', () => {
     '|----|-----------|---------|-----------|-----------|\n' +
     '| 3 | 林山、青云子 | 各≥1 | 青云山 | |\n');
   const chap = path.join(dir, '第003章 试.md');
-  fs.writeFileSync(chap, '林山走在青云山的路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '林山走在青云山的路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set, outline]);
   assert.strictEqual(r.status, 0, r.stderr);
 });
@@ -137,7 +138,7 @@ test('描写一致性：与档案一致 → 不拦', () => {
   fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n');
   const chap = path.join(dir, 'x.md');
   fs.writeFileSync(chap,
-    '张三的黑色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+    '张三的黑色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stderr);
 });
@@ -164,7 +165,7 @@ test('伏笔埋设 10 章未推进 → 警告（不阻断，exit 0）', () => {
     '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
     '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已埋设 | 1 | — | 待定 |\n');
   const chap = path.join(dir, '第012章 x.md');
-  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stderr);
   assert.match(r.stdout, /v1 已埋设 11 章未推进/);
@@ -174,7 +175,7 @@ test('旧格式伏笔（无 vX ID）→ 警告不打回（exit 0）', () => {
   const { dir, set, snap } = setup();
   const chap = path.join(dir, 'x.md');
   fs.writeFileSync(chap,
-    '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **【神秘人】**\n---END CHANGES---\n');
+    '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **【神秘人】**\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stderr);
   assert.match(r.stdout, /旧格式伏笔/);
@@ -209,7 +210,7 @@ function colorSetup(profiles) {
   const chap = path.join(dir, 'x.md');
   return { set, snap, chap };
 }
-const CH = (states) => '正文。\n---CHANGES---\n' + states + '\n---END CHANGES---\n';
+const CH = (states) => '正文。\n---CHANGES---\n' + states + '\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n';
 
 test('描写一致性：地点前缀档案名（龙城_张三）也能命中', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
@@ -233,14 +234,14 @@ test('描写一致性：望向他人发色不误报（林山看着青云子的�
     '林山.md': '# 林山\n- 发色：黑\n- 瞳色：黑\n',
     '青云子.md': '# 青云子\n- 发色：白\n- 瞳色：灰\n',
   });
-  fs.writeFileSync(chap, '林山看着青云子的白发，心里发紧。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '林山看着青云子的白发，心里发紧。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
 
 test('描写一致性：他人发色归属不明时不误报（林山望着师父的白发）', () => {
   const { set, snap, chap } = colorSetup({ '林山.md': '# 林山\n- 发色：黑\n- 瞳色：黑\n' });
-  fs.writeFileSync(chap, '林山望着师父的白发，一言不发。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '林山望着师父的白发，一言不发。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
@@ -264,7 +265,7 @@ test('蓝图出场合规：忽略同文档的细纲表（核心事件列），�
     '|----|-----------|---------|-----------|-----------|\n' +
     '| 3 | 林山 | 各≥1 | 青云山 | |\n');
   const chap = path.join(dir, '第003章 试炼.md');
-  fs.writeFileSync(chap, '林山站在青云山的石阶上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '林山站在青云山的石阶上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set, outline]);
   assert.strictEqual(r.status, 0, '细纲表被误当蓝图：\n' + r.stdout + r.stderr);
 });
@@ -276,7 +277,7 @@ test('一致性：快照位置未知「—」时不误判移动矛盾', () => {
     '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
     '|------|------|----------|------|------|-----------|\n| 林山 | — | — | 健康 | 剑 | 1 |\n');
   const chap = path.join(dir, 'x.md');
-  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：天剑宗→青云山\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：天剑宗→青云山\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
@@ -315,7 +316,39 @@ test('描写一致性：快照外貌表优先于档案标签', () => {
     '## 角色外貌（用于描写一致性校验）\n| 角色 | 发色 | 瞳色 | 外貌特征 | 性格标签 |\n' +
     '|------|------|------|----------|----------|\n| 张三 | 银 | 蓝 | — | — |\n');
   const chap = path.join(dir, 'x.md');
-  fs.writeFileSync(chap, '张三的银色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  fs.writeFileSync(chap, '张三的银色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, '应以快照外貌表（银）为准：\n' + r.stdout + r.stderr);
+});
+
+// ---- 交接包必填 + 蓝图无本章行警告（v3.3.33）----
+test('交接包缺失 → 打回（协议要求每章必填）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /缺少 <!-- 交接包 --> 声明/);
+});
+
+test('交接包存在 → 不因交接包打回', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('蓝图：细纲存在但无本章行 → 警告不阻断（exit 0）', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 2 | 林山 | 各≥1 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 试.md');
+  fs.writeFileSync(chap, '林山走在路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /蓝图清单无第 0*3 章的行/);
 });

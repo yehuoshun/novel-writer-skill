@@ -115,7 +115,7 @@
             "snapshot": { "type": "string" },
             "changes": { "type": "string" }
           },
-          "required": ["characters_protagonist", "characters_antagonist", "characters_supporting", "characters_deceased", "items", "locations", "factions", "foreshadowing", "timeline", "outline", "dialogs", "level_system", "change_log", "sweet_spot_tracking", "hook_tracking", "detailed_outline", "emotion_arc", "world_view", "mermaid_graph", "snapshot", "changes"]
+          "required": ["content", "characters_protagonist", "characters_antagonist", "characters_supporting", "characters_deceased", "items", "locations", "factions", "foreshadowing", "timeline", "outline", "dialogs", "level_system", "change_log", "sweet_spot_tracking", "hook_tracking", "detailed_outline", "emotion_arc", "world_view", "mermaid_graph", "snapshot", "changes"]
         }
       }
     },
