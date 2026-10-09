@@ -70,7 +70,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     "style": "classical/modern/humorous/serious",
     "narrative_style": "fast-paced/slow-burn/detailed",
     "chapter_words": {
-      "min": 2000,
+      "min": 2500,
       "max": 4000
     }
   }
@@ -117,7 +117,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 4. 问：「视角？（单主角/多主角/群像）」
 5. 问：「文风？（古风/现代/幽默/严肃）」（选定后映射风格模块：古风→奇幻玄幻、现代→现实世情、幽默→幽默/轻小说、严肃→悬疑/推理/恐怖，加载指引见 [references/style-modules.md](references/style-modules.md)）
 6. 问：「叙事节奏？（快节奏/慢热/细腻）」
-7. 问：「每章字数范围？（默认2000-4000）」
+7. 问：「每章字数范围？（默认2500-4000）」
 8. 问：「小说类型相关设定」（每道题标注「可随时输入"够了"跳过」）
    - 玄幻/修仙：修炼体系、等级设定...
    - 都市：势力关系、职业设定...
@@ -230,7 +230,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 7. 你确认/修改
 
 **阶段二：写作 + 变更声明**
-8. 写正文（实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2000字；排版规范：全角标点“ ”、段首缩进两全角空格、不用半角标点，见 [references/anti-ai-gates.md](references/anti-ai-gates.md) Gate 5）
+8. 写正文（实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2500字；排版规范：全角标点“ ”、段首缩进两全角空格、不用半角标点，见 [references/anti-ai-gates.md](references/anti-ai-gates.md) Gate 5）
    - 参考 [references/style-modules.md](references/style-modules.md) 确保文风一致
    - 参考 [references/hook-techniques.md](references/hook-techniques.md) 确保钩子到位
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」）
@@ -655,7 +655,7 @@ GET /repos/{book_id}/toc
 我：叙事节奏？（快节奏/慢热/细腻）
 用户：慢热
 ↓
-我：每章字数范围？（默认2000-4000）
+我：每章字数范围？（默认2500-4000）
 用户：默认就行
 ↓
 我：修仙等级体系是什么？（如炼气→筑基→金丹）
