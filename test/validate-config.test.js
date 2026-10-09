@@ -35,6 +35,11 @@ test('仓库自带 example-yuque.json 通过', () => {
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+test('仓库自带 example-both.json 通过（双写模式官方示例）', () => {
+  const r = runFile(path.join(ROOT, 'configs', 'example-both.json'));
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 test('最小合法 local 配置通过', () => {
   const r = runStdin(BASE);
   assert.strictEqual(r.status, 0, r.stderr);

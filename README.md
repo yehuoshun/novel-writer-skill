@@ -60,7 +60,7 @@
 
 ## 配置文件
 
-放在 `configs/[小说名].json`（本地模式示例：`configs/example.json`；语雀模式示例：`configs/example-yuque.json`）。
+放在 `configs/[小说名].json`（本地模式示例：`configs/example.json`；语雀模式示例：`configs/example-yuque.json`；双写模式示例：`configs/example-both.json`）。
 
 > ⚠️ 实际配置（`configs/[小说名].json`）不入 git 仓库，skill 重装/更新前注意自行备份。
 

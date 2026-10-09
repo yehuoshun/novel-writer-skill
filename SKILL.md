@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.44
+version: 3.3.45
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -27,7 +27,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 配置
 
-配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式）
+配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式 / `configs/example-both.json` 双写模式）
 
 > ⚠️ 实际配置不入 git 仓库，skill 重装/更新前注意备份 `configs/[小说名].json`
 
@@ -1067,4 +1067,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.44_
+_版本：v3.3.45_

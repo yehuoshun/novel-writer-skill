@@ -116,7 +116,7 @@ for (const mv of changes.characterMoves || []) {
   const from = m[1].trim();
   const cur = posOf[mv.name];
   // 快照位置为「—」/空/未知时无对照基准，不判矛盾
-  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
     problems.push(`[一致性] ${mv.name} 从「${from}」出发，但快照记录其在「${cur}」`);
   }
@@ -184,7 +184,7 @@ for (const lc of changes.locationChanges || []) {
   if (!m) continue;
   const from = m[1].trim();
   const cur = locStateOf[lc.name];
-  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
     problems.push(`[一致性] ${lc.name} 状态从「${from}」变化，但快照记录其当前状态为「${cur}」`);
   }
@@ -206,7 +206,7 @@ for (const it of changes.itemTransfers || []) {
   if (!m) continue;
   const from = m[1].trim();
   const cur = ownerOf[it.name];
-  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
     problems.push(`[一致性] 物品「${it.name}」原持有者「${from}」，但快照记录持有者为「${cur}」`);
   }
