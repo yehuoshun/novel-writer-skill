@@ -67,3 +67,36 @@ test('同主语连发（连续 3+ 句同一开头）→ 提示句首单调', () 
   const r = run('他走了。他走了。他走了。他走了。他走了。他走了。'.repeat(40));
   assert.match(r.stdout, /同一开头/);
 });
+
+// ---- 未覆盖分支补强（v3.3.47，实弹第九轮）----
+test('填充词（只见/不由分说/二话不说）→ 提示', () => {
+  const t = '　　只见他不由分说拔剑，二话不说就砍。但见她身影一闪，已到十丈外。' + '　　补充叙述内容继续写下去，节奏保持平稳。'.repeat(70);
+  assert.match(run(t).stdout, /填充词/);
+});
+
+test('连接词密度超标（然后/接着/于是）→ 提示', () => {
+  const t = ('　　于是他推开门，接着走进来，然后坐下，随后又站起来。叙述继续推进，节奏不慢。').repeat(55);
+  assert.match(run(t).stdout, /连接词密度/);
+});
+
+test('「是…的」≥3 处 → 提示书面判断腔', () => {
+  const t = '　　这把剑是师父传的。那封信是她写的。这条路是他选的。' + '　　补充叙述内容继续写下去，节奏保持平稳。'.repeat(70);
+  assert.match(run(t).stdout, /是…的/);
+});
+
+test('对话密集交替开头 → 不误报句首单调', () => {
+  const t = ('　　“你来了。”她说。“我来了。”他答。“你终于肯来了。”她低声。“我不来，谁来？”他反问。').repeat(15) + '　　夜色渐深，两人并肩坐下。远处的灯火一盏盏熄灭。她靠在他肩上，慢慢闭上眼睛。这一夜很长。';
+  const r = run(t);
+  assert.ok(!/同一开头/.test(r.stdout), `误报:\n${r.stdout}`);
+});
+
+test('纯英文 → 文本过短提示，无硬伤', () => {
+  const r = run('Hello world. This is a test. '.repeat(20));
+  assert.strictEqual(r.status, 0);
+  assert.match(r.stdout, /过短/);
+});
+
+test('部分段落无缩进 → 提示缩进缺失', () => {
+  const t = '　　缩进段落。' + '内容补充。'.repeat(20) + '\n无缩进段落。' + '内容补充。'.repeat(20) + '\n　　缩进段落。' + '内容补充。'.repeat(20);
+  assert.match(run(t).stdout, /缩进缺失/);
+});
