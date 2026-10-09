@@ -52,13 +52,15 @@ test('表格列数一致（无错位）', () => {
   assert.deepStrictEqual(bad, [], `表格错位:\n${bad.join('\n')}`);
 });
 
-test('版本号一致：frontmatter == 末尾标注', () => {
+test('版本号一致：frontmatter == 末尾标注 == package.json', () => {
   const t = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf-8');
   const fm = t.match(/^version:\s*(\S+)/m);
   const tail = t.match(/_版本：v(\S+)_/);
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8')).version;
   assert.ok(fm, 'frontmatter 缺 version');
   assert.ok(tail, '末尾缺 _版本：_');
   assert.strictEqual(tail[1], fm[1], `frontmatter ${fm[1]} != 末尾 ${tail[1]}`);
+  assert.strictEqual(pkg, fm[1], `package.json ${pkg} != SKILL ${fm[1]}（发版时两者须同步）`);
 });
 
 test('无未识别的 CHANGES 分节标记', () => {

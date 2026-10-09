@@ -251,3 +251,32 @@ test('描写一致性：跨句不误报（张三走了。白发苍苍的老人�
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
+
+// ---- 蓝图/一致性 回归（v3.3.31）----
+test('蓝图出场合规：忽略同文档的细纲表（核心事件列），只认蓝图表', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '## 细纲\n| 章 | 核心事件 | 爽点类型 | 章首钩子 | 章尾钩子 | 字数 |\n' +
+    '|----|----------|----------|----------|----------|------|\n' +
+    '| 3 | 外门试炼 | 装逼打脸 | 悬念钩 | 危机钩 | 3000 |\n\n' +
+    '## 蓝图\n| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山 | 各≥1 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 试炼.md');
+  fs.writeFileSync(chap, '林山站在青云山的石阶上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, '细纲表被误当蓝图：\n' + r.stdout + r.stderr);
+});
+
+test('一致性：快照位置未知「—」时不误判移动矛盾', () => {
+  const { dir, set } = setup();
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | — | — | 健康 | 剑 | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：天剑宗→青云山\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});

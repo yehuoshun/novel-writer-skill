@@ -96,7 +96,9 @@ for (const mv of changes.characterMoves || []) {
   if (!m) continue;
   const from = m[1].trim();
   const cur = posOf[mv.name];
-  if (cur && from && !cur.includes(from) && !from.includes(cur)) {
+  // 快照位置为「—」/空/未知时无对照基准，不判矛盾
+  const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无)$/;
+  if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
     problems.push(`[一致性] ${mv.name} 从「${from}」出发，但快照记录其在「${cur}」`);
   }
 }
@@ -139,12 +141,23 @@ for (const f of changes.foreshadowing || []) {
 }
 
 // ---- 门禁 15：蓝图出场合规（可选，传细纲文件时启用）----
+// 只认「蓝图出场清单」表（表头含「必出场」），避免把同文档里的细纲表
+// （| 章 | 核心事件 | 爽点类型 | 章首钩子 | 章尾钩子 | 字数 |）当蓝图解析而误拦。
 if (outlinePath) {
   if (!fs.existsSync(outlinePath)) die(`细纲文件不存在: ${outlinePath}`, 2);
   const chNo = (path.basename(chapPath).match(/第\s*(\d+)\s*章/) || [])[1];
   if (chNo) {
     const body = chapterBody;
-    for (const line of fs.readFileSync(outlinePath, 'utf8').split('\n')) {
+    const lines = fs.readFileSync(outlinePath, 'utf8').split('\n');
+    const isSep = (s) => /^\s*\|[\s:|-]+\|\s*$/.test(s || '');
+    let inBlueprint = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!/^\s*\|/.test(line)) { inBlueprint = false; continue; }
+      // 表头：含「必出场」且下一行是分隔行
+      if (/必出场/.test(line) && isSep(lines[i + 1])) { inBlueprint = true; continue; }
+      if (isSep(line)) continue;
+      if (!inBlueprint) continue;
       const m = line.match(/^\|\s*第?\s*(\d+)\s*章?\s*\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|/);
       if (!m || Number(m[1]) !== Number(chNo)) continue;
       // 第2/4/5 列 = 必出场角色/地点/势力（第3列是戏份要求，跳过）
