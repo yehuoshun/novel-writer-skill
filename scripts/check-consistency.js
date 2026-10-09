@@ -103,7 +103,7 @@ for (const m of posSection.matchAll(/^\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/
   posOf[name] = pos;                // 第 3 列：当前位置
 }
 for (const mv of changes.characterMoves || []) {
-  const m = mv.detail && mv.detail.match(/^(.+?)→(.+)$/);
+  const m = mv.detail && mv.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
   const from = m[1].trim();
   const cur = posOf[mv.name];
@@ -166,7 +166,7 @@ for (const m of locStateSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm
   locStateOf[name] = m[2].trim();
 }
 for (const lc of changes.locationChanges || []) {
-  const m = lc.detail && lc.detail.match(/^(.+?)→(.+)$/);
+  const m = lc.detail && lc.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
   const from = m[1].trim();
   const cur = locStateOf[lc.name];
@@ -188,7 +188,7 @@ for (const m of itemSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm)) {
   ownerOf[name] = m[2].trim();
 }
 for (const it of changes.itemTransfers || []) {
-  const m = it.detail && it.detail.match(/^(.+?)→(.+)$/);
+  const m = it.detail && it.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
   const from = m[1].trim();
   const cur = ownerOf[it.name];

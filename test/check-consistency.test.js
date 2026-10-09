@@ -549,3 +549,13 @@ test('物品归属一致性：原持有者与快照一致 → 通过', () => {
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
+
+// ---- 半角箭头兼容（v3.3.41，parse-changes 容错轰炸暴露）----
+test('半角箭头 -> 一致性仍校验（不静默跳过）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：天剑宗->青云山\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /林山 从「天剑宗」出发/);
+});

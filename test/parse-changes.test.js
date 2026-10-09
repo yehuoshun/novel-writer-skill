@@ -67,3 +67,17 @@ test('旧格式伏笔（无 vX，【】包裹）不崩，id 为 null', () => {
   assert.strictEqual(j.foreshadowing[0].id, null);
   assert.strictEqual(j.foreshadowing[0].name, '神秘人');
 });
+
+test('【】包裹角色名也能解析（**[张三]** 兼容变体）', () => {
+  const r = run('正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **【张三】**：健康→轻伤\n---END CHANGES---\n');
+  assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.characterStates[0].name, '张三');
+});
+
+test('裸名 **张三** 也能解析', () => {
+  const r = run('正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **张三**：天剑宗→青云山\n---END CHANGES---\n');
+  assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.characterMoves[0].name, '张三');
+});

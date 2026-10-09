@@ -25,9 +25,9 @@ const BLOCK = MATCH[1];
 const RESULT = {};
 
 const SECTIONS = [
-  { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
-  { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
-  { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
+  { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
+  { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
   {
     key: 'foreshadowing',
     pattern: /<!--\s*伏笔动作/,  // 兼容带说明后缀的标题：<!-- 伏笔动作（四态，必须引用伏笔ID） -->
@@ -35,11 +35,11 @@ const SECTIONS = [
     re: /^-\s*(🔨埋设|➡️推进|✅回收|❌废弃)\s*\*\*([^*]+)\*\*(.*)/
   },
   { key: 'handoff', pattern: /<!--\s*交接包/, re: /^- ([^：:]+)[：:](.*)/ },  // 兼容 <!-- 交接包（给下一章 AI 的交接单） -->
-  { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
-  { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
+  { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
   { key: 'timeProgress', pattern: /<!-- 时间推进 -->/, re: /^- (.*)/ },
-  { key: 'characterMoves', pattern: /<!-- 角色移动 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
-  { key: 'itemTransfers', pattern: /<!-- 物品流转 -->/, re: /^- \*\*\[(.+?)\]\*\*[:：](.+)/ },
+  { key: 'characterMoves', pattern: /<!-- 角色移动 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
+  { key: 'itemTransfers', pattern: /<!-- 物品流转 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
 ];
 
 const LINES = BLOCK.split('\n');
@@ -121,9 +121,10 @@ for (const LINE of LINES) {
     });
     RESULT[currentSection].push(parts);
   } else {
-    const m = trimmed.match(/^- \*\*\[(.+?)\]\*\*[:：](.+)/);
+    const m = trimmed.match(/^- \*\*(.+?)\*\*[:：](.+)/);
     if (m) {
-      RESULT[currentSection].push({ name: m[1].trim(), detail: m[2].trim(), raw: trimmed });
+      // 兼容 **[张三]** / **【张三】** / **张三** 三种写法（协议标准为 **[张三]**）
+      RESULT[currentSection].push({ name: m[1].trim().replace(/^[\[【]|[\]】]$/g, ''), detail: m[2].trim(), raw: trimmed });
     } else {
       // Unrecognized line in section, keep raw
       RESULT[currentSection].push({ raw: trimmed });
