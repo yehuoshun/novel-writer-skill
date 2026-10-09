@@ -92,6 +92,15 @@ test('SKILL.md「参考资料」表覆盖 references/ 全部文件', () => {
   assert.deepStrictEqual(missing, [], `参考资料表未列出: ${missing.join(', ')}`);
 });
 
+test('SKILL.md 提及的 configs/example-*.json 示例文件都存在', () => {
+  // 防 gitignore 白名单漏放行导致示例缺失（v3.3.46 example-both.json 被挡的教训）
+  const t = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf-8');
+  const mentioned = [...t.matchAll(/configs\/(example[\w-]*\.json)/g)].map(m => m[1]);
+  assert.ok(mentioned.length >= 3, `SKILL.md 至少应提及 3 个示例，实际 ${mentioned.length}`);
+  const missing = mentioned.filter(f => !fs.existsSync(path.join(ROOT, 'configs', f)));
+  assert.deepStrictEqual(missing, [], `示例文件缺失（gitignore 白名单未放行？）: ${missing.join(', ')}`);
+});
+
 test('标题层级无跳级（围栏感知）', () => {
   const bad = [];
   for (const f of MD) {

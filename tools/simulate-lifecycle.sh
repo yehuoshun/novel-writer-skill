@@ -5,7 +5,7 @@
 set +e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CC="node $ROOT/scripts/check-consistency.js"
-WORK="$(mktemp -d nw-lifecycle.XXXXXX)"
+WORK="$(mktemp -d /tmp/nw-lifecycle.XXXXXX)"
 cd "$WORK"
 mkdir -p 设定/角色设定/主角 设定/伏笔追踪 设定/地点设定
 cat > 设定/角色设定/主角/林山.md <<'EOF'

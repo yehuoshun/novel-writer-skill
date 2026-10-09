@@ -18,4 +18,7 @@ temp/
 configs/*.json
 !configs/example.json
 !configs/example-yuque.json
+!configs/example-both.json
 !configs/config.schema.json
+# 生命周期模拟临时目录（误提交防护）
+nw-lifecycle.*

@@ -1,0 +1,96 @@
+{
+  "$schema": "config.schema.json",
+  "info": {
+    "name": "我的小说",
+    "type": "玄幻",
+    "status": "ongoing",
+    "created_at": "2026-01-01",
+    "current_chapter": 10,
+    "written_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "total_words": 38000,
+    "current_volume": 1,
+    "last_sweet_spot": {
+      "chapter": 10,
+      "type": "装逼打脸"
+    },
+    "consecutive_no_spot": 0,
+    "consecutive_same_type": 0,
+    "last_hook_start": {
+      "chapter": 10,
+      "type": "悬念钩",
+      "strength": "强"
+    },
+    "last_hook_end": {
+      "chapter": 10,
+      "type": "悬念钩",
+      "strength": "强"
+    },
+    "consecutive_weak_hooks": 0,
+    "last_emotion_peak": {
+      "chapter": 10,
+      "emotion": "震撼",
+      "intensity": 9
+    },
+    "consecutive_flat_emotion": 0
+  },
+  "save_location": "both",
+  "backup": {
+    "mode": "local",
+    "local_path": "./我的小说/backup"
+  },
+  "yuque": {
+    "book": {
+      "book_id": "12345678",
+      "namespace": "yehuoshun/novel"
+    },
+    "groups": {
+      "content": "uuid",
+      "characters_protagonist": "uuid",
+      "characters_antagonist": "uuid",
+      "characters_supporting": "uuid",
+      "characters_deceased": "uuid",
+      "items": "uuid",
+      "locations": "uuid",
+      "factions": "uuid",
+      "foreshadowing": "uuid",
+      "timeline": "uuid",
+      "outline": "uuid",
+      "dialogs": "uuid",
+      "level_system": "uuid",
+      "change_log": "uuid",
+      "sweet_spot_tracking": "uuid",
+      "hook_tracking": "uuid",
+      "detailed_outline": "uuid",
+      "emotion_arc": "uuid",
+      "world_view": "uuid",
+      "mermaid_graph": "uuid",
+      "snapshot": "uuid",
+      "changes": "uuid"
+    }
+  },
+  "writing": {
+    "pov": "third-person",
+    "perspective": "single",
+    "style": "classical",
+    "narrative_style": "fast-paced",
+    "chapter_words": {
+      "min": 2000,
+      "max": 4000
+    }
+  },
+  "local": {
+    "content_path": "./我的小说/正文",
+    "settings_path": "./我的小说/设定"
+  }
+}
