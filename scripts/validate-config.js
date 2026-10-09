@@ -173,6 +173,21 @@ if (!n || !String(n).trim()) {
   errors.push('info.name: 小说名不能为空');
 }
 
+// 6. local/both 模式：local.content_path + settings_path 必填非空（schema 未约束子字段，
+//    both 模式 local:{} 空块会放行，运行时读 path 炸 —— v3.3.43 实弹暴露）
+if (cfg.save_location === 'local' || cfg.save_location === 'both') {
+  const l = cfg.local;
+  if (!l || typeof l !== 'object' || Array.isArray(l)) {
+    errors.push('local: 缺失或非对象（local/both 模式必需，且 content_path/settings_path 必填）');
+  } else {
+    for (const k of ['content_path', 'settings_path']) {
+      if (!l[k] || !String(l[k]).trim()) {
+        errors.push(`local.${k}: 缺失（local/both 模式必需，统一格式 ./小说名/正文）`);
+      }
+    }
+  }
+}
+
 // ---- 输出 ----
 if (errors.length > 0) {
   // 全局去重：同一错误可能被顶层 properties 与 allOf 多约束叠加重复报告，输出前收敛为一条

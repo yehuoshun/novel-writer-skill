@@ -151,10 +151,16 @@ for (const f of changes.foreshadowing || []) {
     warnings.push(`[伏笔闭环] 旧格式伏笔（无 vX ID）：「${f.name || (f.raw || '').trim()}」建议迁移到 vX 格式`);
     continue;
   }
-  if (['progress', 'harvest', 'abandon'].includes(f.type)) {
+  if (f.type === 'plant') {
+    // 重复埋设 = 状态机反向（已埋设/已推进/已回收 → 重新埋设）+ 非唯一 ID（v3.3.43 实弹暴露）
+    // 登记判据：目录有文档（registered）或快照伏笔状态表有记录（stateOf）——任一命中即重复
+    if (registered.includes(f.id) || stateOf[f.id]) {
+      problems.push(`[伏笔闭环] 重复埋设：${f.id} 已登记（${stateOf[f.id] ? '快照状态：' + stateOf[f.id] : '伏笔追踪目录已有文档'}），伏笔ID 必须唯一；续写请用 ➡️推进`);
+    }
+  } else if (['progress', 'harvest', 'abandon'].includes(f.type)) {
     if (!registered.includes(f.id)) {
       problems.push(`[伏笔闭环] 未登记伏笔：${f.id}（${f.type}）——如已在快照伏笔状态表登记，请检查是否漏建 ${path.join('伏笔追踪', f.id + '-*.md')} 文档`);
-    } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
+    } else if (stateOf[f.id] && /已回收|已废弃|resolved|abandoned/i.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
     }
   }

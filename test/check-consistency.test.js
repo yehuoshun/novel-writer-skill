@@ -560,6 +560,50 @@ test('半角箭头 -> 一致性仍校验（不静默跳过）', () => {
   assert.match(r.stderr, /林山 从「天剑宗」出发/);
 });
 
+// ---- 伏笔状态机：重复埋设拦截（v3.3.43，实弹第四轮暴露）----
+test('已推进伏笔重新埋设 → 拦（状态机反向 + 非唯一 ID）', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 20 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已推进 | 1 | 5,12 | 待定 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- 🔨埋设 **v1 断锋来历**（类型：长线）| 预期读者效果：震惊 | 线索：新线索\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /重复埋设：v1 已登记/);
+});
+
+test('新书首章埋设新伏笔 → 不误拦', () => {
+  const { dir, set, snap } = setup();
+  // 清掉 setup 预建的 v1 文档，模拟全新伏笔
+  fs.rmSync(path.join(set, '伏笔追踪', 'v1-断锋来历.md'));
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- 🔨埋设 **v1 断锋来历**（类型：长线）| 预期读者效果：震惊 | 线索：新线索\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('英文态终态（resolved）被推进 → 拦（状态机兼容英文态）', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 30 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | resolved | 1 | 5 | 25 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **v1 断锋来历** | 又推\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /已是终态「resolved」/);
+});
+
 // ---- 旧格式快照 / 蓝图列头变体（v3.3.42，实弹第三轮暴露）----
 test('旧格式 3 列快照（角色|位置|状态）→ 位置取第 2 列，不误把状态当位置', () => {
   const { dir, set } = setup();

@@ -113,6 +113,28 @@ test('yuque 模式缺分组 → 失败（22 必需）', () => {
   assert.match(r.stderr, /缺失（必填）|必需分组/);
 });
 
+test('both 模式 local 块空（缺 content_path/settings_path）→ 失败', () => {
+  const c = clone();
+  c.save_location = 'both';
+  c.local = {};
+  c.yuque = {
+    book: { book_id: '1' },
+    groups: { content: 'u1', characters_protagonist: 'u2', characters_antagonist: 'u3', characters_supporting: 'u4', characters_deceased: 'u5', items: 'u6', locations: 'u7', factions: 'u8', foreshadowing: 'u9', timeline: 'u10', outline: 'u11', dialogs: 'u12', level_system: 'u13', change_log: 'u14', sweet_spot_tracking: 'u15', hook_tracking: 'u16', detailed_outline: 'u17', emotion_arc: 'u18', world_view: 'u19', mermaid_graph: 'u20', snapshot: 'u21', changes: 'u22' },
+  };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /local.content_path: 缺失/);
+  assert.match(r.stderr, /local.settings_path: 缺失/);
+});
+
+test('local 模式缺 settings_path → 失败', () => {
+  const c = clone();
+  delete c.local.settings_path;
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stderr, /local.settings_path: 缺失/);
+});
+
 test('文件不存在 → 退出码 2', () => {
   const r = runFile(path.join(ROOT, 'configs', '__nope__.json'));
   assert.strictEqual(r.status, 2);
