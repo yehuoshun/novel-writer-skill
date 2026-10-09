@@ -352,3 +352,21 @@ test('蓝图：细纲存在但无本章行 → 警告不阻断（exit 0）', () 
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /蓝图清单无第 0*3 章的行/);
 });
+
+// ---- 伏笔埋设即建档（v3.3.37，实际使用测试暴露）----
+test('伏笔快照已登记但目录无文档 → 报未登记 + 建档自纠提示', () => {
+  const { dir, set, snap } = setup();
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 林山 | 炼气三层 | 青云山 | 健康 | 剑 | 1 |\n' +
+    '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n' +
+    '|--------|--------|------|--------------|------|--------|--------|--------|\n' +
+    '| v1 | 断锋来历 | 长线 | 揭晓身世 | 已埋设 | 1 | — | 待定 |\n' +
+    '| v2 | 古庙秘密 | 短线 | 小惊喜 | 已埋设 | 2 | — | 待定 |\n');
+  const chap = path.join(dir, '第3章 x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **v2 古庙秘密** | 新线索\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /未登记伏笔：v2/);
+  assert.match(r.stderr, /漏建/);
+});

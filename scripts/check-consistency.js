@@ -142,7 +142,7 @@ for (const f of changes.foreshadowing || []) {
   }
   if (['progress', 'harvest', 'abandon'].includes(f.type)) {
     if (!registered.includes(f.id)) {
-      problems.push(`[伏笔闭环] 未登记伏笔：${f.id}（${f.type}）`);
+      problems.push(`[伏笔闭环] 未登记伏笔：${f.id}（${f.type}）——如已在快照伏笔状态表登记，请检查是否漏建 ${path.join('伏笔追踪', f.id + '-*.md')} 文档`);
     } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
     }
