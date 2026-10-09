@@ -92,15 +92,23 @@ const snap = fs.readFileSync(snapPath, 'utf8');
 const posSection = (snap.split(/^##\s*角色状态/m)[1] || '').split(/^##\s/m)[0];
 const posOf = {};
 const statusOf = {};
-for (const m of posSection.matchAll(/^\|\s*([^|]+?)\s*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
-  const name = m[1].trim(), st = m[2].trim();
-  if (/^角色$|^-+$/.test(name)) continue;
-  statusOf[name] = st;              // 第 4 列：状态
-}
-for (const m of posSection.matchAll(/^\|\s*([^|]+?)\s*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
-  const name = m[1].trim(), pos = m[2].trim();
-  if (/^角色$|^-+$/.test(name)) continue;
-  posOf[name] = pos;                // 第 3 列：当前位置
+// 表头判别新旧格式：标准 6 列含「等级」（角色|等级|当前位置|状态|背包|最后出场章）；
+// 旧格式 3 列（角色|位置|状态）无等级列 → 位置取第 2 列，避免误把「状态」当位置（v3.3.42 实弹误报修复）
+const headerLine = posSection.split('\n').find(l => /^\|\s*角色\s*\|/.test(l)) || '';
+const legacyPos = !headerLine.includes('等级');
+for (const line of posSection.split('\n')) {
+  const t = line.trim();
+  if (!t.startsWith('|')) continue;
+  const cells = t.replace(/^\||\|$/g, '').split('|').map(s => s.trim());
+  const name = cells[0];
+  if (!name || /^角色$|^-+$/.test(name) || cells.length < 3) continue;
+  if (legacyPos) {
+    posOf[name] = cells[1];
+    statusOf[name] = cells[2];
+  } else {
+    posOf[name] = cells[2] || '';
+    statusOf[name] = cells[3] || '';
+  }
 }
 for (const mv of changes.characterMoves || []) {
   const m = mv.detail && mv.detail.match(/^(.+?)(?:→|->)(.+)$/);
@@ -213,8 +221,8 @@ if (outlinePath) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!/^\s*\|/.test(line)) { inBlueprint = false; continue; }
-      // 表头：含「必出场」且下一行是分隔行
-      if (/必出场/.test(line) && isSep(lines[i + 1])) { inBlueprint = true; continue; }
+      // 表头：含「必出场/出场」且下一行是分隔行（细纲表列头无「出场」，不会误认）
+      if (/必出场|出场/.test(line) && isSep(lines[i + 1])) { inBlueprint = true; continue; }
       if (isSep(line)) continue;
       if (!inBlueprint) continue;
       const m = line.match(/^\|\s*第?\s*(\d+)\s*章?\s*\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|/);

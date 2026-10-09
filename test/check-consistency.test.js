@@ -559,3 +559,43 @@ test('半角箭头 -> 一致性仍校验（不静默跳过）', () => {
   assert.strictEqual(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stderr, /林山 从「天剑宗」出发/);
 });
+
+// ---- 旧格式快照 / 蓝图列头变体（v3.3.42，实弹第三轮暴露）----
+test('旧格式 3 列快照（角色|位置|状态）→ 位置取第 2 列，不误把状态当位置', () => {
+  const { dir, set } = setup();
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照（截止第3章）\n## 角色状态\n| 角色 | 位置 | 状态 |\n' +
+    '|------|------|------|\n| 林山 | 青云山 | 健康 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：青云山→天剑宗\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('旧格式 3 列快照：出发地与位置矛盾 → 仍拦', () => {
+  const { dir, set } = setup();
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 位置 | 状态 |\n' +
+    '|------|------|------|\n| 林山 | 青云山 | 健康 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色移动 -->\n- **[林山]**：天剑宗→青云山\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /林山 从「天剑宗」出发，但快照记录其在「青云山」/);
+});
+
+test('蓝图列头「出场角色」（无必出字样）也能识别校验', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '## 蓝图\n| 章 | 出场角色 | 戏份要求 | 出场地点 | 出场势力 |\n' +
+    '|----|---------|---------|---------|---------|\n' +
+    '| 3 | 林山、青云子、三师兄 | 各≥1 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 试.md');
+  fs.writeFileSync(chap, '林山走在路上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /蓝图未出场：青云子、三师兄/);
+});
