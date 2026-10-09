@@ -186,3 +186,64 @@ test('爽点类型乱填 → 失败', () => {
   assert.strictEqual(r.status, 1);
   assert.match(r.stderr, /爽歪歪/);
 });
+
+// ---- 大纲先行（v3.3.49）：已写章节且设定目录存在时，大纲/细纲必须已建 ----
+const fs = require('node:fs');
+const os = require('node:os');
+
+const mkNovelDir = (withOutline) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-outline-'));
+  const sp = path.join(dir, '设定');
+  fs.mkdirSync(sp, { recursive: true });  // 目录必须存在（=已初始化），内容决定拦/放行
+  if (withOutline) {
+    fs.mkdirSync(path.join(sp, '大纲', '细纲'), { recursive: true });
+    fs.writeFileSync(path.join(sp, '大纲', '全书大纲.md'), '# 大纲');
+    fs.writeFileSync(path.join(sp, '大纲', '细纲', '细纲.md'), '| 章 | 核心事件 |');
+  }
+  return { dir, sp };
+};
+
+test('大纲先行：已写章节 + 设定目录存在但无大纲 → 失败', () => {
+  const { dir, sp } = mkNovelDir(false);
+  const c = clone();
+  c.local = { content_path: path.join(dir, '正文'), settings_path: sp };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1, r.stderr);
+  assert.match(r.stderr, /大纲\//);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('大纲先行：大纲在但细纲缺失 → 失败', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-outline-'));
+  const sp = path.join(dir, '设定');
+  fs.mkdirSync(path.join(sp, '大纲'), { recursive: true });
+  fs.writeFileSync(path.join(sp, '大纲', '全书大纲.md'), '# 大纲');
+  const c = clone();
+  c.local = { content_path: path.join(dir, '正文'), settings_path: sp };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 1, r.stderr);
+  assert.match(r.stderr, /细纲/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('大纲先行：大纲+细纲齐全 → 通过', () => {
+  const { dir, sp } = mkNovelDir(true);
+  const c = clone();
+  c.local = { content_path: path.join(dir, '正文'), settings_path: sp };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('大纲先行：设定目录不存在（新书未初始化）→ 跳过不误报', () => {
+  const c = clone();
+  c.local = { content_path: './__nope__/正文', settings_path: './__nope__/设定' };
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+test('大纲先行：语雀模式（脚本不联网）→ 不检查跳过', () => {
+  const c = JSON.parse(JSON.stringify(require(path.join(ROOT, 'configs', 'example-yuque.json'))));
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+});

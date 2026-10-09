@@ -197,6 +197,32 @@ if (cfg.backup && cfg.backup.mode === 'local') {
   }
 }
 
+// 8. 大纲先行：已写章节（local/both）且设定目录已创建时，大纲/细纲必须存在
+//    目录不存在 = 新书尚未初始化（未建目录树），跳过不误报（example 配置无目录亦通过）
+//    语雀模式：脚本零依赖不联网，无法核验 TOC，靠 SKILL.md 写章节流程硬要求兜底
+//    —— 2026-10-09 实弹暴露：建了库直接写章节、跳过「写大纲」，大纲组是空的
+if ((cfg.save_location === 'local' || cfg.save_location === 'both')
+    && Array.isArray(wc) && wc.length > 0
+    && cfg.local && cfg.local.settings_path) {
+  const sp = cfg.local.settings_path;
+  const abs = path.isAbsolute(sp) ? sp : path.join(process.cwd(), sp);
+  if (fs.existsSync(abs) && fs.statSync(abs).isDirectory()) {
+    const outlineDir = path.join(abs, '大纲');
+    const hasOutline = fs.existsSync(outlineDir)
+      && fs.readdirSync(outlineDir).some(f => f.endsWith('.md'));
+    if (!hasOutline) {
+      errors.push(`local.settings_path 大纲/: 已写 ${wc.length} 章但未找到全书大纲文档——先执行「写大纲」再写章节`);
+    }
+    const detailDir1 = path.join(outlineDir, '细纲');
+    const detailDir2 = path.join(abs, '细纲');
+    const detailDir = fs.existsSync(detailDir1) ? detailDir1 : (fs.existsSync(detailDir2) ? detailDir2 : null);
+    const hasDetail = detailDir && fs.readdirSync(detailDir).some(f => f.endsWith('.md'));
+    if (!hasDetail) {
+      errors.push(`local.settings_path 细纲: 已写 ${wc.length} 章但未找到细纲文档（写章节需参考本章细纲+蓝图出场清单）——先执行「写大纲」生成细纲`);
+    }
+  }
+}
+
 // ---- 输出 ----
 if (errors.length > 0) {
   // 全局去重：同一错误可能被顶层 properties 与 allOf 多约束叠加重复报告，输出前收敛为一条
