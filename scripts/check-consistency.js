@@ -87,6 +87,20 @@ for (const r of new Set(refs)) {
   if (!hasEntity(r)) problems.push(`[引用校验] 未登记实体：${r}——先创建对应设定档案（角色/地点/物品/势力目录）再写章`);
 }
 
+// ---- 门禁 1 增强：新剧情节点摘要「涉及角色」（警告不阻断）----
+// 摘要段仅作剧情索引，不按零容忍处理；无档案时提示建档或改走声明段，堵「藏实体进摘要逃校验」的缝
+const refsSet = new Set(refs);
+for (const n of changes.newPlotNodes || []) {
+  const raw = (n.detail || n.value || n.raw || '');
+  const m = raw.match(/涉及角色[:：]\s*([^|]+)/);
+  if (!m) continue;
+  const missing = [...new Set(m[1].split(/[、,，]/).map(s => s.trim()).filter(Boolean))]
+    .filter(name => !hasEntity(name) && !refsSet.has(name));
+  if (missing.length) {
+    warnings.push(`[引用校验·摘要] 新剧情节点「${n.name || n.key || (n.raw || '').slice(0, 20)}」涉及未登记实体：${missing.join('、')}——实体登场请走声明段（门禁11零容忍）或先建档；龙套不应出现在 CHANGES`);
+  }
+}
+
 // ---- 门禁 2：一致性（角色移动出发地 vs 快照当前位置）----
 const snap = fs.readFileSync(snapPath, 'utf8');
 const posSection = (snap.split(/^##\s*角色状态/m)[1] || '').split(/^##\s/m)[0];

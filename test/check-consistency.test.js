@@ -643,3 +643,34 @@ test('蓝图列头「出场角色」（无必出字样）也能识别校验', ()
   assert.strictEqual(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stderr, /蓝图未出场：青云子、三师兄/);
 });
+
+test('摘要涉及角色已登记 → 不警告', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 新剧情节点 -->\n- **林山得剑**：拾得断锋 | 涉及角色：林山 | 故事线：主线\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout, /引用校验·摘要/);
+});
+
+test('摘要涉及未登记实体 → 警告不阻断（堵藏实体逃校验的缝）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 新剧情节点 -->\n- **黑风寨探子混入**：暗中窥探 | 涉及角色：黑风寨 | 故事线：支线\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /引用校验·摘要.*黑风寨/);
+});
+
+test('摘要涉及实体已在声明段声明（门禁11已拦）→ 不重复警告', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 势力状态变化 -->\n- **[黑风寨]**：安定→蠢动\n<!-- 新剧情节点 -->\n- **黑风寨探子混入**：暗中窥探 | 涉及角色：黑风寨 | 故事线：支线\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /未登记实体：黑风寨/);
+  assert.doesNotMatch(r.stdout, /引用校验·摘要/);
+});
