@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.33
+version: 3.3.34
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -794,7 +794,7 @@ GET /repos/{book_id}/toc
 | 危机钩 | 章尾陷入危险 |
 | 决策钩 | 角色面临重大选择 |
 
-> 记录 `last_hook_start/last_hook_end.type` 时**统一使用上表 10 类词汇**；具体技法（章尾 13 式 / 章首 7 式）与追踪类的映射见 [references/hook-techniques.md](references/hook-techniques.md) 顶部「钩子式 ↔ 追踪类映射」。
+> 记录 `last_hook_start/last_hook_end.type` 时**统一使用上表 11 项词汇**（章首 5 + 章尾 6；悬念钩章首/章尾共用，去重后 10 个唯一类）；具体技法（章尾 13 式 / 章首 7 式）与追踪类的映射见 [references/hook-techniques.md](references/hook-techniques.md) 顶部「钩子式 ↔ 追踪类映射」。
 
 **自动检查**：
 - 章首无钩子（前 500 字内）→ 提醒
@@ -1063,4 +1063,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.33_
+_版本：v3.3.34_
