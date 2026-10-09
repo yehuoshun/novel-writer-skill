@@ -170,6 +170,16 @@ test('伏笔埋设 10 章未推进 → 警告（不阻断，exit 0）', () => {
   assert.match(r.stdout, /v1 已埋设 11 章未推进/);
 });
 
+test('旧格式伏笔（无 vX ID）→ 警告不打回（exit 0）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ➡️推进 **【神秘人】**\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /旧格式伏笔/);
+});
+
 test('参数缺失 → exit 2', () => {
   const r = run([]);
   assert.strictEqual(r.status, 2);

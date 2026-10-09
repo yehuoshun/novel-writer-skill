@@ -12,7 +12,7 @@
  *   4. 蓝图出场合规（传细纲文件时启用）：细纲蓝图清单中的必出角色/地点/势力 是否在正文出现（缺 >1 → 拦）
  *   5. 描写一致性：正文中发色/瞳色描写是否与角色档案矛盾（如档案黑发、正文写「金色长发」）
  *
- * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进且未回收。
+ * 另：警告（不阻断，仅 stdout）——伏笔埋设后 10 章未推进；旧格式伏笔（无 vX ID）。
  *
  * ⚠️ 快照必须是「上一章落地后、本章回写前」的版本。回写后快照已更新为目标态，
  *    再跑一致性校验会误报（出发地=旧值 vs 快照=新值）。
@@ -124,9 +124,14 @@ const registered = fs.existsSync(fsDir)
   ? fs.readdirSync(fsDir).map(f => f.match(/^(v\d+)/)).filter(Boolean).map(m => m[1])
   : [];
 for (const f of changes.foreshadowing || []) {
+  // 旧格式（无 vX ID）→ 警告，不打回（SKILL 门禁16 明确）
+  if (!f.id) {
+    warnings.push(`[伏笔闭环] 旧格式伏笔（无 vX ID）：「${f.name || (f.raw || '').trim()}」建议迁移到 vX 格式`);
+    continue;
+  }
   if (['progress', 'harvest', 'abandon'].includes(f.type)) {
-    if (!f.id || !registered.includes(f.id)) {
-      problems.push(`[伏笔闭环] 未登记伏笔：${f.id || '(无ID)'}（${f.type}）`);
+    if (!registered.includes(f.id)) {
+      problems.push(`[伏笔闭环] 未登记伏笔：${f.id}（${f.type}）`);
     } else if (stateOf[f.id] && /已回收|已废弃/.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）`);
     }
