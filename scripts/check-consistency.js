@@ -165,14 +165,30 @@ const profOf = (name) => {
   return f ? fs.readFileSync(f, 'utf8') : null;
 };
 // 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
+// 命名约定允许「地点前缀_实体名」（如 龙城_张三.md），去前缀后也要能命中正文
 const profNames = [...new Set(settingFiles
   .filter(p => p.includes(`${path.sep}角色设定${path.sep}`))
-  .map(p => path.basename(p, '.md'))
-  .filter(Boolean))].sort((a, b) => b.length - a.length);
+  .flatMap(p => {
+    const s = path.basename(p, '.md');
+    if (!s) return [];
+    const i = s.lastIndexOf('_');
+    return i > 0 ? [s, s.slice(i + 1)] : [s];
+  }))].sort((a, b) => b.length - a.length);
 if (profNames.length) {
-  const re = new RegExp(`(${profNames.map(escRe).join('|')})[^。！？\n]{0,12}?(${COLOR})色?(${HAIR}|${EYE})`, 'g');
-  for (const m of chapterBody.matchAll(re)) {
-    const who = m[1], got = m[2], noun = m[3];
+  const NAME_RE = new RegExp(`(${profNames.map(escRe).join('|')})`, 'g');
+  const ATTR_RE = new RegExp(`(${COLOR})色?(${HAIR}|${EYE})`, 'g');
+  for (const m of chapterBody.matchAll(ATTR_RE)) {
+    const idx = m.index, got = m[1], noun = m[2];
+    // 取「颜色词」所在句内、前 12 字窗口，归属给其中最靠后的角色名
+    // （避免「林山看着青云子的白发」把白发误记到林山头上）
+    const pre = chapterBody.slice(0, idx);
+    const sentStart = Math.max(0, ...['。', '！', '？', '\n'].map(c => pre.lastIndexOf(c) + 1));
+    const win = pre.slice(Math.max(sentStart, pre.length - 12));
+    let who = null, whoEnd = -1;
+    for (const mm of win.matchAll(NAME_RE)) { who = mm[1]; whoEnd = mm.index + mm[1].length; }
+    if (!who) continue;
+    // 名字与颜色之间若出现「…的」（不紧贴名字），发/瞳归属方是另一个名词 → 跳过
+    if (win.slice(whoEnd).indexOf('的') > 0) continue;
     const txt = profOf(who);
     if (!txt) continue;
     const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);

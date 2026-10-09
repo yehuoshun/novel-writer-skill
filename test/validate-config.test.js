@@ -40,6 +40,17 @@ test('最小合法 local 配置通过', () => {
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+test('新书：tracking 字段为 null → 通过（未写章节时允许 null）', () => {
+  const c = clone();
+  c.info.current_chapter = 0; c.info.written_chapters = []; c.info.total_words = 0;
+  c.info.last_sweet_spot = null;
+  c.info.last_hook_start = null;
+  c.info.last_hook_end = null;
+  c.info.last_emotion_peak = null;
+  const r = runStdin(c);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 test('info.name 为空 → 失败', () => {
   const c = clone(); c.info.name = '   ';
   const r = runStdin(c);

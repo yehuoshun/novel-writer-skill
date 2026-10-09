@@ -191,3 +191,63 @@ test('文件不存在 → exit 2', () => {
   const r = run(['/no/such/snapshot.md', good, set]);
   assert.strictEqual(r.status, 2);
 });
+
+// ---- 门禁 13 归属/命名回归（v3.3.30）----
+function colorSetup(profiles) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  for (const [file, body] of Object.entries(profiles)) {
+    fs.writeFileSync(path.join(set, '角色设定', '主角', file), body);
+  }
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n' +
+    '| 林山 | — | 青云山 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  return { set, snap, chap };
+}
+const CH = (states) => '正文。\n---CHANGES---\n' + states + '\n---END CHANGES---\n';
+
+test('描写一致性：地点前缀档案名（龙城_张三）也能命中', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '龙城_张三.md'), '# 龙城_张三\n- 发色：黑\n- 瞳色：黑\n');
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap,
+    '# 状态快照\n## 角色状态\n| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n' +
+    '|------|------|----------|------|------|-----------|\n| 张三 | — | 龙城 | 健康 | — | 1 |\n');
+  const chap = path.join(dir, 'x.md');
+  fs.writeFileSync(chap, '张三的金色长发在风中飘动。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[张三]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*张三.*金发/);
+});
+
+test('描写一致性：望向他人发色不误报（林山看着青云子的白发）', () => {
+  const { set, snap, chap } = colorSetup({
+    '林山.md': '# 林山\n- 发色：黑\n- 瞳色：黑\n',
+    '青云子.md': '# 青云子\n- 发色：白\n- 瞳色：灰\n',
+  });
+  fs.writeFileSync(chap, '林山看着青云子的白发，心里发紧。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('描写一致性：他人发色归属不明时不误报（林山望着师父的白发）', () => {
+  const { set, snap, chap } = colorSetup({ '林山.md': '# 林山\n- 发色：黑\n- 瞳色：黑\n' });
+  fs.writeFileSync(chap, '林山望着师父的白发，一言不发。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('描写一致性：跨句不误报（张三走了。白发苍苍的老人）', () => {
+  const { set, snap, chap } = colorSetup({ '张三.md': '# 张三\n- 发色：黑\n- 瞳色：黑\n' });
+  fs.writeFileSync(chap, CH('<!-- 角色状态变化 -->\n- **[张三]**：健康→健康').replace('正文。', '张三走了。白发苍苍的老人坐在门口。'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});

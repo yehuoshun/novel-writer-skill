@@ -20,7 +20,8 @@
         "total_words":    { "type": "integer", "minimum": 0, "description": "总字数" },
         "current_volume": { "type": "integer", "minimum": 1, "description": "当前卷号" },
         "last_sweet_spot": {
-          "type": "object",
+          "type": ["object", "null"],
+          "description": "最近爽点；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
             "type":    { "type": "string" }
@@ -29,7 +30,8 @@
         "consecutive_no_spot":   { "type": "integer", "minimum": 0 },
         "consecutive_same_type": { "type": "integer", "minimum": 0 },
         "last_hook_start": {
-          "type": "object",
+          "type": ["object", "null"],
+          "description": "最近章首钩子；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
             "type":    { "type": "string" },
@@ -37,7 +39,8 @@
           }
         },
         "last_hook_end": {
-          "type": "object",
+          "type": ["object", "null"],
+          "description": "最近章尾钩子；新书未写章节时为 null",
           "properties": {
             "chapter": { "type": "integer" },
             "type":    { "type": "string" },
@@ -46,7 +49,8 @@
         },
         "consecutive_weak_hooks": { "type": "integer", "minimum": 0 },
         "last_emotion_peak": {
-          "type": "object",
+          "type": ["object", "null"],
+          "description": "最近情绪峰值；新书未写章节时为 null",
           "properties": {
             "chapter":  { "type": "integer" },
             "emotion":  { "type": "string" },
