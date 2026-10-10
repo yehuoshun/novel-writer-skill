@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.62
+version: 3.3.63
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -556,9 +556,10 @@ PUT /repos/{book_id}/toc
 }
 ```
 
-- **响应 `data` 直接返回节点数组（含新节点 uuid），取 uuid 回写 `yuque.groups`，无需再 GET**
-- ⚠️ 裸 API **同名不复用**：重复建同名会生成重复节点；旧库缺组补建必须**先 `GET /toc` 查同名**，有则复用 uuid、无才建
-- 删除节点：`{"action":"removeNode","action_mode":"child","node_uuid":"<uuid>"}`
+- **响应 `data` = 更新后的全量 TOC 节点数组**（含新节点 uuid；appendNode/prependNode/editNode/removeNode 均返回），从数组里取新节点 uuid 回写 `yuque.groups`，无需再 GET（2026-10-10 实测）
+- ⚠️ **裸 API 同名不复用**：重复建同名会生成重复节点；旧库缺组补建必须**先 `GET /toc` 查同名**，有则复用 uuid、无才建
+- ⚠️ **`action_mode: sibling` 必须配 `target_uuid`（锚点 uuid）**，否则**静默 no-op**——返回 200 + 原 TOC，什么都不建，极易误判成功（2026-10-10 实测）；建组用 `child` 最稳；`prependNode` 已验证可置顶
+- 删除节点：`{"action":"removeNode","action_mode":"child","node_uuid":"<uuid>","confirm":"DELETE"}`——**`confirm:"DELETE"` 必填**（缺了报二次确认错误）
 
 **创建文档（设定模板 / chXXX 变更记录）**：
 
@@ -1103,4 +1104,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.62_
+_版本：v3.3.63_
