@@ -8,6 +8,7 @@ const path = require('node:path');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'backup-snapshot.js');
 const run = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8' });
+const runCwd = (args, cwd) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8', cwd });
 
 const WRITING = { pov: 'third-person', perspective: 'single', style: 'modern', narrative_style: 'fast-paced', chapter_words: { min: 2500, max: 4000 } };
 
@@ -87,8 +88,38 @@ test('没有可备份文件（路径不存在）→ 退出码 1，不残留空�
   const { book, cfgPath } = setup({ local: { content_path: '/no/such/正文', settings_path: '/no/such/设定' } });
   const r = run([cfgPath, '1']);
   assert.strictEqual(r.status, 1);
-  assert.match(r.stderr, /未找到可备份文件/);
+  // v3.3.76 起源路径不存在时直接报「路径不存在」+ 双重嵌套排查提示（此前绕一圈报「未找到可备份文件」）
+  assert.match(r.stderr, /路径不存在/);
   assert.strictEqual(snaps(book).length, 0, '不应残留空快照目录');
+});
+
+// ---- 相对路径双重嵌套（2026-10-10 实弹暴露）：相对路径按运行 cwd 解析，
+//      在小说目录内跑会把 ./书/正文 解析成 书/书/正文 → 备份失败 ----
+test('相对路径 config + cwd 在小说目录内 → 报路径不存在 + 双重嵌套排查提示', () => {
+  const { dir, book, cfg } = setup();
+  const relCfg = path.join(book, 'config-rel.json');
+  fs.writeFileSync(relCfg, JSON.stringify({
+    ...cfg,
+    backup: { mode: 'local', local_path: './书/backup' },
+    local: { content_path: './书/正文', settings_path: './书/设定' },
+  }));
+  const r = runCwd([relCfg, '1'], book); // cwd=小说目录内（最自然的运行姿势）
+  assert.strictEqual(r.status, 1, r.stderr);
+  assert.match(r.stderr, /路径不存在/);
+  assert.match(r.stderr, /双重嵌套/);
+});
+
+test('相对路径 config + cwd 在小说目录外 → 正常备份', () => {
+  const { dir, book, cfg } = setup();
+  const relCfg = path.join(dir, 'config-rel.json');
+  fs.writeFileSync(relCfg, JSON.stringify({
+    ...cfg,
+    backup: { mode: 'local', local_path: './书/backup' },
+    local: { content_path: './书/正文', settings_path: './书/设定' },
+  }));
+  const r = runCwd([relCfg, '1'], dir); // cwd=小说目录外
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(snaps(book).length, 1, '应有 1 个快照目录');
 });
 
 test('用法错误（缺配置参数）→ 退出码 2', () => {

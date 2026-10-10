@@ -56,6 +56,16 @@ const settings = abs(cfg.local && cfg.local.settings_path);
 const content = abs(cfg.local && cfg.local.content_path);
 const base = abs(lp);
 
+// 相对路径按运行 cwd 解析——在小说目录内运行会把 ./小说名/正文 解析成双重嵌套。
+// 源目录（settings/content）不存在时先给排查提示（2026-10-10 实弹暴露：配置校验能过，但备份静默失败）；
+// local_path 是目标目录，不存在会由 mkdirSync recursive 自动创建，无需预检。
+for (const [label, p] of [['settings_path', settings], ['content_path', content]]) {
+  if (!p || !fs.existsSync(p)) {
+    console.error(`❌ 路径不存在（${label} = ${p || '未设置'}）——若配置里是相对路径，脚本按运行 cwd 解析：在小说目录内跑会双重嵌套（如 ./青云剑冢/设定 → …/青云剑冢/青云剑冢/设定）；请改用绝对路径或把 cwd 切到小说目录外`);
+    process.exit(1);
+  }
+}
+
 // 章节号：显式参数优先，否则取 config.current_chapter
 const chNum = chArg ? parseInt(chArg, 10) : (cfg.info && Number(cfg.info.current_chapter)) || 0;
 if (!Number.isFinite(chNum) || chNum < 0) {
