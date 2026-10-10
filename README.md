@@ -87,6 +87,14 @@ node --test        # 或 npm test
 bash tools/simulate-lifecycle.sh
 ```
 
+集成回归（本地备份快照：单章/--full/跳过/空路径/无文件不残留/真实回滚恢复）：
+
+```bash
+bash tools/simulate-backup.sh
+```
+
+两个集成脚本已接入 CI（`.github/workflows/test.yml`，与单测一同跑）。
+
 ## 许可
 
 MIT
