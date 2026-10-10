@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.59
+version: 3.3.60
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -126,8 +126,8 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 10. 你确认后，创建设定文档模板
 11. 根据存储方式创建设定目录结构：
     - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`，body 带 action=appendNode、action_mode=child 及 title/type）自动创建目录分组，**从响应 data 直接取各分组 UUID 回写配置（无需再读）**
-      - **22 个分组全建**：正文/角色/反派/配角/已故/物品/地点/势力/伏笔/时间线/大纲/关键对话/等级体系/变更日志/爽点/钩子/细纲/情绪曲线/世界观/Mermaid关系图/快照/变更记录
-      - `content`（正文）分组存正文章节文档（挂 `第XXX章` DOC），**必须第一个建**（`prependNode` 或先建保证 TOC 置顶；2026-10-09 实测：从角色设定开始建会导致正文不置顶，后续要用 `prependNode` 移回）。其余分组按下方配置表顺序建（注意嵌套：主角组/反派组/配角组/已故角色 挂在 角色设定 下，细纲 挂在 大纲 下；先建父组拿 uuid 再建子组）
+      - **22 项映射全建（21 个 TITLE 组 + 1 个 DOC）**：正文/角色/反派/配角/已故/物品/地点/势力/伏笔/时间线/大纲/关键对话/等级体系/变更日志/爽点/钩子/细纲/情绪曲线/世界观/Mermaid关系图/变更记录 这 21 个是 TITLE 组（`createTitle`）；**`snapshot`（快照）是 DOC 不是分组**——用 `yuque_create_doc` 建一篇「状态快照」文档、取其数字 id 作 uuid 回写（2026-10-10 实测：把快照当 TITLE 建是错的）
+      - `content`（正文）分组存正文章节文档（挂 `第XXX章` DOC），**必须第一个建**（`prependNode` 或先建保证 TOC 置顶；2026-10-09 实测：从角色设定开始建会导致正文不置顶，后续要用 `prependNode` 移回）。其余分组按下方配置表顺序建（注意嵌套：主角组/反派组/配角组/已故角色 挂在 角色设定 下，细纲 挂在 大纲 下；MCP 批建用 `target_title` 指向父组名即可，无需先拿 uuid）
       - 旧库缺组时自动补建：**先 `GET /toc` 查同名节点**（裸 API 同名不复用），存在则复用 UUID、缺失才 appendNode 创建（尤其 `世界观`、`Mermaid关系图`）
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
     - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
@@ -534,12 +534,13 @@ graph LR
 
 ### 语雀 API 调用速查（2026-10-07 实弹验证）
 
-> 优先使用 yuque-mcp 工具（`yuque_create_doc` 建文档 / `yuque_batch_update_toc` 批量建分组等；`createTitle` 是 `yuque_batch_update_toc` 支持的 action——批量建 TITLE 自动去重、响应含新节点 uuid，新建 22 组时优先用它；`yuque_update_toc` 仅透传单条 action：appendNode/prependNode/editNode/removeNode，无 createTitle 封装）。MCP 不可用时按下方裸 API 调用。
+> 优先使用 yuque-mcp 工具（`yuque_create_doc` 建文档 / `yuque_batch_update_toc` 批量建分组等；`createTitle` 是 `yuque_batch_update_toc` 支持的 action——**参数 `ops` 传 JSON 数组**（每项 `{"action":"createTitle","title":"正文"}`，子组加 `target_title:"角色设定"` 按名挂父组），**另必填 `confirm:"RESTRUCTURE"` 安全闸**；批量建 TITLE 自动去重（返回 `results[].new_node_uuid`）、复用已有目录，新建 22 组时优先用它；`yuque_update_toc` 仅透传单条 action：appendNode/prependNode/editNode/removeNode，无 createTitle 封装）。MCP 不可用时按下方裸 API 调用。
 > 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
 
 **建分组（新建小说 22 组，含正文组）**：
 
-- MCP 路径：`yuque_batch_update_toc`（action=`createTitle`，title 列表一次建全；自动去重 + 返回新节点 uuid 可直接回写 `yuque.groups`）
+- MCP 路径：`yuque_batch_update_toc`（`ops`=JSON 数组；`confirm:"RESTRUCTURE"` 必填；自动去重 + 复用已有目录，`results[].new_node_uuid` 直接回写 `yuque.groups`；嵌套子组用 `target_title` 指向父组名，一次建全）
+  - ⚠️ 实测（2026-10-10）：批量建组偶发个别失败（重跑即可，createTitle 自动去重用已有目录，不会重复）；正文组**必须首个建**才能置顶
 - 裸 API 路径（MCP 不可用时）：
 
 ```
@@ -1099,4 +1100,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.59_
+_版本：v3.3.60_
