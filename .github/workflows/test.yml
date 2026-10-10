@@ -16,7 +16,8 @@ jobs:
       - name: 运行测试（node 内置 test runner，零依赖）
         run: node --test
 
-      - name: 集成回归（生命周期 + 备份快照）
+      - name: 集成回归（生命周期 + 备份快照 + 50 章长篇）
         run: |
           bash tools/simulate-lifecycle.sh
           bash tools/simulate-backup.sh
+          bash tools/simulate-longform.sh

@@ -93,7 +93,13 @@ bash tools/simulate-lifecycle.sh
 bash tools/simulate-backup.sh
 ```
 
-两个集成脚本已接入 CI（`.github/workflows/test.yml`，与单测一同跑）。
+三个集成脚本已接入 CI（`.github/workflows/test.yml`，与单测一同跑）。
+
+长篇回归（50 章长期积累：伏笔状态机跨 30+ 章、快照不发胖、跨章位置一致性、冲突检测、门禁报告完整性）：
+
+```bash
+bash tools/simulate-longform.sh
+```
 
 ## 许可
 
