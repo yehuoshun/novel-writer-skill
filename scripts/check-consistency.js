@@ -332,6 +332,19 @@ const HAIR_PART_TAIL = /^(卡|带|夹|箍|型|梢|根|油|蜡|胶|际|量|质|�
 const EYE_IDIOM = /^(?:白眼|红眼|黑眼|青眼|黄眼|白眼球|红眼病)$/;
 // 程度/情绪副词紧贴颜色前（通红的眼睛 / 哭红的眼 / 涨红了脸）——临时泛红，非固有色
 const DEGREE_BEFORE = /[通涨急羞气哭憋烧绯鲜血]/;
+// 真·固有色判定：颜色+发/瞳 命中后排除非固有色（眼圈/白眼/发卡/通红 等）。
+// 正文匹配与档案自由文本提取共用同一判定，防止一侧修了另一侧还漏（v3.3.57 实弹：
+// 档案外貌写「黑眼圈」→ 瞳色被误记为「黑」→ 合法「蓝瞳」正文被拦）。
+const HAIR_NOUN_RE = new RegExp('^(?:' + HAIR + ')$');
+const solidAttr = (text, idx, matched, got, noun) => {
+  const isHair = HAIR_NOUN_RE.test(noun);
+  const tail = text[idx + matched.length] || '';
+  const before = idx > 0 ? text[idx - 1] : '';
+  if (isHair ? HAIR_PART_TAIL.test(tail) : EYE_PART_TAIL.test(tail)) return false;
+  if (EYE_IDIOM.test(got + noun)) return false;
+  if (DEGREE_BEFORE.test(before)) return false;
+  return true;
+};
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const profOf = (name) => {
   const f = settingFiles.find(p => { const s = path.basename(p, '.md'); return s === name || s.endsWith('_' + name); });
@@ -360,9 +373,13 @@ const colorOf = (name, isHair) => {
   // 2) setup-templates 档案模板是自由文本「## 外貌描述」（无标签字段）：
   //    从描述提取「X发/X瞳」颜色，避免快照无「角色外貌」表时门禁静默失效（老书/手动维护场景）
   const desc = txt.split(/^## /m).find(s => s.startsWith('外貌描述')) || '';
-  // 「色」与「发/瞳」之间允许「的」：银色头发 / 银白的长发 都要能命中
-  const m = desc.match(new RegExp(`(?:${COLOR})色?(?:的)?(?:${isHair ? HAIR : EYE})`));
-  return m ? (m[0].match(new RegExp('(?:' + COLOR + ')')) || [])[0] : null;
+  // 「色」与「发/瞳」之间允许「的」：银色头发 / 银白的长发 都要能命中；
+  // 取第一条真·固有色（跳过黑眼圈/黄发卡/通红的眼睛 等非固有色，与正文侧同判定）
+  const re = new RegExp(`(${COLOR})色?(?:的)?(${isHair ? HAIR : EYE})`, 'g');
+  for (const m of desc.matchAll(re)) {
+    if (solidAttr(desc, m.index, m[0], m[1], m[2])) return m[1];
+  }
+  return null;
 };
 // 角色名长优先，避免「张三」吃掉「张三丰」（子串误报）
 // 命名约定允许「地点前缀_实体名」（如 龙城_张三.md），去前缀后也要能命中正文；
@@ -384,13 +401,8 @@ if (profNames.length) {
   const ATTR_RE = new RegExp(`(${COLOR})色?(?:的)?(${HAIR}|${EYE})`, 'g');
   for (const m of chapterBody.matchAll(ATTR_RE)) {
     const idx = m.index, got = m[1], noun = m[2];
-    // ---- 误报防护（2026-10-10 实弹暴露，见脚本顶部常量注释）----
-    const tail = chapterBody[idx + m[0].length] || '';
-    const before = idx > 0 ? chapterBody[idx - 1] : '';
-    const isHairNoun = new RegExp('^(?:' + HAIR + ')$').test(noun);
-    if (isHairNoun ? HAIR_PART_TAIL.test(tail) : EYE_PART_TAIL.test(tail)) continue;
-    if (EYE_IDIOM.test(got + noun)) continue;
-    if (DEGREE_BEFORE.test(before)) continue;
+    // 误报防护（眼圈/白眼/发卡/通红 等非固有色跳过；与档案侧共用 solidAttr 判定）
+    if (!solidAttr(chapterBody, idx, m[0], got, noun)) continue;
     // 取「颜色词」所在句内、前 12 字窗口，归属给其中最靠后的角色名
     // （避免「林山看着青云子的白发」把白发误记到林山头上）
     const pre = chapterBody.slice(0, idx);
@@ -401,7 +413,7 @@ if (profNames.length) {
     if (!who) continue;
     // 名字与颜色之间若出现「…的」（不紧贴名字），发/瞳归属方是另一个名词 → 跳过
     if (win.slice(whoEnd).indexOf('的') > 0) continue;
-    const isHair = new RegExp('^(?:' + HAIR + ')$').test(noun);
+    const isHair = HAIR_NOUN_RE.test(noun);
     const want = colorOf(who, isHair);
     if (want && normColor(got) !== normColor(want)) {
       problems.push(`[描写一致性] ${who} 正文写「${got}${isHair ? '发' : '瞳'}」，设定记「${want}${isHair ? '发' : '瞳'}」——改正文描述或更新档案/快照外貌表`);

@@ -808,3 +808,30 @@ test('伏笔：回收未写「回收方式」→ 警告（不阻断）', () => {
   assert.strictEqual(r.status, 0, r.stderr);
   assert.match(r.stdout, /回收未写明「回收方式」/);
 });
+
+// ---- 档案自由文本提取共用误报防护（v3.3.57 实弹暴露）----
+// 档案「## 外貌描述」是自由文本；此前提取不套误报防护，写「黑眼圈」会把瞳色记成黑，
+// 导致合法「蓝瞳」正文被误拦。
+test('描写一致性：档案「黑眼圈」不污染瞳色（正文蓝瞳通过）', () => {
+  const { snap, chap, set } = colorSetup({ '苏瑶.md': '# 苏瑶\n## 外貌描述\n黑眼圈很重，蓝色瞳孔却很亮。\n' });
+  fs.writeFileSync(chap, '苏瑶的蓝瞳在暗处发亮。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：档案「黄发卡」不污染发色（正文黑发通过）', () => {
+  const { snap, chap, set } = colorSetup({ '苏瑶.md': '# 苏瑶\n## 外貌描述\n戴一只黄发卡，一头黑色长发。\n' });
+  fs.writeFileSync(chap, '苏瑶的黑发垂到腰际。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：档案自由文本真·瞳色矛盾仍拦（蓝色瞳孔 vs 正文红瞳）', () => {
+  const { snap, chap, set } = colorSetup({ '苏瑶.md': '# 苏瑶\n## 外貌描述\n蓝色瞳孔，眼神很冷。\n' });
+  fs.writeFileSync(chap, '苏瑶的红瞳在暗处发亮。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*苏瑶.*红瞳/);
+});
