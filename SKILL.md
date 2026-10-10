@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.57
+version: 3.3.58
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -628,7 +628,7 @@ GET /repos/{book_id}/toc
 
 写完一定章节后，加载 [references/quality-checklist.md](references/quality-checklist.md) 做检查。
 
-**黄金三章专项**：写完前三章后自动跑评估：
+**黄金三章专项**：写完前三章后自动跑评估（⚠️ 开篇趋势已前置：见 [references/opening-design.md](references/opening-design.md)「黄金一章」——钩子要提前到第一章、乃至前 500 字；「三章」是「定调 + 爽点密度」的底线窗口，「五章」是完整开篇公式见 outline-arrangement-2.md）：
 
 | 维度 | 评分标准 |
 |------|----------|
@@ -1099,4 +1099,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.57_
+_版本：v3.3.58_

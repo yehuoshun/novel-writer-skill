@@ -119,3 +119,19 @@ test('标题层级无跳级（围栏感知）', () => {
   }
   assert.deepStrictEqual(bad, [], bad.join('\n'));
 });
+
+test('config schema 枚举 ↔ SKILL.md 词表一致（爽点类型 / 钩子类型）', () => {
+  // 防 schema 枚举值与 SKILL 文档词表漂移：config 里 last_sweet_spot.type / last_hook_*.type
+  // 是枚举强制的，若 SKILL 文档未同步记载，AI 写追踪数据时会写出配置校验拒绝的值
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs', 'config.schema.json'), 'utf-8'));
+  const skill = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf-8');
+  const info = schema.properties.info.properties;
+  const enums = [
+    info.last_sweet_spot.properties.type.enum,
+    info.last_hook_start.properties.type.enum,
+    info.last_hook_end.properties.type.enum,
+  ];
+  const missing = [];
+  for (const e of enums) for (const v of e) if (!skill.includes(v)) missing.push(v);
+  assert.deepStrictEqual([...new Set(missing)], [], `SKILL.md 未记载的枚举值: ${missing.join(', ')}`);
+});
