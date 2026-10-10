@@ -63,6 +63,20 @@ test('版本号一致：frontmatter == 末尾标注 == package.json', () => {
   assert.strictEqual(pkg, fm[1], `package.json ${pkg} != SKILL ${fm[1]}（发版时两者须同步）`);
 });
 
+test('最新提交标题版本 == package.json 版本（防标题写版本但文件没同步，v3.3.79 脱节教训）', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8')).version;
+  const { execSync } = require('node:child_process');
+  let subject;
+  try {
+    subject = execSync('git log -1 --format=%s', { cwd: ROOT, encoding: 'utf-8' }).trim();
+  } catch {
+    return; // 无 git 环境（如 zip 解包直接跑）→ 跳过
+  }
+  const m = subject.match(/v(\d+\.\d+\.\d+)/);
+  if (!m) return; // 标题不带版本号（如 PR merge commit）→ 无法校验，跳过
+  assert.strictEqual(m[1], pkg, `最新提交标题版本 v${m[1]} != package.json ${pkg}（发版时标题+三处须同步）`);
+});
+
 test('无未识别的 CHANGES 分节标记', () => {
   const KNOWN = /^(角色状态变化|冲突进度|新剧情节点|伏笔动作|交接包|地点状态变化|势力状态变化|时间推进|角色移动|物品流转|语雀渲染占位)/;
   const bad = [];
