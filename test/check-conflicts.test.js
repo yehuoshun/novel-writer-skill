@@ -50,6 +50,32 @@ test('已故目录角色状态标已死 → 不误报', () => {
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
 
+// ---- 旧格式 3 列快照（角色|位置|状态，无等级列）----
+// v3.3.42 在 check-consistency 修过同款（位置/状态错位）；check-conflicts 未同步 →
+// 已死检测静默失效 + 状态列被当位置。2026-10-10 全面扫描暴露，补回归。
+test('旧 3 列快照：已故目录角色未标已死 → 仍应冲突', () => {
+  const { set, snap, write } = setup();
+  write('# 状态快照\n## 角色状态\n| 角色 | 位置 | 状态 |\n|------|------|------|\n| 赵六 | 青云山 | 健康 |\n');
+  const r = run([snap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /已死角色/);
+});
+
+test('旧 3 列快照：已故目录角色已标死 → 不误报', () => {
+  const { set, snap, write } = setup();
+  write('# 状态快照\n## 角色状态\n| 角色 | 位置 | 状态 |\n|------|------|------|\n| 赵六 | — | 已死 |\n');
+  const r = run([snap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+test('旧 3 列快照：位置留空但状态含移动语义 → 仅提示不冲突', () => {
+  const { set, snap, write } = setup();
+  write('# 状态快照\n## 角色状态\n| 角色 | 位置 | 状态 |\n|------|------|------|\n| 张三 | — | 移动中 |\n');
+  const r = run([snap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /位置为「—」/);
+});
+
 test('物品归属多行持有者不一致 → 冲突', () => {
   const { set, snap, write } = setup();
   write('# 状态快照\n## 物品归属\n| 物品 | 持有者 | 状态 |\n|------|--------|------|\n| 断锋剑 | 张三 | active |\n| 断锋剑 | 李四 | active |\n');

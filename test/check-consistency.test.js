@@ -122,6 +122,24 @@ test('蓝图出场合规：缺额 ≤1 不拦', () => {
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+// ---- 蓝图占位符过滤（2026-10-10 扫描暴露）----
+// 蓝图「必出场地点/势力」列写「无/—」是占位符，不是实体名；
+// 过滤前：真实实体全出场 + 两列占位符 → 被当「未出场：无、无」误拦整章。
+test('蓝图占位符：地点/势力列写「无」不参与缺失判定', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山 | 各≥1 | 无 | 无 |\n' +
+    '| 4 | 林山 | 各≥1 | — | 待定 |\n');
+  const chap = path.join(dir, '第003章 试.md');
+  fs.writeFileSync(chap, '林山走在路上，拔出断锋剑。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, '占位符被当未出场实体：\n' + r.stdout + r.stderr);
+  assert.doesNotMatch(r.stderr, /蓝图未出场：无/);
+});
+
 test('描写一致性：正文发色与档案矛盾 → 拦', () => {
   const { dir, set, snap } = setup();
   fs.writeFileSync(path.join(set, '角色设定', '主角', '张三.md'), '# 张三\n- 发色：黑\n- 瞳色：深褐\n');

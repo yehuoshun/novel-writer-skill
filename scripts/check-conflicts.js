@@ -52,13 +52,24 @@ const cs = tableRows(section('角色状态'));
 const seen = new Set();
 const statusOf = new Map();
 const posOf = new Map();
+// 表头判别新旧格式：标准 6 列含「等级」（角色|等级|当前位置|状态|背包|最后出场章）；
+// 旧格式 3 列（角色|位置|状态）无等级列 → 位置取第 2 列、状态取第 3 列，
+// 避免把「状态」当位置、并让已死角色检测在旧格式下不静默失效
+// （与 check-consistency.js v3.3.42 的 legacyPos 判别同规则）
+const headerLine = section('角色状态').split('\n').find(l => /^\|\s*角色\s*\|/.test(l)) || '';
+const legacy = !headerLine.includes('等级');
 for (const c of cs) {
   const name = c[0];
   if (/^角色$/.test(name)) continue;
   if (seen.has(name)) conflicts.push(`[角色状态] 「${name}」在状态表出现多行（重复登记）`);
   seen.add(name);
-  if (c.length >= 4) statusOf.set(name, c[3]);
-  if (c.length >= 3) posOf.set(name, c[2]);
+  if (legacy) {
+    if (c.length >= 2) posOf.set(name, c[1]);
+    if (c.length >= 3) statusOf.set(name, c[2]);
+  } else {
+    if (c.length >= 3) posOf.set(name, c[2]);
+    if (c.length >= 4) statusOf.set(name, c[3]);
+  }
 }
 
 // 2. 已死角色：已故目录 vs 状态表

@@ -253,7 +253,10 @@ if (outlinePath) {
       if (!m || Number(m[1]) !== Number(chNo)) continue;
       blueprintMatched = true;
       // 第2/4/5 列 = 必出场角色/地点/势力（第3列是戏份要求，跳过）
-      const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean);
+      // 占位符（无/—/待定 等）不是实体名：过滤后再判缺失，否则「无、无」会被当未出场误拦
+      // （2026-10-10 扫描暴露：蓝图势力列写「无」→ 真实实体全出场仍误报）
+      const PLACEHOLDER = /^(无|—|-{1,2}|－|待定|N\/A|n\/a|na|不涉及|空)$/;
+      const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean).filter(n => !PLACEHOLDER.test(n));
       const missing = names.filter(n => !body.includes(n));
       if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）——补写该角色/地点/势力出场戏份，或调整蓝图清单`);
       // 视角/主要角色仅出场 1 次 → 叙事力度不足（警告，SKILL 门禁15 明文要求）
