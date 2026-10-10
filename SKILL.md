@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.63
+version: 3.3.64
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -537,7 +537,7 @@ graph LR
 
 ### 语雀 API 调用速查（2026-10-07 实弹验证）
 
-> 优先使用 yuque-mcp 工具（`yuque_create_doc` 建文档 / `yuque_batch_update_toc` 批量建分组等；`createTitle` 是 `yuque_batch_update_toc` 支持的 action——**参数 `ops` 传 JSON 数组**（每项 `{"action":"createTitle","title":"正文"}`，子组加 `target_title:"角色设定"` 按名挂父组），**另必填 `confirm:"RESTRUCTURE"` 安全闸**；批量建 TITLE 自动去重（返回 `results[].new_node_uuid`）、复用已有目录，新建 22 组时优先用它；`yuque_update_toc` 仅透传单条 action：appendNode/prependNode/editNode/removeNode，无 createTitle 封装）。MCP 不可用时按下方裸 API 调用。
+> 优先使用 yuque-mcp 工具（`yuque_create_doc` 建文档 / `yuque_batch_update_toc` 批量建分组等；`createTitle` 是 `yuque_batch_update_toc` 支持的 action——**参数 `ops` 传 JSON 数组**（每项 `{"action":"createTitle","title":"正文"}`，子组加 `target_title:"角色设定"` 按名挂父组），**另必填 `confirm:"RESTRUCTURE"` 安全闸**；批量建 TITLE 自动去重（返回 `results[].new_node_uuid`）、复用已有目录，新建 22 组时优先用它；`yuque_update_toc` 仅透传单条 action：appendNode/prependNode/editNode/removeNode，无 createTitle 封装）。MCP 不可用时按下方裸 API 调用（裸 API 与 yuque-mcp **同源**——MCP 即该 API 的封装，2026-10-10 经 `yuque_update_toc` 透传实测行为一致；若所在环境禁止直连 API，则等 MCP 恢复，勿硬闯）。
 > 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
 
 **建分组（新建小说 22 组，含正文组）**：
@@ -1104,4 +1104,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.63_
+_版本：v3.3.64_
