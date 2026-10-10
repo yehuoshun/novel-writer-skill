@@ -57,8 +57,11 @@ def main() -> int:
 
     hook = os.environ.get("DINGTALK_WEBHOOK", "")
     if not hook:
-        print("[DingTalk] ❌ 未配置 DINGTALK_WEBHOOK", file=sys.stderr)
-        return 1
+        # 通知是尽力而为，不应阻断 release：缺配置与发送失败一致返回 0（2026-10-10 修正，
+        # 此前返回 1 会让未配 secret 的仓库在 release 建完后还跑挂 job——与下方
+        # 「发送失败（不阻断 CI）」自相矛盾）
+        print("[DingTalk] ⚠️ 未配置 DINGTALK_WEBHOOK，跳过通知（不阻断 CI）", file=sys.stderr)
+        return 0
 
     payload = json.dumps({"msgtype": "markdown", "markdown": {"title": title, "text": text}}).encode()
     for attempt in range(3):
