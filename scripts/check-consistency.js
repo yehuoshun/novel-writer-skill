@@ -268,6 +268,15 @@ const COLOR_NORM = { 银白: '银', 灰白: '灰', 金棕: '棕', 棕黑: '黑',
 const normColor = (c) => COLOR_NORM[c] || c;
 const HAIR = '发丝|头发|长发|短发|卷发|刘海|发';
 const EYE = '眼眸|双眸|眸子|瞳孔|瞳|眼睛|眼';
+// 描写一致性误报防护（2026-10-10 实弹暴露）：
+//   颜色词后面的名词若不是「发色/瞳色」，而是眼部器官部件或头发配件/发式，则跳过：
+//   黑眼圈 / 白眼 / 白眼球 / 眼眶 / 眼白 / 分泌眼泪；黄发卡 / 红发带 / 黑发夹 / 发型…
+const EYE_PART_TAIL = /^(圈|眶|白|球|袋|皮|泪|影|睑|角|神|光|镜|药|前|尾|睫|毛|窝)/;
+const HAIR_PART_TAIL = /^(卡|带|夹|箍|型|梢|根|油|蜡|胶|际|量|质|廊|色|饰|线|辫|绳)/;
+// 「白眼」类成语/俗语（翻白眼等），不是瞳色
+const EYE_IDIOM = /^(?:白眼|红眼|黑眼|青眼|黄眼|白眼球|红眼病)$/;
+// 程度/情绪副词紧贴颜色前（通红的眼睛 / 哭红的眼 / 涨红了脸）——临时泛红，非固有色
+const DEGREE_BEFORE = /[通涨急羞气哭憋烧绯鲜血]/;
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const profOf = (name) => {
   const f = settingFiles.find(p => { const s = path.basename(p, '.md'); return s === name || s.endsWith('_' + name); });
@@ -320,6 +329,13 @@ if (profNames.length) {
   const ATTR_RE = new RegExp(`(${COLOR})色?(?:的)?(${HAIR}|${EYE})`, 'g');
   for (const m of chapterBody.matchAll(ATTR_RE)) {
     const idx = m.index, got = m[1], noun = m[2];
+    // ---- 误报防护（2026-10-10 实弹暴露，见脚本顶部常量注释）----
+    const tail = chapterBody[idx + m[0].length] || '';
+    const before = idx > 0 ? chapterBody[idx - 1] : '';
+    const isHairNoun = new RegExp('^(?:' + HAIR + ')$').test(noun);
+    if (isHairNoun ? HAIR_PART_TAIL.test(tail) : EYE_PART_TAIL.test(tail)) continue;
+    if (EYE_IDIOM.test(got + noun)) continue;
+    if (DEGREE_BEFORE.test(before)) continue;
     // 取「颜色词」所在句内、前 12 字窗口，归属给其中最靠后的角色名
     // （避免「林山看着青云子的白发」把白发误记到林山头上）
     const pre = chapterBody.slice(0, idx);

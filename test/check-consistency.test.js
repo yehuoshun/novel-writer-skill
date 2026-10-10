@@ -674,3 +674,63 @@ test('摘要涉及实体已在声明段声明（门禁11已拦）→ 不重复�
   assert.match(r.stderr, /未登记实体：黑风寨/);
   assert.doesNotMatch(r.stdout, /引用校验·摘要/);
 });
+
+// ---- 描写一致性误报防护（v3.3.54，2026-10-10 实弹暴露）----
+// 现实正文里的「黑眼圈 / 翻白眼 / 通红的眼睛 / 黄发卡 / 红发带」此前被当成发色/瞳色误拦，
+// 门禁几乎每章误报。以下回归锁定：这些非固有色描述不拦，真·发色瞳色矛盾仍拦。
+const 苏瑶 = { '苏瑶.md': '# 苏瑶\n- 发色：黑\n- 瞳色：蓝\n' };
+
+test('描写一致性：黑眼圈（眼部器官）→ 不误报', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap, '苏瑶顶着两个黑眼圈走进会议室。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：翻白眼 / 眼眶红 / 眼白（部件与俗语）→ 不误报', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap,
+    '苏瑶翻了个白眼，没说话。\n苏瑶的眼眶红了。\n苏瑶气得眼白都翻了出来。\n' +
+    CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：通红的眼睛（临时泛红）→ 不误报', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap, '哭过之后，苏瑶通红的眼睛还没消肿。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：头发配件/发式（黄发卡/红发带/黑发夹/发型）→ 不误报', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap,
+    '苏瑶戴着一只黄色发卡。\n苏瑶用红发带扎起头发。\n苏瑶夹着黑发夹。\n苏瑶换了个新发型。\n' +
+    CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /描写一致性/);
+});
+
+test('描写一致性：真·瞳色矛盾（蓝瞳人物写红瞳）仍拦', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap, '苏瑶的红瞳在暗处发亮。\n' + CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /描写一致性.*苏瑶.*红瞳/);
+});
+
+test('描写一致性：误报与真阳性混排 → 只报真阳性', () => {
+  const { snap, chap, set } = colorSetup(苏瑶);
+  fs.writeFileSync(chap,
+    '苏瑶顶着黑眼圈。\n苏瑶翻了个白眼。\n苏瑶戴着一只黄色发卡。\n苏瑶的红瞳在暗处发亮。\n' +
+    CH('<!-- 角色状态变化 -->\n- **[苏瑶]**：健康→健康'));
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /苏瑶.*红瞳/);
+  assert.doesNotMatch(r.stderr, /黑瞳|白瞳|黄发/);
+});
