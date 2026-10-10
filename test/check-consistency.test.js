@@ -734,3 +734,77 @@ test('描写一致性：误报与真阳性混排 → 只报真阳性', () => {
   assert.match(r.stderr, /苏瑶.*红瞳/);
   assert.doesNotMatch(r.stderr, /黑瞳|白瞳|黄发/);
 });
+
+// ---- 门禁14 未知实体候选（v3.3.55）：脚本给候选清单，AI 终判 —— 仅警告不阻断 ----
+test('门禁14：正文重复出现的未登记人物 → 候选警告（不阻断）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, '第005章 x.md');
+  fs.writeFileSync(chap,
+    '沈鹤拦住了林山。沈鹤说，他等这一天很久了。\n' +
+    '---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /未知实体候选.*沈鹤/);
+});
+
+test('门禁14：已登记实体及其子串不列为候选', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, '第005章 x.md');
+  fs.writeFileSync(chap,
+    '林山回到青云山。林山望着青云山出神。\n' +
+    '---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /未知实体候选/);
+});
+
+test('门禁14：单次出现的未登记名词不误列（≥2 次才记）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, '第005章 x.md');
+  fs.writeFileSync(chap,
+    '林山路过一座无名的断魂崖。\n' +
+    '---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /未知实体候选/);
+});
+
+// ---- 蓝图门禁两处兜底（v3.3.55）----
+test('蓝图：文件名无「第N章」→ 显式警告（不再静默跳过）', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山 | — | 青云山 | |\n');
+  const chap = path.join(dir, '随手记.md');
+  fs.writeFileSync(chap, '林山站在青云山。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /无法从章节文件名解析章号/);
+});
+
+test('蓝图：必出场角色全章仅出场 1 次 → 叙事力度警告（不阻断）', () => {
+  const { dir, set, snap } = setup();
+  const outline = path.join(dir, '细纲.md');
+  fs.writeFileSync(outline,
+    '| 章 | 必出场角色 | 戏份要求 | 必出场地点 | 必出场势力 |\n' +
+    '|----|-----------|---------|-----------|-----------|\n' +
+    '| 3 | 林山 | 主角≥3场景 | 青云山 | |\n');
+  const chap = path.join(dir, '第003章 x.md');
+  fs.writeFileSync(chap, '林山站在青云山的石阶上。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set, outline]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /「林山」全章仅出场 1 次/);
+});
+
+// ---- 伏笔回收方式兜底（v3.3.55）----
+test('伏笔：回收未写「回收方式」→ 警告（不阻断）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, '第007章 x.md');
+  fs.writeFileSync(chap,
+    '正文。\n---CHANGES---\n<!-- 伏笔动作（四态，必须引用伏笔ID） -->\n- ✅回收 **v1 断锋来历** | 就此了结\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /回收未写明「回收方式」/);
+});

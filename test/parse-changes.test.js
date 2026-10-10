@@ -81,3 +81,20 @@ test('裸名 **张三** 也能解析', () => {
   const j = JSON.parse(r.stdout);
   assert.strictEqual(j.characterMoves[0].name, '张三');
 });
+
+// ---- 分节标记归一化（v3.3.55）：忽略标记内外空白，兼容紧凑写法 ----
+test('无空格分节标记（<!--角色状态变化-->）也能解析', () => {
+  const r = run('正文。\n---CHANGES---\n<!--角色状态变化-->\n- **[张三]**：健康→轻伤\n<!--交接包-->\n- 剧情当前位置：x\n---END CHANGES---\n');
+  assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.characterStates[0].name, '张三');
+  assert.strictEqual(j.handoff[0].key, '剧情当前位置');
+});
+
+test('分节标记带说明后缀且无空格（<!--伏笔动作（四态）-->）也能解析', () => {
+  const r = run('正文。\n---CHANGES---\n<!--伏笔动作（四态，必须引用伏笔ID）-->\n- 🔨埋设 **v1 断锋来历** | 预期读者效果：X\n---END CHANGES---\n');
+  assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.foreshadowing[0].type, 'plant');
+  assert.strictEqual(j.foreshadowing[0].id, 'v1');
+});

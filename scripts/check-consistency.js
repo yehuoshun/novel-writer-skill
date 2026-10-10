@@ -177,6 +177,10 @@ for (const f of changes.foreshadowing || []) {
     } else if (stateOf[f.id] && /已回收|已废弃|resolved|abandoned/i.test(stateOf[f.id])) {
       problems.push(`[伏笔闭环] 伏笔 ${f.id} 已是终态「${stateOf[f.id]}」，不能再 ${f.type}（状态不可回退）——终态伏笔只能留在快照，不可再动作`);
     }
+    // 门禁16 补齐：回收必须说明「回收方式」才能核对是否匹配埋设预期（自由文本无法规则判定，缺说明时给警告）
+    if (f.type === 'harvest' && !/回收方式/.test(f.detail || '')) {
+      warnings.push(`[伏笔闭环] ${f.id} 回收未写明「回收方式」——无法核对回收是否匹配埋设时的预期读者效果`);
+    }
   }
 }
 
@@ -252,11 +256,62 @@ if (outlinePath) {
       const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean);
       const missing = names.filter(n => !body.includes(n));
       if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）——补写该角色/地点/势力出场戏份，或调整蓝图清单`);
+      // 视角/主要角色仅出场 1 次 → 叙事力度不足（警告，SKILL 门禁15 明文要求）
+      for (const rn of (m[2] || '').split(/[、,，/]/).map(s => s.trim()).filter(Boolean)) {
+        if (body.split(rn).length - 1 === 1) {
+          warnings.push(`[蓝图出场合规] 「${rn}」全章仅出场 1 次——叙事力度可能不足（视角/主要角色建议 ≥3 次有效出场）`);
+        }
+      }
     }
     // 细纲存在但蓝图清单无本章行 → 警告（文档要求每章附蓝图，漏附会让门禁空转）
     if (!blueprintMatched) {
       warnings.push(`[蓝图出场合规] 细纲蓝图清单无第 ${chNo} 章的行（outline-arrangement.md 要求每章附蓝图出场清单）`);
     }
+  } else {
+    // 章号解析失败 → 之前静默跳过，门禁空转不报错（v3.3.54 扫描暴露）；改为显式警告
+    warnings.push('[蓝图出场合规] 无法从章节文件名解析章号（约定命名「第NNN章.md」），本章蓝图校验已跳过——核对文件名或细纲');
+  }
+}
+
+// ---- 门禁 14：未知实体候选（正文冒出、CHANGES 未声明）----
+// 零依赖不引 NER：按「CJK 连续段」切分，用「后缀词（地点/势力）+ 姓氏（人物 2 字名）」
+// 两类锚点提候选，正文出现 ≥2 次才记（滤掉一次性常见词），再减去已登记实体与 CHANGES 已声明实体。
+// 超阈值(5) → 警告提示 AI 确认（有剧情作用的补建档/走声明段，龙套可忽略）。
+// ⚠️ 仅警告不硬打回：切词启发式必有噪声，硬拦风险大于收益；终判在 AI 侧（SKILL 门禁14）。
+{
+  const knownNames = new Set();
+  for (const s of stems) {
+    knownNames.add(s);
+    const i = s.indexOf('_');
+    if (i > 0) knownNames.add(s.slice(i + 1));
+  }
+  for (const r of refs) knownNames.add(r);
+  const LOC_SUF = '城山谷宗门派寨国岛殿阁寺院村镇州府宫洞渊海林教帮会盟族塔楼关岭峰堂庄堡窟洲界域';
+  const SURNAME = '赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜谢邹喻柏窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳唐罗薛伍余米贝姚孟顾尹江钟田杜高卢';
+  const STOP = new Set(['陈列', '王子', '王道', '王族', '江湖', '江山', '山脉', '山谷', '海口', '海边', '山林', '林子', '马路', '马上', '高原', '汪洋', '皮肤', '容易', '余下', '唐突', '金鱼', '银色', '黄昏', '白天', '白云', '青山']);
+  const LEAD = '的地得了着在到从向和与是也都很把被给对为之其这那一';
+  const knownArr = [...knownNames];
+  const inKnown = (t) => knownArr.some(k => k.includes(t));  // 已知实体的子串（如「云山」⊂「青云山」）不算新实体
+  const cand = new Map();
+  const add = (t) => {
+    while (t.length > 2 && LEAD.includes(t[0])) t = t.slice(1);  // 剥掉「的城/在山」类粘连前缀
+    if (t.length < 2 || knownNames.has(t) || STOP.has(t) || inKnown(t)) return;
+    cand.set(t, (cand.get(t) || 0) + 1);
+  };
+  for (const run of chapterBody.match(/[\u4e00-\u9fa5]+/g) || []) {
+    for (let i = 0; i < run.length; i++) {
+      // 地点/势力：锚定后缀词，向左取 2-3 字（4 字噪声大，不取）
+      if (LOC_SUF.includes(run[i])) {
+        for (let L = 2; L <= 3; L++) if (i + 1 - L >= 0) add(run.slice(i + 1 - L, i + 1));
+      }
+      // 人物：以常见姓氏起头取 2 字（三字名/复姓误捕率高，交 AI 判）
+      if (i + 2 <= run.length && SURNAME.includes(run[i])) add(run.slice(i, i + 2));
+    }
+  }
+  const suspects = [...cand.entries()].filter(([, c]) => c >= 2).map(([n]) => n);
+  if (suspects.length) {
+    const over = suspects.length > 5 ? '——超阈值(5)：有剧情作用的补建档/走声明段，龙套可忽略' : '';
+    warnings.push(`[未知实体候选] 正文疑似新增未登记实体 ${suspects.length} 个：${suspects.join('、')}${over}`);
   }
 }
 

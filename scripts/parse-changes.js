@@ -24,22 +24,20 @@ const BLOCK = MATCH[1];
 
 const RESULT = {};
 
+// 分节标记：marker = 标记内文（允许尾部说明，如「伏笔动作（四态…）」）。
+// 匹配按「内文去除首尾空白后以 marker 开头」判定 → <!-- 角色状态变化 --> 与
+// <!--角色状态变化--> 等价（v3.3.54 扫描暴露：此前多数标记精确匹配单空格，写法一变就报「未识别」）。
 const SECTIONS = [
-  { key: 'characterStates', pattern: /<!-- 角色状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  { key: 'conflictProgress', pattern: /<!-- 冲突进度 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  { key: 'newPlotNodes', pattern: /<!-- 新剧情节点 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  {
-    key: 'foreshadowing',
-    pattern: /<!--\s*伏笔动作/,  // 兼容带说明后缀的标题：<!-- 伏笔动作（四态，必须引用伏笔ID） -->
-    // 四态：🔨埋设/➡️推进/✅回收/❌废弃 + 名称段 **vX 伏笔名**（兼容旧格式 **伏笔名**）
-    re: /^-\s*(🔨埋设|➡️推进|✅回收|❌废弃)\s*\*\*([^*]+)\*\*(.*)/
-  },
-  { key: 'handoff', pattern: /<!--\s*交接包/, re: /^- ([^：:]+)[：:](.*)/ },  // 兼容 <!-- 交接包（给下一章 AI 的交接单） -->
-  { key: 'locationChanges', pattern: /<!-- 地点状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  { key: 'factionChanges', pattern: /<!-- 势力状态变化 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  { key: 'timeProgress', pattern: /<!-- 时间推进 -->/, re: /^- (.*)/ },
-  { key: 'characterMoves', pattern: /<!-- 角色移动 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
-  { key: 'itemTransfers', pattern: /<!-- 物品流转 -->/, re: /^- \*\*(.+?)\*\*[:：](.+)/ },
+  { key: 'characterStates', marker: '角色状态变化' },
+  { key: 'conflictProgress', marker: '冲突进度' },
+  { key: 'newPlotNodes', marker: '新剧情节点' },
+  { key: 'foreshadowing', marker: '伏笔动作' },
+  { key: 'handoff', marker: '交接包' },
+  { key: 'locationChanges', marker: '地点状态变化' },
+  { key: 'factionChanges', marker: '势力状态变化' },
+  { key: 'timeProgress', marker: '时间推进' },
+  { key: 'characterMoves', marker: '角色移动' },
+  { key: 'itemTransfers', marker: '物品流转' },
 ];
 
 const LINES = BLOCK.split('\n');
@@ -51,21 +49,18 @@ for (const LINE of LINES) {
   const trimmed = LINE.trim();
   if (!trimmed) continue;
 
-  // Detect section header
-  let found = false;
-  for (const S of SECTIONS) {
-    if (S.pattern.test(trimmed)) {
+  // Detect section header（归一化：忽略标记内外空白，兼容带说明后缀的标题）
+  const mk = trimmed.match(/^<!--\s*([\s\S]*?)\s*-->$/);
+  if (mk) {
+    const inner = mk[1];
+    const S = SECTIONS.find(s => inner === s.marker || inner.startsWith(s.marker));
+    if (S) {
       currentSection = S.key;
       RESULT[currentSection] = RESULT[currentSection] || [];
-      found = true;
-      break;
+    } else {
+      // 未识别的分节标记 → 记录后报错，避免静默吞入上一分节
+      unknownMarkers.push(trimmed);
     }
-  }
-  if (found) continue;
-
-  // 未识别的分节标记（<!-- xxx -->）→ 记录后报错，避免静默吞入上一分节
-  if (/^<!--.*-->$/.test(trimmed)) {
-    unknownMarkers.push(trimmed);
     continue;
   }
 
