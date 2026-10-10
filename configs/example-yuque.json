@@ -59,7 +59,7 @@
     "style": "classical",
     "narrative_style": "fast-paced",
     "chapter_words": {
-      "min": 2000,
+      "min": 2500,
       "max": 4000
     }
   }

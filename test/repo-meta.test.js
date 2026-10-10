@@ -135,3 +135,19 @@ test('config schema 枚举 ↔ SKILL.md 词表一致（爽点类型 / 钩子类�
   for (const e of enums) for (const v of e) if (!skill.includes(v)) missing.push(v);
   assert.deepStrictEqual([...new Set(missing)], [], `SKILL.md 未记载的枚举值: ${missing.join(', ')}`);
 });
+
+test('示例配置 chapter_words.min 与 SKILL 内嵌样例一致（防 v3.3.51 漂移重演）', () => {
+  // v3.3.51 把默认字数改为 2500-4000 时三份示例配置没跟上（仍 2000），AI 照抄示例会降低门禁下限。
+  // 以 SKILL.md 内嵌配置样例为准，校验全部示例配置的 min 与之相等。
+  const skill = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf-8');
+  const mins = [...skill.matchAll(/"min":\s*(\d+)/g)].map((m) => Number(m[1]));
+  assert.ok(mins.length > 0, 'SKILL.md 内嵌配置样例应含 chapter_words.min');
+  assert.ok(mins.every((v) => v > 0), 'SKILL.md 内嵌样例 min 应全为合法数值');
+  const bad = [];
+  for (const f of ['example.json', 'example-yuque.json', 'example-both.json']) {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs', f), 'utf-8'));
+    const min = cfg.writing.chapter_words.min;
+    if (!mins.includes(min)) bad.push(`${f}: min=${min} 不在 SKILL 内嵌样例取值 ${mins.join('/')} 内`);
+  }
+  assert.deepStrictEqual(bad, [], bad.join('\n'));
+});
