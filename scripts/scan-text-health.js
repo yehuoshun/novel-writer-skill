@@ -16,12 +16,14 @@
  *   3. 修饰分布（比喻词、封闭逻辑词「只有/仅仅/恰好」密度）
  *   4. 认知句模式（他总觉得/这让他知道/他意识到/久到 — 提醒非禁用）
  *   5. 标点硬伤（英文标点混入、引号不成对）
+ *   6. 缩进健康（自然段段首两全角空格；豁免规则与 check-indentation 共享 lib/text-format.js）
  *
  * 输出: ✅/⚠️ 报告，exit 0=健康，1=有硬伤（英文标点/引号不成对/字数不足）
  */
 
 const fs = require('fs');
 const path = require('path');
+const { INDENT, isExempt } = require('./lib/text-format');
 
 let raw;
 const [arg, cfgArg] = process.argv.slice(2);
@@ -131,9 +133,25 @@ if (halfSoft) { notes.push(`半角括号/冒号 ${halfSoft.length} 处（: ; ( )
 const openQ = (noComment.match(/“/g) || []).length;
 const closeQ = (noComment.match(/”/g) || []).length;
 if (openQ !== closeQ) { issues.push(`引号不成对（“ ${openQ} / ” ${closeQ}）`); hard = 1; }
-const noIndent = body.split('\n').filter(l => l.startsWith('　　')).length;
-const totalParas = body.split('\n').filter(l => l.trim()).length;
-if (totalParas && noIndent < totalParas * 0.9) notes.push(`首行缩进缺失（${noIndent}/${totalParas} 段有缩进）`);
+// 缩进健康：与 check-indentation.js 同规则（共享 lib/text-format.js，防口径漂移）——
+// 只统计「自然段首行」（标题/列表/引用/表格/代码块/场景分隔符等豁免行不进分母），
+// 段内续行不强制（上一行是空行/文件开头/豁免行才算新段）。此前用「非空行」粗估分母，
+// 会把豁免行计入导致合规正文误报（2026-10-10 全面扫描发现）
+const LINES = body.split('\n');
+let inCodeBlock = false;
+let paraFirst = 0, paraIndented = 0;
+for (let i = 0; i < LINES.length; i++) {
+  const t = LINES[i].trim();
+  if (/^```|^~~~/.test(t)) { inCodeBlock = !inCodeBlock; continue; }
+  if (inCodeBlock) continue;
+  if (isExempt(LINES[i], inCodeBlock)) continue;
+  const prev = i === 0 ? '' : LINES[i - 1];
+  const prevExempt = i === 0 || isExempt(prev) || /^```|^~~~/.test(prev.trim());
+  if (!prevExempt) continue; // 段内续行，不强制
+  paraFirst++;
+  if (LINES[i].startsWith(INDENT)) paraIndented++;
+}
+if (paraFirst && paraIndented < paraFirst * 0.9) notes.push(`首行缩进缺失（${paraIndented}/${paraFirst} 个自然段有缩进）`);
 
 // ---- 5.5 字数对照（config.chapter_words.min/max，2026-10-10 实弹暴露：
 //       此前约束只写在 SKILL 文档无脚本兜底，1685 字正文照样全绿通过验收）----
