@@ -22,3 +22,7 @@ configs/*.json
 !configs/config.schema.json
 # 生命周期模拟临时目录（误提交防护）
 nw-lifecycle.*
+
+# Python
+__pycache__/
+*.pyc
