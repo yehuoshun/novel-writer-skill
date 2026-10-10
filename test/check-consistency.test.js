@@ -787,6 +787,17 @@ test('门禁14：单次出现的未登记名词不误列（≥2 次才记）', (
   assert.doesNotMatch(r.stdout, /未知实体候选/);
 });
 
+test('门禁14：宗门场景高频词与姓氏粘连碎片不列为候选（2026-10-10 实弹噪声）', () => {
+  const { dir, set, snap } = setup();
+  const chap = path.join(dir, '第005章 x.md');
+  fs.writeFileSync(chap,
+    '林山走出外门，回到屋里。林山站在后院，看见林山脚下的大门。\n' +
+    '---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stdout, /未知实体候选.*外门|未知实体候选.*见林|未知实体候选.*后院/);
+});
+
 // ---- 蓝图门禁两处兜底（v3.3.55）----
 test('蓝图：文件名无「第N章」→ 显式警告（不再静默跳过）', () => {
   const { dir, set, snap } = setup();
