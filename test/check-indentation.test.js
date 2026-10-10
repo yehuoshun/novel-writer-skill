@@ -49,3 +49,16 @@ test('文件不存在 → 退出码 2', () => {
   const r = run('/no/such/file.md');
   assert.strictEqual(r.status, 2);
 });
+// ---- 场景分隔符豁免（v3.3.56 实弹暴露：*** / --- 被当成缺缩进段落）----
+test('场景分隔符 *** / --- / ___ / —— / ··· → 豁免，不误报', () => {
+  const content = '　　第一段。\n\n***\n\n　　第二段。\n\n---\n\n　　第三段。\n\n___\n\n　　第四段。\n\n——\n\n　　第五段。\n\n···\n\n　　第六段。\n';
+  const p = tmp('sep.md', content);
+  const r = run(p);
+  assert.strictEqual(r.status, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+});
+
+test('形似分隔符但带文字（--- 第2节 ---）→ 仍算段落，缺缩进照报', () => {
+  const p = tmp('sep2.md', '　　第一段。\n\n--- 第2节 ---\n');
+  const r = run(p);
+  assert.strictEqual(r.status, 1, `stdout: ${r.stdout}`);
+});

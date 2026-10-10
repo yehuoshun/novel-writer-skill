@@ -66,7 +66,7 @@ else if (longPct < 15) notes.push(`长句占比仅 ${longPct.toFixed(0)}% — �
 else notes.push(`句长分布健康（长句 ${longPct.toFixed(0)}%，短碎片 ${shortS.length} 句）`);
 
 // ---- 3. 修饰分布 ----
-const metaphors = (body.match(/像|仿佛/g) || []).length;
+const metaphors = (body.match(/(?<![好不理想图对气景迹形现印偶])像|仿佛/g) || []).length;
 if (enough && metaphors / zhCount * 1000 > 4) notes.push(`比喻词密度 ${(metaphors / zhCount * 1000).toFixed(1)}/千字（阈值 ≤4）— 比喻偏密`);
 const closedWords = (body.match(/只有|仅仅|恰好|刚好|唯一|无非/g) || []).length;
 if (closedWords >= 3) notes.push(`封闭逻辑词 ${closedWords} 处（只有/仅仅/恰好…）— 检查叙述是否过于精确，可用「还有/又」替换`);
@@ -104,8 +104,8 @@ for (const s of starts) {
 // 连接词滥用：然后/接着/于是 密度
 const connectors = (body.match(/然后|接着|于是|接下来/g) || []).length;
 if (enough && connectors / zhCount * 1000 > 2) notes.push(`连接词密度 ${(connectors / zhCount * 1000).toFixed(1)}/千字（然后/接着/于是）— 检查因果链是否靠连接词硬串`);
-// 「的」字句密度（是…的 结构滥用）
-const deSents = (body.match(/是[^。！？!?]{2,15}的/g) || []).length;
+// 「的」字句密度（是…的 结构滥用）——排除「但是/就是/还是/那是/要是」类连词里的「是」（v3.3.56 实弹暴露：连词被当判断腔误算）
+const deSents = (body.match(/(?<![但就还那要于可总或若如尽既倒偏确只竟便则乃亦更])是[^。！？!?]{2,15}的/g) || []).length;
 if (deSents >= 3) notes.push(`「是…的」结构 ${deSents} 处 — 书面判断腔，换直接叙述`);
 // 废话填充：明显空转（不由分说/二话不说/只见/但见）
 const filler = (body.match(/不由分说|二话不说|只见|但见/g) || []).length;

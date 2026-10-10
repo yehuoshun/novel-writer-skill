@@ -19,7 +19,7 @@
 const fs = require('fs');
 
 const PLACEHOLDER = '<!-- 语雀渲染占位（首段缩进保护） -->';
-const INDENT = '\u3000\u3000';
+const { INDENT, isExempt } = require('./lib/text-format');
 
 if (process.argv.length < 3) {
   console.error('❌ 用法: node prepare-upload.js <正文.md> [输出.md]');
@@ -36,28 +36,15 @@ const FULL = fs.readFileSync(SRC, 'utf8');
 const BODY = FULL.split('---CHANGES---')[0].replace(/\s+$/, '');
 const LINES = BODY.split('\n');
 
-// ---- 缩进校验（与 check-indentation.js 同规则）----
+// ---- 缩进校验（与 check-indentation.js 同规则，共用 scripts/lib/text-format.js）----
 let inCodeBlock = false;
-const isExempt = (line) => {
-  const t = line.trim();
-  if (!t || inCodeBlock) return true;
-  if (/^```|^~~~/.test(t)) return true;
-  if (/^#/.test(t)) return true;
-  if (/^>/.test(t)) return true;
-  if (/^[-*+] |^\d+[.、] /.test(t) || /^[-*+]$/.test(t)) return true;
-  if (/^\|/.test(t)) return true;
-  if (/^<!--/.test(t)) return true;
-  if (/^\*\*.+\*\*$/.test(t)) return true;
-  if (/^!\[/.test(t)) return true;
-  return false;
-};
 const problems = [];
 for (let i = 0; i < LINES.length; i++) {
   const line = LINES[i];
   const t = line.trim();
   if (/^```|^~~~/.test(t)) { inCodeBlock = !inCodeBlock; continue; }
   if (inCodeBlock) continue;
-  if (isExempt(line)) continue;
+  if (isExempt(line, inCodeBlock)) continue;
   const prev = i === 0 ? '' : LINES[i - 1];
   const prevExempt = i === 0 || isExempt(prev) || /^```|^~~~/.test(prev.trim());
   if (!prevExempt) continue;

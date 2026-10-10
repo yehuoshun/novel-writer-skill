@@ -29,24 +29,9 @@ const FULL = fs.readFileSync(PATH, 'utf8');
 const BODY = FULL.split('---CHANGES---')[0];
 const LINES = BODY.split('\n');
 
-const INDENT = '\u3000\u3000';
+const { INDENT, isExempt } = require('./lib/text-format');
 const problems = [];
 let inCodeBlock = false;
-
-function isExempt(line) {
-  const t = line.trim();
-  if (!t) return true;                       // 空行
-  if (inCodeBlock) return true;              // 代码块内部
-  if (/^```|^~~~/.test(t)) return true;      // 代码围栏（含结束围栏）
-  if (/^#/.test(t)) return true;             // 标题
-  if (/^>/.test(t)) return true;             // 引用块
-  if (/^[-*+] |^\d+[.、] /.test(t) || /^[-*+]$/.test(t)) return true;  // 列表项
-  if (/^\|/.test(t)) return true;            // 表格
-  if (/^<!--/.test(t)) return true;          // HTML 注释
-  if (/^\*\*.+\*\*$/.test(t)) return true;   // 独立加粗行（如小标题式强调）
-  if (/^!\[/.test(t)) return true;           // 图片
-  return false;
-}
 
 for (let i = 0; i < LINES.length; i++) {
   const line = LINES[i];
@@ -59,7 +44,7 @@ for (let i = 0; i < LINES.length; i++) {
   }
   if (inCodeBlock) continue;
 
-  if (isExempt(line)) continue;
+  if (isExempt(line, inCodeBlock)) continue;
 
   // 段首判定：上一行是空行 / 文件开头 / 豁免行 → 当前行为新段落首行
   const prev = i === 0 ? '' : LINES[i - 1];

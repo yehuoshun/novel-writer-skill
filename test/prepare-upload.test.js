@@ -60,3 +60,9 @@ test('文件不存在 → 退出码 2', () => {
   const r = run(['/no/such/file.md']);
   assert.strictEqual(r.status, 2);
 });
+// ---- 场景分隔符豁免（与 check-indentation 共用 scripts/lib/text-format.js，防两处漂移）----
+test('场景分隔符 *** / --- 豁免缩进，与 check-indentation 同规则', () => {
+  const { p } = tmp('　　第一段。\n\n***\n\n　　第二段。\n\n---\n\n　　第三段。\n' + CHANGES);
+  const r = run([p]);
+  assert.strictEqual(r.status, 0, r.stderr);
+});

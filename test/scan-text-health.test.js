@@ -100,3 +100,23 @@ test('部分段落无缩进 → 提示缩进缺失', () => {
   const t = '　　缩进段落。' + '内容补充。'.repeat(20) + '\n无缩进段落。' + '内容补充。'.repeat(20) + '\n　　缩进段落。' + '内容补充。'.repeat(20);
   assert.match(run(t).stdout, /缩进缺失/);
 });
+
+// ---- 误报修正（v3.3.56 实弹暴露）----
+const FILL = '继续补充无关紧要的叙述内容，把字数凑足到样本线。'.repeat(70);
+
+test('连词里的「是」（但是/就是/那是）不误报「是…的」判断腔', () => {
+  const t = '　　但是他说的不假。就是这条路的尽头。那是他忘不了的地方。' + FILL;
+  const r = run(t);
+  assert.ok(!/是…的/.test(r.stdout), `误报:\n${r.stdout}`);
+});
+
+test('真·「是…的」判断腔仍提示（线索未误伤）', () => {
+  const t = '　　这把剑是师父传的。那封信是她写的。这条路是他选的。' + FILL;
+  assert.match(run(t).stdout, /是…的/);
+});
+
+test('「好像/不像/图像」不计入比喻密度', () => {
+  const t = '　　他好像明白了。'.repeat(60) + FILL;
+  const r = run(t);
+  assert.ok(!/比喻偏密/.test(r.stdout), `误报:\n${r.stdout}`);
+});
