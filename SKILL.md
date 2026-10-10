@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.3.84
+version: 3.3.85
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -132,6 +132,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
     - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
 12. 开始写全书大纲（**必完成**：全书大纲+卷大纲+章节细纲含蓝图出场清单；不完成不进写章节流程）
+13. **生成简介（含发布 tag）**：按 [references/description-tags.md](references/description-tags.md) 生成简介正文 + 番茄 tag 块（**目前仅支持番茄小说 tag**：主分类必选×1、主题/角色/情节各≤2，选项列表与决策准则见该文档；其他平台待实弹需求再扩展）；简介落库——语雀：建「简介」DOC（挂 content 分组下）；本地：`设定/简介.md`；双写：两处都写
 
 **设定问答中途停止**：
 - 用户输入「够了」→ 用已有信息生成设定
@@ -1092,6 +1093,7 @@ GET /repos/{book_id}/toc
 | [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法 |
 | [references/style-modules-6.md](references/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
+| [references/description-tags.md](references/description-tags.md) | 简介 Tag 生成策略（番茄小说）：阅读标签规则+四类选项列表+选 tag 决策准则+实战示例 |
 
 ### 题材与结构
 
@@ -1131,4 +1133,4 @@ GET /repos/{book_id}/toc
 
 ---
 
-_版本：v3.3.84_
+_版本：v3.3.85_
