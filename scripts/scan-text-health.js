@@ -4,7 +4,11 @@
  *
  * 用法:
  *   node scan-text-health.js < 正文.md
- *   node scan-text-health.js /path/to/正文.md
+ *   node scan-text-health.js /path/to/正文.md [config.json]
+ *
+ * 可选第 2 参数 config.json：对照 writing.chapter_words 做字数门禁——
+ *   正文汉字数 < min → 硬伤 exit 1（「写章节」要求每章不低于下限）；> max → 提示（上限是提醒不是硬伤）
+ *   （2026-10-10 实弹暴露：此前字数约束只写在 SKILL 文档，无脚本兜底，1685 字正文照样全绿）
  *
  * 检测维度（词无罪，分布和通顺才是判据）：
  *   1. 口语虚词密度（净句警告：得/还/甚至/又/也/就/都 过少 = 句子太干净）
@@ -13,13 +17,14 @@
  *   4. 认知句模式（他总觉得/这让他知道/他意识到/久到 — 提醒非禁用）
  *   5. 标点硬伤（英文标点混入、引号不成对）
  *
- * 输出: ✅/⚠️ 报告，exit 0=健康，1=有硬伤（英文标点/引号不成对）
+ * 输出: ✅/⚠️ 报告，exit 0=健康，1=有硬伤（英文标点/引号不成对/字数不足）
  */
 
 const fs = require('fs');
+const path = require('path');
 
 let raw;
-const arg = process.argv[2];
+const [arg, cfgArg] = process.argv.slice(2);
 if (arg) {
   if (!fs.existsSync(arg)) { console.error(`❌ 文件不存在: ${arg}`); process.exit(2); }
   raw = fs.readFileSync(arg, 'utf-8');
@@ -113,18 +118,41 @@ if (filler) notes.push(`填充词 ${filler} 处（不由分说/二话不说/只�
 
 // ---- 5. 标点硬伤 ----
 let hard = 0;
+// HTML 注释里的 ! 是注释语法（<!-- 语雀渲染占位（首段缩进保护） -->），不是标点混入——
+// prepare-upload.js 前置的占位注释会被 [",!?] 误判为硬伤（2026-10-10 实弹暴露：
+// 2026-10-09 加占位注释功能时未同步豁免相邻门禁，自家产物被自家门禁拦）
+const noComment = body.replace(/<!--[\s\S]*?-->/g, '');
 // 硬伤：半角引号/逗号/叹号/问号（中文正文一律用全角）
-const halfHard = body.match(/[",!?]/g);
+const halfHard = noComment.match(/[",!?]/g);
 if (halfHard) { issues.push(`半角标点混入: ${[...new Set(halfHard)].join(' ')}（${halfHard.length} 处）`); hard = 1; }
 // 软提示：半角括号/冒号/分号（正文少见，也可能是「3:1」类比例，仅提醒不判硬伤）
-const halfSoft = body.match(/[:;()]/g);
+const halfSoft = noComment.match(/[:;()]/g);
 if (halfSoft) { notes.push(`半角括号/冒号 ${halfSoft.length} 处（: ; ( )）— 若非数字比例等特例，应改全角`); }
-const openQ = (body.match(/“/g) || []).length;
-const closeQ = (body.match(/”/g) || []).length;
+const openQ = (noComment.match(/“/g) || []).length;
+const closeQ = (noComment.match(/”/g) || []).length;
 if (openQ !== closeQ) { issues.push(`引号不成对（“ ${openQ} / ” ${closeQ}）`); hard = 1; }
 const noIndent = body.split('\n').filter(l => l.startsWith('　　')).length;
 const totalParas = body.split('\n').filter(l => l.trim()).length;
 if (totalParas && noIndent < totalParas * 0.9) notes.push(`首行缩进缺失（${noIndent}/${totalParas} 段有缩进）`);
+
+// ---- 5.5 字数对照（config.chapter_words.min/max，2026-10-10 实弹暴露：
+//       此前约束只写在 SKILL 文档无脚本兜底，1685 字正文照样全绿通过验收）----
+if (cfgArg) {
+  if (!fs.existsSync(cfgArg)) { console.error(`❌ 配置文件不存在: ${cfgArg}`); process.exit(2); }
+  let wordMin, wordMax;
+  try {
+    const cfg = JSON.parse(fs.readFileSync(cfgArg, 'utf-8'));
+    const cw = cfg.writing && cfg.writing.chapter_words;
+    wordMin = cw && cw.min;
+    wordMax = cw && cw.max;
+  } catch (e) { console.error(`❌ 配置文件解析失败: ${e.message}`); process.exit(2); }
+  if (typeof wordMin === 'number' && zhCount < wordMin) {
+    issues.push(`字数不足：${zhCount} < 配置下限 ${wordMin}（writing.chapter_words.min）——按「写章节」要求补写后再验收`);
+    hard = 1;
+  } else if (typeof wordMax === 'number' && zhCount > wordMax) {
+    notes.push(`字数超出上限：${zhCount} > ${wordMax}（配置 chapter_words.max，上限是提醒非硬伤）`);
+  }
+}
 if (!enough) notes.push(`字数 ${zhCount} < ${MIN_SAMPLE}：密度类指标（口语虚词/比喻/连接词）样本不足未判，仅供参考`);
 
 // ---- 输出 ----

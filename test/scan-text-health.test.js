@@ -2,10 +2,13 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'scan-text-health.js');
 const run = (input) => spawnSync(process.execPath, [SCRIPT], { input, encoding: 'utf-8' });
+const runArgs = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], { input, encoding: 'utf-8' });
 
 // ≥1500 汉字，含「如」（如果/如此/如何）但零比喻词（像/仿佛）
 const RU_LONG = '如果有人问起今天发生的事，如此这般解释也就够了，他如何做出选择都不是重点。'.repeat(50);
@@ -119,4 +122,60 @@ test('「好像/不像/图像」不计入比喻密度', () => {
   const t = '　　他好像明白了。'.repeat(60) + FILL;
   const r = run(t);
   assert.ok(!/比喻偏密/.test(r.stdout), `误报:\n${r.stdout}`);
+});
+
+// ---- 占位注释豁免 + 字数门禁（2026-10-10 实弹暴露）----
+test('HTML 注释里的 !（prepare-upload 占位注释）不误报半角标点', () => {
+  const t = '<!-- 语雀渲染占位（首段缩进保护） -->\n\n' + RU_LONG;
+  const r = run(t);
+  assert.strictEqual(r.status, 0, r.stdout);
+  assert.ok(!/半角标点混入/.test(r.stdout), `误报:\n${r.stdout}`);
+});
+
+test('真·正文半角感叹号仍硬伤（注释豁免不误伤）', () => {
+  const t = '<!-- 注释 -->\n　　他大喊hello!然后走了。' + '继续补充无关紧要的内容凑字数。'.repeat(10);
+  const r = run(t);
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stdout, /半角标点混入/);
+});
+
+test('字数 < config.chapter_words.min → 硬伤 exit 1（约束不再失效）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const cfg = path.join(dir, 'cfg.json');
+  const body = path.join(dir, '正文.md');
+  fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 2500, max: 4000 } } }));
+  fs.writeFileSync(body, RU_LONG); // RU_LONG ≈ 2000 汉字 < 2500
+  const r = runArgs([body, cfg]);
+  assert.strictEqual(r.status, 1, r.stdout);
+  assert.match(r.stdout, /字数不足.*2500/);
+});
+
+test('字数 > config.chapter_words.max → 提示不硬伤（上限是提醒）', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const cfg = path.join(dir, 'cfg.json');
+  const body = path.join(dir, '正文.md');
+  fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 100, max: 300 } } }));
+  fs.writeFileSync(body, RU_LONG);
+  const r = runArgs([body, cfg]);
+  assert.strictEqual(r.status, 0, r.stdout);
+  assert.match(r.stdout, /超出上限/);
+});
+
+test('字数达标 + config → exit 0 无字数提示', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const cfg = path.join(dir, 'cfg.json');
+  const body = path.join(dir, '正文.md');
+  fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 1000, max: 5000 } } }));
+  fs.writeFileSync(body, RU_LONG);
+  const r = runArgs([body, cfg]);
+  assert.strictEqual(r.status, 0, r.stdout);
+  assert.ok(!/字数不足|超出上限/.test(r.stdout));
+});
+
+test('config 文件不存在 → exit 2', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const body = path.join(dir, '正文.md');
+  fs.writeFileSync(body, RU_LONG);
+  const r = runArgs([body, '/no/such/cfg.json']);
+  assert.strictEqual(r.status, 2);
 });
