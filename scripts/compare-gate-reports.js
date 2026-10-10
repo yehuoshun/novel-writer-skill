@@ -10,7 +10,7 @@
  *       本脚本逐项比对两份报告的结论——**完全一致 → 自动通过（无需人工）；任一分歧 → 退出码 1 升级人工**。
  *       这样把「人工验收」压到只剩「两模型打架」这种极少数情况（老板 2026-10-10 定：能不人工就不人工）。
  *
- * 退出码: 0=一致（自动过）, 1=有分歧/缺项（升级人工）, 2=用法/文件错误
+ * 退出码: 0=一致（自动过）, 1=有分歧（歧义，升级人工）, 3=报告缺项/不完整（重跑复核，非人工）, 2=用法/文件错误
  */
 'use strict';
 const fs = require('fs');
@@ -58,13 +58,17 @@ for (const k of keys) {
   if (va !== vb) diffs.push(`${k}：主判定=${va} vs 复核=${vb}`);
 }
 
-if (missing.length) {
-  console.error(`⚠️ 有报告缺项（无法比对，需补齐）: ${missing.join('；')}`);
-}
-if (diffs.length || missing.length) {
-  console.error(`❌ 两份门禁报告不一致（${diffs.length} 处分歧 / ${missing.length} 处缺项）——升级人工复核:`);
+if (diffs.length) {
+  console.error(`❌ 两模型结论分歧 ${diffs.length} 处（属**歧义**）——升级人工复核:`);
   diffs.forEach(d => console.error(`  - ${d}`));
+  if (missing.length) console.error(`  （另有 ${missing.length} 处缺项，一并补齐）`);
+  console.error('   → 人工只需裁这一处歧义，不是每章都审。');
   process.exit(1);
+}
+if (missing.length) {
+  console.error(`↻ 报告缺项 ${missing.length} 处（**非歧义**，不找人）——补齐后**重跑复核**:`);
+  missing.forEach(m => console.error(`  - ${m}`));
+  process.exit(3);
 }
 console.log(`✅ 双模型门禁报告完全一致（${keys.length} 项）——自动通过，无需人工`);
 process.exit(0);

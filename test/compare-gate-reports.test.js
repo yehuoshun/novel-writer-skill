@@ -48,10 +48,18 @@ test('warn vs pass 视为分歧', () => {
   assert.strictEqual(r.status, 1);
 });
 
-test('复核报告缺项 → 升级人工（exit 1）', () => {
+test('复核报告缺项 → 重跑（exit 3，非人工）', () => {
   const r = run([tmp('a.md', report()), tmp('b.md', HEAD + '  ✅ Gate 1-6 写作质量：通过\n')]);
-  assert.strictEqual(r.status, 1);
+  assert.strictEqual(r.status, 3, r.stderr);
   assert.match(r.stderr, /缺项/);
+  assert.match(r.stderr, /非歧义/);
+});
+
+test('既有分歧又缺项 → 以歧义优先（exit 1，人工）', () => {
+  const b = HEAD + '  ✅ Gate 1-6 写作质量：通过\n  ❌ 引用校验：不通过\n';
+  const r = run([tmp('a.md', report()), tmp('b.md', b)]);
+  assert.strictEqual(r.status, 1, r.stderr);
+  assert.match(r.stderr, /歧义/);
 });
 
 test('用法/文件错误 → exit 2', () => {
