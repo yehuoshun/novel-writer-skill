@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.4.1
+version: 3.4.2
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -1095,7 +1095,7 @@ GET /repos/{book_id}/toc
 | [references/style-modules-2.md](references/style-modules-2.md) | 代入感/期待/装逼/爽点/爱情线/毒点/救赎/边界感 |
 | [references/style-modules-3.md](references/style-modules-3.md) | 轻小说/沙雕/赛博朋克/盘点/模拟/直播/网站差异/打斗智斗 |
 | [references/style-modules-4.md](references/style-modules-4.md) | 镜头式写作/基础技巧/舞台搭建/战斗描写/文笔 |
-| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法 |
+| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法（卖报笔记已并入 maibao-live-notes.md） |
 | [references/style-modules-6.md](references/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
 | [references/description-tags.md](references/description-tags.md) | 简介 Tag 生成策略（番茄小说）：阅读标签规则+四类选项列表+选 tag 决策准则+实战示例 |
@@ -1111,7 +1111,7 @@ GET /repos/{book_id}/toc
 | [references/story-structure.md](references/story-structure.md) | 故事结构：大纲设计/循环写法/并列式/节奏控制/情绪驱动/爽点/双线/分镜 |
 | [references/story-structure-2.md](references/story-structure-2.md) | 剧情过渡/拉长剧情/换地图/长线节奏/矛盾设计 |
 | [references/story-structure-3.md](references/story-structure-3.md) | 八节点结构+实用技巧（五重驱动/真相逆推/细纲实务） |
-| [references/story-structure-4.md](references/story-structure-4.md) | 经验笔记（上）：卖报/拆书/三幕五幕/主线类型/冲突结构 |
+| [references/story-structure-4.md](references/story-structure-4.md) | 经验笔记（上）：拆书/三幕五幕/主线类型/冲突结构（卖报笔记已并入 maibao-live-notes.md） |
 | [references/story-structure-5.md](references/story-structure-5.md) | 经验笔记（下）：故事本质论/核心梗/阵营手牌/矛盾理论/悬念冲突 |
 | [references/advanced-plot-techniques.md](references/advanced-plot-techniques.md) | 高级技法：小纲四步法+高潮逆推+情绪拉扯+金手指+双线+AB交织法 |
 | [references/micro-innovation.md](references/micro-innovation.md) | 题材微创新+差异化设计 |
@@ -1122,7 +1122,7 @@ GET /repos/{book_id}/toc
 |------|----------|
 | [references/character-design.md](references/character-design.md) | 人物全流程：主角/配角/反派+人物关系+动机链+性格体系+配角功能 |
 | [references/character-design-2.md](references/character-design-2.md) | 角色成长：主角调子/反派分量/感情流/男频女频/群像 |
-| [references/character-design-3.md](references/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课 |
+| [references/character-design-3.md](references/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课（卖报笔记已并入 maibao-live-notes.md） |
 | [references/character-design-4.md](references/character-design-4.md) | 经验笔记（下）：男频恋爱文/装逼打脸/移情标签/爽点模板 |
 | [references/emotional-arc-design.md](references/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
 | [references/reversal-toolkit.md](references/reversal-toolkit.md) | 反转类型+时机+误导底层路径 |
@@ -1135,8 +1135,9 @@ GET /repos/{book_id}/toc
 | [references/anti-ai-gates.md](references/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测+高压区 1-7（含揭晓体）+朱雀实测校准（含证伪）（门禁必读） |
 | [references/anti-ai-polish.md](references/anti-ai-polish.md) | 去AI味：可编辑范围分级+信息账本+修补顺序+三遍法+改写范例库（门禁打回/润色/重写时读） |
 | [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待+三翻四震+心态（按需） |
-| [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯 |
+| [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯（卖报笔记已并入 maibao-live-notes.md） |
+| [references/maibao-live-notes.md](references/maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（2026-10-11 由 6 文件合并） |
 
 ---
 
-_版本：v3.4.1_
+_版本：v3.4.2_

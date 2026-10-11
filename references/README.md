@@ -46,7 +46,7 @@
 | [story-structure.md](story-structure.md) | 写大纲/结构设计时 | 核心理论：大纲设计/循环写法/并列式/节奏控制/结构体系/情绪驱动/爽点/双线/分镜 |
 | [story-structure-2.md](story-structure-2.md) | 剧情推进设计时 | 剧情过渡与衔接/拉长剧情/换地图/长线节奏/矛盾设计与动机链 |
 | [story-structure-3.md](story-structure-3.md) | 章节结构设计时 | 八节点故事结构+实用技巧（五重驱动/嵌套结构/真相逆推/细纲实务） |
-| [story-structure-4.md](story-structure-4.md) | 经验参考（上） | 卖报小郎君/逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法 |
+| [story-structure-4.md](story-structure-4.md) | 经验参考（上） | 逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法（卖报笔记已并入 maibao-live-notes.md） |
 | [story-structure-5.md](story-structure-5.md) | 经验参考（下） | 强主线弱主线/故事本质论/核心梗/阵营手牌/矛盾理论/悬念与冲突 |
 | [advanced-plot-techniques.md](advanced-plot-techniques.md) | 深入设计剧情时 | 小纲四步法、高潮逆推、情绪拉扯、金手指、双线法则 |
 | [micro-innovation.md](micro-innovation.md) | 差异化设计时 | 题材微创新方法 |
@@ -57,7 +57,7 @@
 |------|----------|------|
 | [character-design.md](character-design.md) | 设定/更新角色时 | 人物设计核心：主角卡/配角卡/反派层级/人物关系/动机链/人设/性格体系/配角功能 |
 | [character-design-2.md](character-design-2.md) | 角色成长设计时 | 主角调子/反派分量/人推事件/感情流/男频女频/主角逼格/群像 |
-| [character-design-3.md](character-design-3.md) | 经验参考（上） | 九维人设/以梗塑造/情绪调动/金手指与人设/万订大师课/实操方法 |
+| [character-design-3.md](character-design-3.md) | 经验参考（上） | 九维人设/以梗塑造/情绪调动/金手指与人设/万订大师课/实操方法（卖报笔记已并入 maibao-live-notes.md） |
 | [character-design-4.md](character-design-4.md) | 经验参考（下） | 男频恋爱文攻略/装逼打脸/移情与标签/高级爽点模板 |
 | [emotional-arc-design.md](emotional-arc-design.md) | 情绪追踪/设计高潮时 | 情绪弧线模板（6种）+ 期待感管理 + 情绪调动 + 题材赛道策略 |
 | [reversal-toolkit.md](reversal-toolkit.md) | 设计反转时 | 反转类型、时机、误导底层路径 |
@@ -70,18 +70,24 @@
 | [style-modules-2.md](style-modules-2.md) | 代入感/爽点设计时 | 代入感构建/事业爱情线/人设塑造/断期待/装逼/开局基点/爽点释放/毒点/救赎/边界感 |
 | [style-modules-3.md](style-modules-3.md) | 场景风格设计时 | 轻小说/沙雕/赛博朋克/盘点文/模拟文/直播流/网站差异/打斗智斗 |
 | [style-modules-4.md](style-modules-4.md) | 写作技法参考时 | 镜头式写作/基础技巧/舞台搭建/基本功/打脸节奏/战斗描写/文笔 |
-| [style-modules-5.md](style-modules-5.md) | 经验参考（上） | 新媒体文/商业写作/书名/留存/卖报创作法/情绪技法/脑洞/蜻蜓直播 |
+| [style-modules-5.md](style-modules-5.md) | 经验参考（上） | 新媒体文/商业写作/书名/留存/情绪技法/脑洞/蜻蜓直播（卖报笔记已并入 maibao-live-notes.md） |
 | [style-modules-6.md](style-modules-6.md) | 经验参考（下） | 黄金三章/市场定位/题材本质/期待感/文笔解析/新人全流程/梗收集 |
 | [dialogue-mastery.md](dialogue-mastery.md) | 对话场景写作时 | 对话节奏、潜台词、信息控制、对话模式数据库 |
 | [quality-checklist.md](quality-checklist.md) | 完本/阶段性检查时 | 质量检查清单、毒点排查、常见问题速查 |
 | [anti-ai-polish.md](anti-ai-polish.md) | 门禁打回/润色/重写时 | 去 AI 三遍法、补充技法、全套改写范例 |
 | [writing-craft.md](writing-craft.md) | 按需偶读 | 写作心法、补充技巧、题材策略、长篇结构管理、毒点清单、断期待、三翻四震、心态 |
 
+## 作者经验归档（2026-10-11 合并）
+
+| 文件 | 内容 | 加载时机 |
+|------|------|----------|
+| [maibao-live-notes.md](maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（原散落 6 文件） | 按需加载 |
+
 ## P6 — 写作心理（放松时读）
 
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
-| [writer-psychology.md](writer-psychology.md) | 卡文/低谷时可参考 | 写作心理建设、职业规划、码字习惯 |
+| [writer-psychology.md](writer-psychology.md) | 卡文/低谷时可参考 | 写作心理建设、职业规划、码字习惯（卖报笔记已并入 maibao-live-notes.md） |
 
 ---
 
