@@ -306,7 +306,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
       1. **剥离 CHANGES 块**：`---CHANGES---…---END CHANGES---` 不进正文页面（只进 chXXX-changes 文档）；实测不剥离会整块渲染进正文文档
       2. **前置占位注释** `<!-- 语雀渲染占位（首段缩进保护） -->`：实测语雀 lake 转换会吃掉「文档第一段」行首的全角空格（其余段落不受影响），注释占位让原第一段变成第二段，缩进全保
       3. **内置段首缩进校验**：与 `check-indentation.js` 同规则（自然段段首两全角空格「　　」，标题/空行/列表/引用块/表格/代码块/场景分隔符豁免；规则源为两脚本共用 `scripts/lib/text-format.js`，防两处漂移），退出码非 0 → 先补齐再上传，禁止跳过
-    - 语雀模式：正文 DOC 创建到 `content` 分组下（`POST /repos/{book_id}/docs`，body 带 title/body/parent_uuid=content 分组 UUID；**body 用 prepare-upload.js 输出的 out.md**，不用原始正文文件）
+    - 语雀模式：正文 DOC 创建到 `content` 分组下（**两步：① `POST /repos/{book_id}/docs` 创建（body 用 prepare-upload.js 输出的 out.md，不用原始正文文件；⚠️ 实测 parent_uuid 参数不生效，创建出的文档不在 TOC 树内）；② `PUT /repos/{book_id}/toc` 挂载：`{"action":"appendNode","action_mode":"child","type":"DOC","target_uuid":"<分组TITLE uuid>","doc_ids":[<doc id>]}`**——2026-10-11 实弹：第9章等 4 个文档漏挂成孤儿，全部用此法补挂成功）
     - **本地模式 / 双写（both）的本地侧**：正文同样用上述 `prepare-upload.js` 输出落盘（**剥离 CHANGES 块**，使本地与语雀内容一致，互为备份）；CHANGES 块只进 `设定/changes/chXXX-changes.md`。⚠️ 此前未规定本地正文是否含 CHANGES 块（2026-10-10 双写实弹暴露）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
@@ -316,7 +316,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - **覆盖 `## 下章交接包` 整段**（旧包作废）：从 CHANGES 的 `<!-- 交接包 -->` 声明生成，供下一章读取
     - **按伏笔状态机更新伏笔状态表**：🔨埋设→新增行（已埋设）**并创建 `伏笔追踪/vX-伏笔名.md` 文档**（含类型/预期读者效果/线索，与快照同步——漏建会导致下一章推进被门禁误拦「未登记伏笔」）；➡️推进→状态改已推进+追加推进章；✅回收→状态改已回收+写揭晓章；❌废弃→状态改已废弃
     - 保存 `ch{001}-changes.md` 到 `变更记录/` 分组（增量日志，永久保留，编号三位零填充：ch001、ch002…ch999）
-      - 语雀模式：在 `changes` TITLE 节点下创建 DOC（`POST /repos/{book_id}/docs`，body 带 title/body/slug，如需挂节点带 parent_uuid）
+      - 语雀模式：在 `changes` TITLE 节点下创建 DOC（两步：`POST /repos/{book_id}/docs` 创建 + `PUT /toc` appendNode 挂载，同正文 DOC，见上文阶段四第 17 条）
       - 本地模式：保存到 `设定/changes/ch{001}-changes.md`
       - 双写模式：两处都保存
     - 更新各角色/地点/物品/势力/伏笔设定文档（双写模式两处都更新）
@@ -597,9 +597,11 @@ POST /repos/{book_id}/docs
 {
   "title": "张三",
   "body": "...",
-  "slug": "zhangsan",        // 可选，kebab-case；不传自动生成
-  "parent_uuid": "<分组uuid>"  // 挂到分组下；不传挂根
+  "slug": "zhangsan"        // 可选，kebab-case；不传自动生成
 }
+// ⚠️ 2026-10-11 实测：parent_uuid 参数不生效，创建出的文档不在 TOC 树内（孤儿文档）！
+// 挂到分组必须第二步：PUT /repos/{book_id}/toc
+{"action":"appendNode","action_mode":"child","type":"DOC","target_uuid":"<分组TITLE uuid>","doc_ids":[<doc id>]}
 ```
 
 **更新文档（状态快照覆盖等）**：
