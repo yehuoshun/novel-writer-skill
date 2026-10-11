@@ -4,16 +4,26 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'test']);
+
+// 被 .gitignore 忽略的文件（如本地真实小说配置 configs/[书名].json，含语雀
+// book_id/namespace 不入库）不参与仓库元数据自检，否则本地开发环境必然误报。
+function isGitIgnored(p) {
+  try {
+    execFileSync('git', ['check-ignore', '-q', p], { cwd: ROOT, stdio: 'ignore' });
+    return true;
+  } catch { return false; }
+}
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.name.startsWith('.') && e.name !== '.github') continue;
     const p = path.join(dir, e.name);
     if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) walk(p, out); }
-    else out.push(p);
+    else if (!isGitIgnored(p)) out.push(p);
   }
   return out;
 }
