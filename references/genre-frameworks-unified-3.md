@@ -2,11 +2,6 @@
 
 > 经验笔记与扩展题材：规则怪谈/长生流/西幻/新媒体/搞笑/四合院/飞卢/刺猬猫/进阶补充（卖报题材解析已并入 [maibao-live-notes.md](maibao-live-notes.md)）
 
-## 卖报小郎君直播精华：题材解析
-
-> 已并入 [maibao-live-notes.md](maibao-live-notes.md)「题材解析」（2026-10-11 合并归档）。
-
----
 
 ## 十四、规则怪谈
 
