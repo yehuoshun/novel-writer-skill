@@ -1,6 +1,6 @@
 # 故事结构/大纲/节奏（四）
 
-> 作者经验笔记（上）：逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法（卖报小郎君部分已并入 [maibao-live-notes.md](maibao-live-notes.md)）
+> 作者经验笔记（上）：逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法（卖报小郎君部分已并入 [maibao-live-notes.md](../notes/maibao-live-notes.md)）
 
 ---
 

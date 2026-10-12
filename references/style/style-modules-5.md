@@ -1,6 +1,6 @@
 # 题材风格模块（五）
 
-> 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法/脑洞/蜻蜓直播（卖报创作法已并入 [maibao-live-notes.md](maibao-live-notes.md)）
+> 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法/脑洞/蜻蜓直播（卖报创作法已并入 [maibao-live-notes.md](../notes/maibao-live-notes.md)）
 
 ## 新媒体写作与题材套路
 
@@ -16,7 +16,7 @@
 
 ### 装逼与打脸（三层次体系）
 
-> 2026-10-12 去重：完整版（基础/温酒斩华雄/狠压装逼 + 愤怒/循环/终极打脸 + 优越感体现 + 压点区分）见 [character-design-4.md](character-design-4.md)「装逼三层次与打脸三层次」。
+> 2026-10-12 去重：完整版（基础/温酒斩华雄/狠压装逼 + 愤怒/循环/终极打脸 + 优越感体现 + 压点区分）见 [character-design-4.md](../character/character-design-4.md)「装逼三层次与打脸三层次」。
 
 ---
 
@@ -28,7 +28,7 @@
 - 利用故事卡解决卡文推文——当不知道写什么时，回到故事卡看核心梗
 
 **金手指与核心梗的关系**：
-> 2026-10-12 去重：完整版（金手指决定基调/直接服务核心梗/自带期待感/优越感来源）见 [expectation-techniques.md](expectation-techniques.md)「核心梗的确定与维护（千均写作指南精华）」。
+> 2026-10-12 去重：完整版（金手指决定基调/直接服务核心梗/自带期待感/优越感来源）见 [expectation-techniques.md](../outline/expectation-techniques.md)「核心梗的确定与维护（千均写作指南精华）」。
 
 **如何把握节奏与升级节点**：
 - 升级不能太快（失去期待）也不能太慢（失去耐心）
@@ -56,7 +56,7 @@
 
 ## 书名格式大全（权威版）
 
-> 2026-10-12 去重：书名公式分类的权威版（原 hook-techniques-3「书名起名公式」13 类 + outline-arrangement-3「书名公式大全」11 类与本处 18 种高度重合，已归一至此）。番茄平台实战（身份法则/书测取名五选法/平台差异/封面制作）见 [genre-opening-database.md](genre-opening-database.md)「番茄书名起名法」。
+> 2026-10-12 去重：书名公式分类的权威版（原 hook-techniques-3「书名起名公式」13 类 + outline-arrangement-3「书名公式大全」11 类与本处 18 种高度重合，已归一至此）。番茄平台实战（身份法则/书测取名五选法/平台差异/封面制作）见 [genre-opening-database.md](../opening/genre-opening-database.md)「番茄书名起名法」。
 
 **书名命名核心原则**：
 - 字数控制在15字以内→太长被算法截断

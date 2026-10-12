@@ -4,7 +4,7 @@
 
 ## 三翻四震结构
 
-> 2026-10-12 去重：完整版（结构四步/院校实例拆解/关键原则）见 [writing-craft.md](writing-craft.md)「三翻四震：震惊场景的分层写法」。
+> 2026-10-12 去重：完整版（结构四步/院校实例拆解/关键原则）见 [writing-craft.md](../style/writing-craft.md)「三翻四震：震惊场景的分层写法」。
 
 ---
 
@@ -124,13 +124,13 @@
 
 ### 两长一短法则
 
-> 2026-10-12 去重：完整版见 [writing-craft.md](writing-craft.md)「两长一短期待法则」及 [hook-techniques-2.md](hook-techniques-2.md)「"两长一短"期待感实操法」；要点：每章两个长期目标 + 一个短期目标，长期待满足后立刻拉新的，不超过 4-5 条线。
+> 2026-10-12 去重：完整版见 [writing-craft.md](../style/writing-craft.md)「两长一短期待法则」及 [hook-techniques-2.md](hook-techniques-2.md)「"两长一短"期待感实操法」；要点：每章两个长期目标 + 一个短期目标，长期待满足后立刻拉新的，不超过 4-5 条线。
 
 ---
 
 ## 书名起名公式（速查）
 
-> 2026-10-12 去重：权威版（13 类公式表 + 完整示例 + 避坑）见 [style-modules-5.md](style-modules-5.md)「书名格式大全」；番茄平台实战见 [genre-opening-database.md](genre-opening-database.md)「番茄书名起名法」。
+> 2026-10-12 去重：权威版（13 类公式表 + 完整示例 + 避坑）见 [style-modules-5.md](../style/style-modules-5.md)「书名格式大全」；番茄平台实战见 [genre-opening-database.md](../opening/genre-opening-database.md)「番茄书名起名法」。
 > 本处保留独有要点：
 > - 书名是第一道钩子：≤15 字，3 秒内看懂核心卖点，关键词精准匹配目标读者
 > - 核心公式骨架：身份反差 / 行为反差 / 结果反差 / 数字对比 / 情绪悬念 / 系统金手指 / 疑问反问 / 震惊前缀 / 极端设定 / 视角错位 / 佛系反差 / 身份降维 / 被动碰瓷
@@ -419,7 +419,7 @@
 
 ---
 
-> **不间断期待与钩子链** 已并入 [expectation-techniques.md](expectation-techniques.md)「不间断期待链设计」（含钩子链实操、长线钩子、玄幻应用，2026-10-12 去重）。
+> **不间断期待与钩子链** 已并入 [expectation-techniques.md](../outline/expectation-techniques.md)「不间断期待链设计」（含钩子链实操、长线钩子、玄幻应用，2026-10-12 去重）。
 
 ---
 

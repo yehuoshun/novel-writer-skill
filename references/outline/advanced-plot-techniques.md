@@ -1065,7 +1065,7 @@
 
 ### "两长一短"期待法则
 
-> 2026-10-12 去重：完整版见 [hook-techniques-2.md](hook-techniques-2.md)「"两长一短"期待感实操法」（含大奉式操作法）与 [writing-craft.md](writing-craft.md)「断期待」节；本处仅保留一级结构视角速查：每单元 1 个短期期待（只能一个）+ 1-2 个长期期待。
+> 2026-10-12 去重：完整版见 [hook-techniques-2.md](../hook/hook-techniques-2.md)「"两长一短"期待感实操法」（含大奉式操作法）与 [writing-craft.md](../style/writing-craft.md)「断期待」节；本处仅保留一级结构视角速查：每单元 1 个短期期待（只能一个）+ 1-2 个长期期待。
 
 ### 持续拉期待的方法
 

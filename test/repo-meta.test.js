@@ -108,10 +108,19 @@ test('所有文本文件以换行结尾 + 无行尾空白', () => {
   assert.deepStrictEqual(bad, [], bad.join('\n'));
 });
 
-test('SKILL.md「参考资料」表覆盖 references/ 全部文件', () => {
+test('SKILL.md「参考资料」表覆盖 references/ 全部文件（含子目录）', () => {
   const t = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf-8');
   const sec = t.split(/^## 参考资料/m)[1] || '';
-  const refs = fs.readdirSync(path.join(ROOT, 'references')).filter(f => f.endsWith('.md') && f !== 'README.md');
+  // 递归遍历（v3.5.20 起 references/ 按分类分子目录，非递归会漏检）
+  const refs = [];
+  const walkRefs = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walkRefs(path.join(dir, e.name));
+      else if (e.name.endsWith('.md') && e.name !== 'README.md') refs.push(path.relative(path.join(ROOT, 'references'), path.join(dir, e.name)));
+    }
+  };
+  walkRefs(path.join(ROOT, 'references'));
+  assert.ok(refs.length > 0, 'references/ 下应至少有一个 md 文件');
   const missing = refs.filter(r => !sec.includes(r));
   assert.deepStrictEqual(missing, [], `参考资料表未列出: ${missing.join(', ')}`);
 });
@@ -165,7 +174,7 @@ test('语雀手册 groups key ↔ config.schema.json 一致（22 个同名同序
   //（“yuque 模式缺分组（22 必需）”），而手册却自称零丢失——现有测试覆盖不到，此处固化防重演。
   const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs', 'config.schema.json'), 'utf-8'));
   const req = schema.properties.yuque.properties.groups.required;
-  const manual = fs.readFileSync(path.join(ROOT, 'references', 'yuque-integration.md'), 'utf-8');
+  const manual = fs.readFileSync(path.join(ROOT, 'references', 'integrations', 'yuque-integration.md'), 'utf-8');
   const sec2 = manual.slice(manual.indexOf('## 2.'), manual.indexOf('## 3.'));
   const jsonBlock = sec2.match(/```json\n([\s\S]*?)\n```/);
   assert.ok(jsonBlock, '手册第 2 节应含示例 JSON 块');

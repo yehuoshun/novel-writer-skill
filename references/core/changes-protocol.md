@@ -111,7 +111,7 @@ _参考文件，按需加载_
 
 ## 开头技巧速查
 
-9 种技巧，详见 [opening-design.md](opening-design.md)。
+9 种技巧，详见 [opening-design.md](../opening/opening-design.md)。
 
 | 技巧 | 说明 | 示例 |
 |------|------|------|

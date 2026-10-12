@@ -648,7 +648,7 @@
 
 ## 番茄书名起名法
 
-> 2026-10-12 去重：通用书名公式分类（跨平台）见 [style-modules-5.md](style-modules-5.md)「书名格式大全」；本节专注番茄平台实战（身份法则/书测取名五选法/平台差异/封面制作）。
+> 2026-10-12 去重：通用书名公式分类（跨平台）见 [style-modules-5.md](../style/style-modules-5.md)「书名格式大全」；本节专注番茄平台实战（身份法则/书测取名五选法/平台差异/封面制作）。
 
 ### 身份法则
 
@@ -700,7 +700,7 @@
 2. 反推需要哪些人物在场
 3. 反推需要哪些前置铺垫
 4. 按 AB 交替排列
-> 另见 [outline-arrangement.md](outline-arrangement.md)「高潮逆推法」——目标链逆推版（一句话结局→逆推目标层级）。
+> 另见 [outline-arrangement.md](../outline/outline-arrangement.md)「高潮逆推法」——目标链逆推版（一句话结局→逆推目标层级）。
 
 ### AB 粗纲
 

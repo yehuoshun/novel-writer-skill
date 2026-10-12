@@ -129,7 +129,7 @@ for (const LINE of LINES) {
 
 if (unknownMarkers.length) {
   console.error(`未识别的 CHANGES 分节标记（${unknownMarkers.length} 处）: ${unknownMarkers.join(' / ')}`);
-  console.error('请核对 references/changes-protocol.md 的标准标记');
+  console.error('请核对 references/core/changes-protocol.md 的标准标记');
   process.exit(1);
 }
 

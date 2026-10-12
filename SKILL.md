@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.19
+version: 3.5.20
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -27,7 +27,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 配置
 
-配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式 / `configs/example-both.json` 双写模式；**语雀是可选项，全部语雀操作细节见 [references/yuque-integration.md](references/yuque-integration.md)**）
+配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式 / `configs/example-both.json` 双写模式；**语雀是可选项，全部语雀操作细节见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md)**）
 
 > ⚠️ 实际配置不入 git 仓库，skill 重装/更新前注意备份 `configs/[小说名].json`
 
@@ -81,13 +81,13 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 **配置说明**：
 - `save_location`：保存位置（yuque / local / both）
   - `local`（**主线**）：正文+设定都存本地（两个目录）
-  - `yuque` / `both`（**可选**）：语雀/双写模式，配置字段与全部操作细节见 [references/yuque-integration.md](references/yuque-integration.md)
+  - `yuque` / `both`（**可选**）：语雀/双写模式，配置字段与全部操作细节见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md)
 - `backup.mode`：备份模式
   - `local`：每次写章节回写后由 `scripts/backup-snapshot.js` 生成本地快照（状态快照 + 本章正文 + chXXX-changes → `local_path/<时间戳>-chXXX/`）；加 `--full` 可全量备份 正文/ + 设定/ 两棵树
   - `yuque_history`（默认）：依赖语雀历史版本功能，不另做本地备份（仅语雀/both 模式使用；纯本地用户建议改 `local`）
 - `backup.local_path`：本地备份路径（仅当 backup.mode=local 时需要）
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
-- `yuque.book` / `yuque.groups`：语雀配置块（仅 yuque/both 需要，字段说明与 22 key 分组映射见 [references/yuque-integration.md](references/yuque-integration.md) 第 2/4 节）
+- `yuque.book` / `yuque.groups`：语雀配置块（仅 yuque/both 需要，字段说明与 22 key 分组映射见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 第 2/4 节）
 - `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
 - 本地路径统一格式：`./小说名/正文` / `./小说名/设定`（相对路径以运行时的当前工作目录为基准；**⚠️ 一律写绝对路径**——`backup-snapshot.js` 等脚本按运行 cwd 解析相对路径，若在小说目录内运行（最自然的操作），`./小说名/正文` 会被解析成 `小说名/小说名/正文` 双重嵌套导致备份失败；2026-10-10 实弹暴露）
 - 配置里 `yuque` 和 `local` 两个块只需填当前 save_location 对应的块；both 时两个块都必填
@@ -115,7 +115,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
    - C 语雀+本地（双写）→ 语雀知识库（单个）和本地路径都问，正文/设定两处都写
 3. 问：「人称？（第一人称/第三人称）」
 4. 问：「视角？（单主角/多主角/群像）」
-5. 问：「文风？（古风/现代/幽默/严肃）」（选定后映射风格模块：古风→奇幻玄幻、现代→现实世情、幽默→幽默/轻小说、严肃→悬疑/推理/恐怖，加载指引见 [references/style-modules.md](references/style-modules.md)）
+5. 问：「文风？（古风/现代/幽默/严肃）」（选定后映射风格模块：古风→奇幻玄幻、现代→现实世情、幽默→幽默/轻小说、严肃→悬疑/推理/恐怖，加载指引见 [references/style/style-modules.md](references/style/style-modules.md)）
 6. 问：「叙事节奏？（快节奏/慢热/细腻）」
 7. 问：「每章字数范围？（默认2500-4000）」
 8. 问：「小说类型相关设定」（每道题标注「可随时输入"够了"跳过」）
@@ -125,11 +125,11 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 9. 生成配置文件，发给你确认
 10. 你确认后，创建设定文档模板
 11. 根据存储方式创建设定目录结构：
-    - **语雀模式 / 双写（both）**：调用语雀 API 自动创建目录分组并回写 UUID——22 项分组映射、content 首建、旧库补建、快照 DOC 特殊处理见 [references/yuque-integration.md](references/yuque-integration.md) 第 3 节，MCP/裸 API 调用细节见第 5 节
+    - **语雀模式 / 双写（both）**：调用语雀 API 自动创建目录分组并回写 UUID——22 项分组映射、content 首建、旧库补建、快照 DOC 特殊处理见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 第 3 节，MCP/裸 API 调用细节见第 5 节
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md；`changes/` **可选**——旧布局兼容，新书可不建，见阶段四 17 条）
 12. 开始写全书大纲（**必完成**：全书大纲+卷大纲+章节细纲含蓝图出场清单；不完成不进写章节流程）
-13. **书名查重（番茄站内，上线前必做，2026-10-11 老板定）**：按 [references/book-name-vetting.md](references/book-name-vetting.md) 查**番茄站内**同名/近名——同名必换、近名提醒、设定撞车提醒不阻断；**现阶段只审查番茄**（非番茄平台同名不列入）；改名保留「分类关键词+核心卖点」，长名转「又名」；改名后全库同步（配置 info.name / 简介 / 大纲 / 知识库名 / 本地 / 记忆）（实弹：《炼气一万年》番茄近名 2 本 → 改《炼气万古》）
-14. **生成简介（含发布 tag）**：按 [references/description-tags.md](references/description-tags.md) 生成简介正文 + 番茄 tag 块（**目前仅支持番茄小说 tag**：主分类必选×1、主题/角色/情节各≤2，选项列表与决策准则见该文档；其他平台待实弹需求再扩展）；简介落库——本地：`设定/简介.md`；语雀/both：另见手册第 3.5 节
+13. **书名查重（番茄站内，上线前必做，2026-10-11 老板定）**：按 [references/opening/book-name-vetting.md](references/opening/book-name-vetting.md) 查**番茄站内**同名/近名——同名必换、近名提醒、设定撞车提醒不阻断；**现阶段只审查番茄**（非番茄平台同名不列入）；改名保留「分类关键词+核心卖点」，长名转「又名」；改名后全库同步（配置 info.name / 简介 / 大纲 / 知识库名 / 本地 / 记忆）（实弹：《炼气一万年》番茄近名 2 本 → 改《炼气万古》）
+14. **生成简介（含发布 tag）**：按 [references/opening/description-tags.md](references/opening/description-tags.md) 生成简介正文 + 番茄 tag 块（**目前仅支持番茄小说 tag**：主分类必选×1、主题/角色/情节各≤2，选项列表与决策准则见该文档；其他平台待实弹需求再扩展）；简介落库——本地：`设定/简介.md`；语雀/both：另见手册第 3.5 节
 
 **设定问答中途停止**：
 - 用户输入「够了」→ 用已有信息生成设定
@@ -173,7 +173,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 写大纲
 ```
 **流程**：
-1. 加载 [references/outline-arrangement.md](references/outline-arrangement.md)（大纲方法论+五步大纲法+节点设计）
+1. 加载 [references/outline/outline-arrangement.md](references/outline/outline-arrangement.md)（大纲方法论+五步大纲法+节点设计）
 2. 问：「写到什么程度？」
    - 卷级：每卷主题、关键转折、起始→结束状态
    - 章节级：每章核心事件、爽点类型、钩子类型
@@ -199,7 +199,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | 2 | 首战立威 | 装逼打脸 | 冲突钩 | 新角色钩 | 3200 |
 ```
 
-> 细纲附**蓝图出场清单**（必出场角色/势力/地点 + 戏份要求），格式与填写规则见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」；写章节后按蓝图逐项核对出场（12 门禁之蓝图出场合规，即下方阶段三条目 15）。
+> 细纲附**蓝图出场清单**（必出场角色/势力/地点 + 戏份要求），格式与填写规则见 [references/outline/outline-arrangement.md](references/outline/outline-arrangement.md)「蓝图出场清单」；写章节后按蓝图逐项核对出场（12 门禁之蓝图出场合规，即下方阶段三条目 15）。
 
 #### 查大纲
 ```
@@ -222,7 +222,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 1. 校验配置文件有效性
 2. 读取下章交接包：读 `状态快照.md` 顶部的 `## 下章交接包`（上一章留下的交接单），再读快照正文确认当前所有实体状态（不读历史）
 3. 按需加载相关设定（本章涉及的角色/地点/物品的详细档案；**涉及多地相对位置时加载「地理方位」表**核对，2026-10-12 补）
-4. 参考本章细纲（含蓝图出场清单），必要时加载 [references/outline-arrangement.md](references/outline-arrangement.md) 和 [references/expectation-techniques.md](references/expectation-techniques.md)
+4. 参考本章细纲（含蓝图出场清单），必要时加载 [references/outline/outline-arrangement.md](references/outline/outline-arrangement.md) 和 [references/outline/expectation-techniques.md](references/outline/expectation-techniques.md)
    - ⚠️ **细纲缺失禁止开写**：设定中无细纲文档（本地：`设定/大纲/细纲/` 无文件；语雀：`大纲/细纲` 分组无 DOC）时，先执行「写大纲」生成全书大纲+细纲（含蓝图出场清单），再回来写章节——不允许跳过大纲直接开写
    - **校对本草对白体例（2026-10-12 补）**：先读本书近 1-2 章正文，确认对白写法（如本书=「说，…」无引号体，「」仅用于引述片段；或引号体），照本书体例写——勿套用通用引号体（实弹：第22章误用「」引号体，全章改写）
    - **细纲/蓝图缺本章行（2026-10-12 补）**：细纲存在但蓝图清单无本章行 → **先补该行**（含必出场角色/势力/地点 + 戏分）再写；蓝图「必出场势力」若本章悬疑设计刻意不点名，填「无」或与正文一致的表述，勿写设定标签词（实弹：第22章蓝图要求「外部势力」出场但正文刻意不点名 → 校验失败）
@@ -232,9 +232,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 7. 你确认/修改
 
 **阶段二：写作 + 变更声明**
-8. 写正文（**动笔前先对阶段一的场景字数配额；全章写完先跑 `scan-text-health` 字数门禁，欠量按缺口场景补（对话轮次/厚段/细节），禁整篇注水**——2026-10-12 第22章实弹：初稿骨架化只 1769 字，挂脚本才发现；实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2500字；排版规范：全角标点“ ”、段首缩进两全角空格、不用半角标点、**叙述层破折号≤3处且仅限对话打断（规则见 [references/anti-ai-gates.md](references/anti-ai-gates.md)「破折号限额」）**、**精确数字不枚举成簇（≥3处即模糊化）**、**对仗陈述句不≥2处**、**章尾不用宣言句**（规则见 [references/anti-ai-gates.md](references/anti-ai-gates.md)「金句密度限额/精确数字成簇/工整对仗句」），见 [references/anti-ai-gates.md](references/anti-ai-gates.md) Gate 5；**2026-10-12 P0 落地：写完立刻自查破折号与字数——`node scripts/scan-text-health.js <本章.md> <config>` 一条命令同时出字数（低于下限打回）与破折号计数（超 3 打回），欠量/超限当场补，别等门禁阶段**）
-   - 参考 [references/style-modules.md](references/style-modules.md) 确保文风一致
-   - 参考 [references/hook-techniques.md](references/hook-techniques.md) 确保钩子到位
+8. 写正文（**动笔前先对阶段一的场景字数配额；全章写完先跑 `scan-text-health` 字数门禁，欠量按缺口场景补（对话轮次/厚段/细节），禁整篇注水**——2026-10-12 第22章实弹：初稿骨架化只 1769 字，挂脚本才发现；实时字数提醒：3500字提醒进度，4000字提醒上限，不低于2500字；排版规范：全角标点“ ”、段首缩进两全角空格、不用半角标点、**叙述层破折号≤3处且仅限对话打断（规则见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)「破折号限额」）**、**精确数字不枚举成簇（≥3处即模糊化）**、**对仗陈述句不≥2处**、**章尾不用宣言句**（规则见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)「金句密度限额/精确数字成簇/工整对仗句」），见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md) Gate 5；**2026-10-12 P0 落地：写完立刻自查破折号与字数——`node scripts/scan-text-health.js <本章.md> <config>` 一条命令同时出字数（低于下限打回）与破折号计数（超 3 打回），欠量/超限当场补，别等门禁阶段**）
+   - 参考 [references/style/style-modules.md](references/style/style-modules.md) 确保文风一致
+   - 参考 [references/hook/hook-techniques.md](references/hook/hook-techniques.md) 确保钩子到位
 9. **AI 必须在正文后输出 `---CHANGES---` 变更声明块**（见下方「CHANGES 变更声明协议」；**2026-10-12 P0 落地：CHANGES 块从正文实际改动提取、对照正文逐条核对（角色状态/移动、物品流转、地点/势力状态、伏笔推进、交接包），不凭记忆手写**——第23章实弹：手写 CHANGES 里陈长老引文与正文漂移，门禁阶段才发现）
    - ⚠️ **CHANGES 块行首必须顶格**：正文自然段首行缩进两全角空格是排版要求，但 `---CHANGES---`、`---END CHANGES---` 及块内**每一行都不能带全角空格缩进**——parse-changes.js 按行首精确匹配，一旦缩进即报「No CHANGES block found」打回（2026-10-10 实弹暴露）
 
@@ -242,7 +242,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 > **12 门禁 ↔ 阶段三条目号映射**（两套编号并存易混淆，统一以条目号引用）：
 > | 12 门禁 | 阶段三条目 | 内容 |
 > |---|---|---|
-> | Gate 1-6（写作质量 6 门禁） | 条目 10 | 文本健康 / AI句式 / 心理外化 / 节奏 / 对话 / 结尾（子项见 [references/anti-ai-gates.md](references/anti-ai-gates.md)） |
+> | Gate 1-6（写作质量 6 门禁） | 条目 10 | 文本健康 / AI句式 / 心理外化 / 节奏 / 对话 / 结尾（子项见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)） |
 > | 引用校验 | 条目 11 | CHANGES 声明实体须已建档 |
 > | 一致性校验 | 条目 12 | 移动/已死/地点状态/物品归属 vs 快照 |
 > | 描写一致性 | 条目 13 | 正文外貌描写 vs 快照/档案 |
@@ -251,15 +251,15 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 > | 伏笔闭环 | 条目 16 | 伏笔状态机一致性 |
 > 注：文档内「门禁 N」统一指**阶段三条目号**（如「门禁 14」= 未知实体，见条目 14）；勿按 12 门禁序数换算（按序数数蓝图是第 11 个、伏笔是第 12 个，会与「门禁 11=引用校验」冲突）。
 > ⚠️ **顺序铁律**：一致性 / 描写一致性 / 伏笔闭环 / 蓝图校验必须基于**上一章快照**、在**状态回写（阶段四）之前**执行——回写后快照已是本章目标态，再校验会误报。本地模式跑 `node scripts/check-consistency.js <状态快照.md> <本章.md> <设定目录> [细纲.md]` 自动查「引用 / 一致性 / 描写一致性 / 伏笔闭环 / 蓝图出场合规 / 未知实体候选 / 交接包必填」（对应条目 11/12/13/15/16/14；交接包必填为协议兜底，缺失打回）。蓝图校验另有警告：细纲存在但蓝图清单无本章行（文档要求每章附蓝图）、必出场角色仅出场 1 次（叙事力度）、无法从文件名解析章号（跳过校验，不再静默）；未知实体候选仅警告不阻断。
-> 📌 **语雀模式跑脚本**：脚本按文件路径工作，语雀模式须先把本章正文、上一章快照、涉及设定档导出到临时目录再跑（临时目录法见 [references/yuque-integration.md](references/yuque-integration.md) 6.1）。
+> 📌 **语雀模式跑脚本**：脚本按文件路径工作，语雀模式须先把本章正文、上一章快照、涉及设定档导出到临时目录再跑（临时目录法见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 6.1）。
 > ⚠️ **工具操作坑（2026-10-12 补）**：① `mcporter` 必须在 **workspace 目录**（`config/mcporter.json` 所在）执行，在别的 cwd 调用会报「Unknown MCP server」（`mcporter list` 却仍能列出——别被迷惑）；② `scan-text-health.js` 用 `文件路径 [config.json]` 作**参数**，**别用 `< 重定向 + config`**（会把 config 当正文读，假报「字数不足」）。
-10. **写作质量门禁**（6 Gate，全名见 [references/anti-ai-gates.md](references/anti-ai-gates.md)：Gate 1 文本健康 / Gate 2 AI句式 / Gate 3 心理外化 / Gate 4 节奏 / Gate 5 对话 / Gate 6 结尾）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md [config.json]` 自检 Gate 1（词无定性，分布是判据；**传 config.json 时对照 `writing.chapter_words` 做字数门禁：正文汉字数 < min → 硬伤打回，> max → 提示**——此前字数约束只靠写作时自觉，2026-10-10 实弹暴露后补脚本兑底），Gate 2–6 的**可规则化子集**跑 `node scripts/scan-ai-tells.js <正文.md>`（序数/总结/时代套话、心理外化成簇、段落等厚、对话占比/连发、章尾钩子信号——**仅提示不判硬伤**，语义判断仍归 AI；其中 Gate6「章尾钩子信号」为**启发式**，误报以 AI/复核终判、不必为误报改文——2026-10-12 第22章实弹：危机钩齐全仍报「疑似无钩子」）。下列为 Gate 1 检测维度：破折号统计（`——` 计数，**>3 判硬伤打回**且附上下文，≤3 时列出上下文供人工核对是否全为对话打断——2026-10-12 第23章实弹：此前靠复核第一轮人工数才抓出 5 处超限，主报告还数漏，现脚本直接兑底）
+10. **写作质量门禁**（6 Gate，全名见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)：Gate 1 文本健康 / Gate 2 AI句式 / Gate 3 心理外化 / Gate 4 节奏 / Gate 5 对话 / Gate 6 结尾）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md [config.json]` 自检 Gate 1（词无定性，分布是判据；**传 config.json 时对照 `writing.chapter_words` 做字数门禁：正文汉字数 < min → 硬伤打回，> max → 提示**——此前字数约束只靠写作时自觉，2026-10-10 实弹暴露后补脚本兑底），Gate 2–6 的**可规则化子集**跑 `node scripts/scan-ai-tells.js <正文.md>`（序数/总结/时代套话、心理外化成簇、段落等厚、对话占比/连发、章尾钩子信号——**仅提示不判硬伤**，语义判断仍归 AI；其中 Gate6「章尾钩子信号」为**启发式**，误报以 AI/复核终判、不必为误报改文——2026-10-12 第22章实弹：危机钩齐全仍报「疑似无钩子」）。下列为 Gate 1 检测维度：破折号统计（`——` 计数，**>3 判硬伤打回**且附上下文，≤3 时列出上下文供人工核对是否全为对话打断——2026-10-12 第23章实弹：此前靠复核第一轮人工数才抓出 5 处超限，主报告还数漏，现脚本直接兑底）
     - **断句检测**：逗号链（单句 ≥6 逗号警告）、句长分布（25 字+ 占比、≤8 字碎片）
     - **语句通顺检测**：口语虚词密度（净句警告）、同主语连发（连续 3+ 句同一开头）、连接词滥用（然后/接着/于是）、「是…的」书面判断腔、填充词
     - **修饰分布**：比喻密度、「只有/仅仅/恰好」封闭逻辑词（优先「还有/又」开放叙述）
     - **认知句模式**：他总觉得/这让他知道/他意识到/久到/忽然（允许 1 处，成簇替换）
     - **标点硬伤**：半角标点混入、引号不成对（❌ 必须改；HTML 注释里的 `!` 是注释语法，豁免）
-    被门禁打回需重写/润色时，加载 [references/anti-ai-polish.md](references/anti-ai-polish.md)（可编辑范围分级+信息账本+修补顺序+CHANGES 块保护+三遍法+改写范例）
+    被门禁打回需重写/润色时，加载 [references/quality/anti-ai-polish.md](references/quality/anti-ai-polish.md)（可编辑范围分级+信息账本+修补顺序+CHANGES 块保护+三遍法+改写范例）
 11. **引用校验**（新增）：CHANGES 中**5 类声明段**（角色状态变化/角色移动/物品流转/地点状态变化/势力状态变化）出现的角色/地点/物品/势力 ID 是否在设定中存在（本地可跑 `check-consistency.js`）
     - 引用不存在的 ID → 打回，标注"未登记实体：XXX"
     - **零容忍**：凡是声明段声明的实体一律须已登记；新实体**先走建档流程再写章**（走「角色首次登场流程」/新建地点物品文档），不允许"先写后补"
@@ -278,7 +278,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
     - 龙套（店小二、路人甲，出场 < 2 句且无姓名）不计入
     - 超阈值 → 打回，标注"新增实体过多：XXX"
     - 本地可跑 `check-consistency.js`（随写章一起）输出「未知实体候选」清单——零依赖启发式（地点/势力后缀词 + 常见姓氏两字名，正文出现 ≥2 次才记，减去已登记/已声明的）；**脚本仅给候选警告，打回与否由 AI 依清单终判**（切词必有噪声，硬拦风险大于收益）
-15. **蓝图出场合规**（新增）：细纲/蓝图指定的角色/势力/地点是否在正文中实际出现（蓝图出场清单格式见 [references/outline-arrangement.md](references/outline-arrangement.md)「蓝图出场清单」；本地可跑 `check-consistency.js <快照> <本章> <设定目录> <细纲.md>` 自动查）
+15. **蓝图出场合规**（新增）：细纲/蓝图指定的角色/势力/地点是否在正文中实际出现（蓝图出场清单格式见 [references/outline/outline-arrangement.md](references/outline/outline-arrangement.md)「蓝图出场清单」；本地可跑 `check-consistency.js <快照> <本章> <设定目录> <细纲.md>` 自动查）
     - 蓝图列出张三、李四、王五 → 正文只写了张三 → 缺额 > 阈值 → 打回
     - 视角角色仅出现 1 次 → 警告「叙事力度不足」（本地脚本已实现同款警告）
     - ⚠️ 蓝图表校验依赖章节文件名含「第N章」（约定 `第NNN章.md`）；文件名不符时脚本给警告并跳过本章蓝图表校验（v3.3.55 起不再静默）
@@ -300,9 +300,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 > ⚠️ **复核结论写入时机（2026-10-12 P0 落地）**：主报告先写「二次复核：待复核模型重看修正版」占位；**复核模型产出结论后才落笔**，结论只能由复核结果驱动（通过/未通过+发现项），禁止主审提前自写「复核确认通过」——复核前的结论段撤稿返工（第23章实弹）
 
 **交付前检查（强制，2026-10-11 老板定）**：正文生成完成、上传前**必做**，与门禁脚本同级，产出「交付前检查」结论（过/不过 + 修了什么），不过则修完重跑门禁再交付。两类：
-- **上下文连贯**：① 台词事实回溯——每句台词引用的动作/事件必须正文有对应描写（规则与高发场景见 [references/anti-ai-gates.md](references/anti-ai-gates.md)「台词事实回溯」节；2026-10-11 实弹：初版第 2 章「帮忙喊了两声」四次迭代未发现）；② 前后文衔接——指代（这个/他/那东西的指向）、时序（先发生的事不能后写）、因果（台词感谢的事必须先有事实）逐段核对；③ **时间账本核对（2026-10-11 补）**——本章「第几天/第N天」与快照「当前时间」一致，章内不得出现两个相同天数（实弹：第4章「第三天」两用——开头跟第3章接 A 线、正文走 B 线，两套时间线打架）；④ **断句拆分有理由（2026-10-11 补）**——叙述句默认合并，「一句话能写完偏拆几段」= 红线，段落拆分必须有理由（冲击点/视角切换/对话），实弹：第4章「元婴。」「金丹。」独词段/第1章「一行一停」；**分两级查**：段落级（独词段/短行）+ 句内级（同语义团被句号切开——能逗号连就逗号连，章尾句号密度重点查；实弹：第4章章尾 5 高亮全为两段式拆句）；**章尾抒情专项**：章尾只留一个钩子，独白/拟人/隐喻密度降到最低；⑤ **物品去向闭环（2026-10-12 补）**——本章内某物品脱离原持有者（掉落/遗失/被夺/移交），必须写清去向（捡回/转移/声明丢失）并进 CHANGES 物品流转；随身兵器/关键道具首进声明段前先建档（实弹：第22章婉儿短剑脱手未交待 + 腰牌未建档，**脚本门禁与双模型复核都抓不到**，主审自查才发现）；⑥ **方位一致性（2026-10-12 补）**——正文提到的地点相对方位/距离必须与「地理方位」表一致，不得与已锁定方位矛盾（语义方位脚本查不了，归 AI/复核人工核对）
-- **AI 味密度（2026-10-11 第11章实战固化）**：① 数金句（带俏皮/对仗/格言味、可独立成句被记住的句子）≤2；② 数同类句式成簇（有人…有人…/想起X想起Y/说…的… 同章 ≥2 处即违规）≤1；③ 探子/转述台词信息点 ≥3 必须已拆轮；④ 章尾妙笔（意象收尾/对仗钩）已改朴素；⑤ 对仗句（A；B 对称）已拆；⑥ 精确数字未成簇（布局/距离/时长枚举式 ≥3 处即模糊化）；⑦ 章尾无宣言句（X会知道/究竟是什么式已改口语）；⑧ 顺滑编排插桩（对话轮转插停顿/动作链插迟钝/群体反应延迟化/章尾意象改动作）——详见 [references/anti-ai-gates.md](references/anti-ai-gates.md)「顺滑编排型指纹」（⑥⑦为第13章实弹固化；⑧为第14章实弹固化）
-- **结构指纹·讲解章（2026-10-12 第16章实战固化）**：动笔前先判章节类型——动作/场景章天然安全；**问答/讲古/汇报型纯对话章天然高危**，须按 [references/anti-ai-gates.md](references/anti-ai-gates.md)「结构指纹·讲解章」自查（对话段占比 >50% / 段均字 <30 / 「>60字」段 <5% 命中 ≥3 即高危）并主动「对话并段 + 长段承载叙述 + 长短夹杂」。**注意：脚本门禁与双模型复核都抓不到本指纹，三者全绿 ≠ 外部检测器过**，不得拿「门禁全绿」当交付依据
+- **上下文连贯**：① 台词事实回溯——每句台词引用的动作/事件必须正文有对应描写（规则与高发场景见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)「台词事实回溯」节；2026-10-11 实弹：初版第 2 章「帮忙喊了两声」四次迭代未发现）；② 前后文衔接——指代（这个/他/那东西的指向）、时序（先发生的事不能后写）、因果（台词感谢的事必须先有事实）逐段核对；③ **时间账本核对（2026-10-11 补）**——本章「第几天/第N天」与快照「当前时间」一致，章内不得出现两个相同天数（实弹：第4章「第三天」两用——开头跟第3章接 A 线、正文走 B 线，两套时间线打架）；④ **断句拆分有理由（2026-10-11 补）**——叙述句默认合并，「一句话能写完偏拆几段」= 红线，段落拆分必须有理由（冲击点/视角切换/对话），实弹：第4章「元婴。」「金丹。」独词段/第1章「一行一停」；**分两级查**：段落级（独词段/短行）+ 句内级（同语义团被句号切开——能逗号连就逗号连，章尾句号密度重点查；实弹：第4章章尾 5 高亮全为两段式拆句）；**章尾抒情专项**：章尾只留一个钩子，独白/拟人/隐喻密度降到最低；⑤ **物品去向闭环（2026-10-12 补）**——本章内某物品脱离原持有者（掉落/遗失/被夺/移交），必须写清去向（捡回/转移/声明丢失）并进 CHANGES 物品流转；随身兵器/关键道具首进声明段前先建档（实弹：第22章婉儿短剑脱手未交待 + 腰牌未建档，**脚本门禁与双模型复核都抓不到**，主审自查才发现）；⑥ **方位一致性（2026-10-12 补）**——正文提到的地点相对方位/距离必须与「地理方位」表一致，不得与已锁定方位矛盾（语义方位脚本查不了，归 AI/复核人工核对）
+- **AI 味密度（2026-10-11 第11章实战固化）**：① 数金句（带俏皮/对仗/格言味、可独立成句被记住的句子）≤2；② 数同类句式成簇（有人…有人…/想起X想起Y/说…的… 同章 ≥2 处即违规）≤1；③ 探子/转述台词信息点 ≥3 必须已拆轮；④ 章尾妙笔（意象收尾/对仗钩）已改朴素；⑤ 对仗句（A；B 对称）已拆；⑥ 精确数字未成簇（布局/距离/时长枚举式 ≥3 处即模糊化）；⑦ 章尾无宣言句（X会知道/究竟是什么式已改口语）；⑧ 顺滑编排插桩（对话轮转插停顿/动作链插迟钝/群体反应延迟化/章尾意象改动作）——详见 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)「顺滑编排型指纹」（⑥⑦为第13章实弹固化；⑧为第14章实弹固化）
+- **结构指纹·讲解章（2026-10-12 第16章实战固化）**：动笔前先判章节类型——动作/场景章天然安全；**问答/讲古/汇报型纯对话章天然高危**，须按 [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md)「结构指纹·讲解章」自查（对话段占比 >50% / 段均字 <30 / 「>60字」段 <5% 命中 ≥3 即高危）并主动「对话并段 + 长段承载叙述 + 长短夹杂」。**注意：脚本门禁与双模型复核都抓不到本指纹，三者全绿 ≠ 外部检测器过**，不得拿「门禁全绿」当交付依据
 - **语句检查**：叙述层通顺（口语杂质只进对话层——2026-10-11 实弹：「不知道什么时候落的」→「落下的」）、病句/错别字/漏字、标点
 - 交付 = 章节给老板验收/发布；**检查必须在回写前完成**，改完正文再上传（避免回写后又改正文造成快照/存储不一致）
 
@@ -310,7 +310,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 > ⚠️ **改版备份铁律（2026-10-12 老板定）**：正文任何版本改动（朱雀迭代 / 复核修复 / 润色重写）**开始前**，先把**当前版全文**留档（本地：`novel/<书>/版本备份/` 下存 `ch{NNN}-v{版本号}.md`，并更新 `ch{NNN}-版本备份索引`：版本表 + 检测值 + 状态；语雀/both：存语雀「正文版本备份」分组，见手册 6.9）。v4.1 全文因未备份而不可考（教训：反复覆盖后无法溯源）。
 17. 门禁全部通过后 → 落地（按 save_location）：
     - **本地模式（主线）**：正文存**完整版（含 CHANGES 块，工作态）**到 `local.content_path`；CHANGES 以正文内嵌块为权威，`设定/changes/` 目录**可选**（旧布局兼容：backup-snapshot 快照优先读 changes/chXXX.md，无则从正文提取归档）
-    - **语雀 / 双写（both）模式**：上传前预处理（`prepare-upload.js` 剥离 CHANGES + 占位注释 + 缩进校验）→ 创建+挂载正文 DOC，全程细节（含 2026-10-09/11/12 语雀渲染与挂载踩坑记录）见 [references/yuque-integration.md](references/yuque-integration.md) 第 6 节
+    - **语雀 / 双写（both）模式**：上传前预处理（`prepare-upload.js` 剥离 CHANGES + 占位注释 + 缩进校验）→ 创建+挂载正文 DOC，全程细节（含 2026-10-09/11/12 语雀渲染与挂载踩坑记录）见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 第 6 节
 17.5. **双写对账（both 模式，2026-10-12 补）**：本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步（详见手册第 7 节）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
@@ -355,7 +355,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - **自动验收**（默认，无需人工）：① 脚本门禁：一致性 / 冲突 / 文本健康 / AI味 / 门禁报告完整性；② 单测 + 三个集成回归（CI 绿即过）；③ **AI 判层 → 双模型独立复核**：新上下文/另一模型独立跑同一章门禁，两份报告经 `compare-gate-reports.js` 比对——**完全一致即自动通过**（把 AI 判的正确性也自动化，不再靠单模型自觉）；④ **复核发现问题 → 修复后二次复核修正版**（硬规则）：验证修复到位+无新问题后方可判通过/同步，未二次复核不得放行（2026-10-12 老板定）。
 - **人工验收（最后兜底）**：**仅当两模型报告出现结论分歧（= 歧义）**时升级人工——人工只裁定歧义，不是每章都审。报告缺项/不完整 = 流程问题 → **重跑复核**，不找人。
 
-CHANGES 协议、写作技巧速查、字数节奏参考等详见 [references/changes-protocol.md](references/changes-protocol.md)。
+CHANGES 协议、写作技巧速查、字数节奏参考等详见 [references/core/changes-protocol.md](references/core/changes-protocol.md)。
 
 #### 续写
 ```
@@ -515,7 +515,7 @@ graph LR
 
 ### 语雀知识库（单库模式）
 
-> 语雀为**可选**存储：TITLE/DOC 结构树、22 key groups 映射表、API 调用速查（MCP/裸 API 全踩坑记录：appendNode/sibling 静默 no-op/parent_uuid 不生效/confirm 必填等）全部见 [references/yuque-integration.md](references/yuque-integration.md) 第 4-5 节。
+> 语雀为**可选**存储：TITLE/DOC 结构树、22 key groups 映射表、API 调用速查（MCP/裸 API 全踩坑记录：appendNode/sibling 静默 no-op/parent_uuid 不生效/confirm 必填等）全部见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 第 4-5 节。
 
 ### 本地设定文件夹
 
@@ -553,15 +553,15 @@ graph LR
 
 **伏笔追踪命名**：每条伏笔一个文档，命名 `vX-伏笔名.md`（如 `v1-假死真相.md`），与快照伏笔状态表的伏笔ID 一一对应；CHANGES 伏笔动作引用的 ID 必须能在该目录/分组中找到对应文档。**🔨埋设即建档**：伏笔在快照登记的同时必须创建对应文档，不得只改快照。
 
-状态快照格式、更新规则等详见 [references/state-snapshot.md](references/state-snapshot.md)。
+状态快照格式、更新规则等详见 [references/core/state-snapshot.md](references/core/state-snapshot.md)。
 
 ---
 
 ## 质量检查
 
-写完一定章节后，加载 [references/quality-checklist.md](references/quality-checklist.md) 做检查。
+写完一定章节后，加载 [references/quality/quality-checklist.md](references/quality/quality-checklist.md) 做检查。
 
-**黄金三章专项**：写完前三章后自动跑评估（⚠️ 开篇趋势已前置：见 [references/opening-design.md](references/opening-design.md)「黄金一章」——钩子要提前到第一章、乃至前 500 字；「三章」是「定调 + 爽点密度」的底线窗口，「五章」是完整开篇公式见 outline-arrangement-2.md）：
+**黄金三章专项**：写完前三章后自动跑评估（⚠️ 开篇趋势已前置：见 [references/opening/opening-design.md](references/opening/opening-design.md)「黄金一章」——钩子要提前到第一章、乃至前 500 字；「三章」是「定调 + 爽点密度」的底线窗口，「五章」是完整开篇公式见 outline-arrangement-2.md）：
 
 | 维度 | 评分标准 |
 |------|----------|
@@ -571,7 +571,7 @@ graph LR
 | 世界观铺设 | ★★★★★ |
 | 章尾悬念 | ★★★★★ |
 
-参考 [references/opening-design.md](references/opening-design.md) 和 [references/genre-opening-database.md](references/genre-opening-database.md) 对比开篇质量。
+参考 [references/opening/opening-design.md](references/opening/opening-design.md) 和 [references/opening/genre-opening-database.md](references/opening/genre-opening-database.md) 对比开篇质量。
 
 **精修删减原则**：
 
@@ -585,7 +585,7 @@ graph LR
 
 ---
 
-角色/物品/地点/势力/时间线/伏笔/爽点/钩子/情绪曲线/章节摘要/等级体系/对话记录/变更日志/大纲等所有设定文档模板详见 [references/setup-templates.md](references/setup-templates.md)。
+角色/物品/地点/势力/时间线/伏笔/爽点/钩子/情绪曲线/章节摘要/等级体系/对话记录/变更日志/大纲等所有设定文档模板详见 [references/core/setup-templates.md](references/core/setup-templates.md)。
 
 ---
 
@@ -779,7 +779,7 @@ graph LR
 | 危机钩 | 章尾陷入危险 |
 | 决策钩 | 角色面临重大选择 |
 
-> 记录 `last_hook_start/last_hook_end.type` 时**统一使用上表 11 项词汇**（章首 5 + 章尾 6；悬念钩章首/章尾共用，去重后 10 个唯一类）；具体技法（章尾 13 式 / 章首 7 式）与追踪类的映射见 [references/hook-techniques.md](references/hook-techniques.md) 顶部「钩子式 ↔ 追踪类映射」。
+> 记录 `last_hook_start/last_hook_end.type` 时**统一使用上表 11 项词汇**（章首 5 + 章尾 6；悬念钩章首/章尾共用，去重后 10 个唯一类）；具体技法（章尾 13 式 / 章首 7 式）与追踪类的映射见 [references/hook/hook-techniques.md](references/hook/hook-techniques.md) 顶部「钩子式 ↔ 追踪类映射」。
 
 **自动检查**：
 - 章首无钩子（前 500 字内）→ 提醒
@@ -788,7 +788,7 @@ graph LR
 
 ### 群像角色分工
 
-多主角/群像作品时，加载 [references/character-design.md](references/character-design.md) 检查角色分工。
+多主角/群像作品时，加载 [references/character/character-design.md](references/character/character-design.md) 检查角色分工。
 
 **检查维度**：
 
@@ -804,7 +804,7 @@ graph LR
 
 ### 情绪追踪
 
-每章写完后更新情绪数据，加载 [references/emotional-arc-design.md](references/emotional-arc-design.md) 和 [references/reversal-toolkit.md](references/reversal-toolkit.md)。
+每章写完后更新情绪数据，加载 [references/character/emotional-arc-design.md](references/character/emotional-arc-design.md) 和 [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md)。
 
 **单章情绪**：章节摘要的情绪基调改为强度链格式，如 `紧张(7) → 释放(3) → 悬疑(8)`。
 
@@ -978,83 +978,121 @@ graph LR
 
 ## 参考资料
 
-以下文件在 `references/` 目录下，按需加载（不全量加载避免 Token 爆炸）。
+以下文件在 `references/` 目录下，**按主题分子目录**存放；按需加载（不全量加载避免 Token 爆炸）。
 **加载优先级速查** → 见 [references/README.md](references/README.md)。
 
-### 核心协议
+| 子目录 | 主题 |
+|--------|------|
+| [references/core/](references/core/) | 核心协议与模板 |
+| [references/outline/](references/outline/) | 大纲与剧情设计 |
+| [references/structure/](references/structure/) | 故事结构理论 |
+| [references/hook/](references/hook/) | 钩子与期待感 |
+| [references/opening/](references/opening/) | 开篇与上架物料 |
+| [references/genre/](references/genre/) | 题材框架 |
+| [references/character/](references/character/) | 角色与情绪 |
+| [references/style/](references/style/) | 风格与写法 |
+| [references/quality/](references/quality/) | 质量与去 AI |
+| [references/notes/](references/notes/) | 作者经验与心态 |
+| [references/integrations/](references/integrations/) | 语雀集成（可选） |
+
+### core/ — 核心协议与模板
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/changes-protocol.md](references/changes-protocol.md) | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型（写/续写章节时） |
-| [references/state-snapshot.md](references/state-snapshot.md) | 状态快照格式与更新规则（写章节回写 / 续写读交接包时） |
-| [references/setup-templates.md](references/setup-templates.md) | 所有设定文档模板（新建小说 / 补建设定时） |
+| [references/core/changes-protocol.md](references/core/changes-protocol.md) | CHANGES 格式、写作技巧速查、字数节奏、开头结尾类型（写/续写章节时） |
+| [references/core/state-snapshot.md](references/core/state-snapshot.md) | 状态快照格式与更新规则（写章节回写 / 续写读交接包时） |
+| [references/core/setup-templates.md](references/core/setup-templates.md) | 所有设定文档模板（新建小说 / 补建设定时） |
 
-### 写作流程
-
-| 文件 | 何时加载 |
-|------|----------|
-| [references/outline-arrangement.md](references/outline-arrangement.md) | 大纲排布：五步大纲法+故事结构分级+剧情质量控制+升级感+节点设计+矛盾设计 |
-| [references/outline-arrangement-2.md](references/outline-arrangement-2.md) | 进阶：反派视角/黄金五章/核心梗三分/升级文技法 |
-| [references/outline-arrangement-3.md](references/outline-arrangement-3.md) | 工程化：桥段节奏/多线写长/卖点需求/开篇切入点 |
-| [references/expectation-techniques.md](references/expectation-techniques.md) | 期待感设计：铺垫/爽点/多线期待+信息差+情绪模型 |
-| [references/hook-techniques.md](references/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+钩子禁忌 |
-| [references/hook-techniques-2.md](references/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪 |
-| [references/hook-techniques-3.md](references/hook-techniques-3.md) | 进阶钩子：上瘾模型+狗哨理论+看点爽点+金手指替换（三翻四震/钩子链已并入 writing-craft / expectation-techniques） |
-| [references/opening-design.md](references/opening-design.md) | 开头设计：黄金一章法则+六大标准+开头模板+诊断 |
-| [references/genre-opening-database.md](references/genre-opening-database.md) | 8大题材开头模板+真实范例+决策树+书名起名法 |
-| [references/style-modules.md](references/style-modules.md) | 风格模块：幽默/悬疑/言情/推理/恐怖/奇幻/现实/升级流 8 大题材风格 |
-| [references/style-modules-2.md](references/style-modules-2.md) | 代入感/期待/装逼/爽点/爱情线/毒点/救赎/边界感 |
-| [references/style-modules-3.md](references/style-modules-3.md) | 轻小说/沙雕/赛博朋克/盘点/模拟/直播/网站差异/打斗智斗 |
-| [references/style-modules-4.md](references/style-modules-4.md) | 镜头式写作/基础技巧/舞台搭建/战斗描写/文笔 |
-| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名（**格式大全权威版**）/留存/情绪技法（卖报笔记已并入 maibao-live-notes.md） |
-| [references/style-modules-6.md](references/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
-| [references/dialogue-mastery.md](references/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
-| [references/description-tags.md](references/description-tags.md) | 简介 Tag 生成策略（番茄小说）：阅读标签规则+四类选项列表+选 tag 决策准则+实战示例 |
-| [references/book-name-vetting.md](references/book-name-vetting.md) | 书名查重（番茄上线前必做）：查重方法+判据+改名准则+实弹记录 |
-
-### 题材与结构
+### outline/ — 大纲与剧情设计
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/genre-frameworks-unified.md](references/genre-frameworks-unified.md) | 题材框架：追妻/重生/婚恋/世情/仙侠/高武/霸总/同人/脑洞/凡人流/历史/文娱 |
-| [references/genre-frameworks-unified-2.md](references/genre-frameworks-unified-2.md) | 核心梗解析+事业线/爱情线设计 |
-| [references/genre-frameworks-unified-3.md](references/genre-frameworks-unified-3.md) | 扩展题材：规则怪谈/长生流/西幻/新媒体/搞笑/飞卢/刺猬猫+进阶补充 |
-| [references/story-structure.md](references/story-structure.md) | 故事结构：大纲设计/循环写法/并列式/节奏控制/情绪驱动/爽点/双线/分镜 |
-| [references/story-structure-2.md](references/story-structure-2.md) | 剧情过渡/拉长剧情/换地图/长线节奏/矛盾设计 |
-| [references/story-structure-3.md](references/story-structure-3.md) | 八节点结构+实用技巧（五重驱动/真相逆推/细纲实务） |
-| [references/story-structure-4.md](references/story-structure-4.md) | 经验笔记（上）：拆书/三幕五幕/主线类型/冲突结构（卖报笔记已并入 maibao-live-notes.md） |
-| [references/story-structure-5.md](references/story-structure-5.md) | 经验笔记（下）：故事本质论/核心梗/阵营手牌/矛盾理论/悬念冲突 |
-| [references/advanced-plot-techniques.md](references/advanced-plot-techniques.md) | 高级技法：小纲四步法+高潮逆推+情绪拉扯+金手指+双线+AB交织法 |
-| [references/micro-innovation.md](references/micro-innovation.md) | 题材微创新+差异化设计 |
+| [references/outline/outline-arrangement.md](references/outline/outline-arrangement.md) | 大纲排布：五步大纲法+故事结构分级+剧情质量控制+升级感+节点设计+矛盾设计 |
+| [references/outline/outline-arrangement-2.md](references/outline/outline-arrangement-2.md) | 进阶：反派视角/黄金五章/核心梗三分/升级文技法 |
+| [references/outline/outline-arrangement-3.md](references/outline/outline-arrangement-3.md) | 工程化：桥段节奏/多线写长/卖点需求/开篇切入点 |
+| [references/outline/expectation-techniques.md](references/outline/expectation-techniques.md) | 期待感设计：铺垫/爽点/多线期待+信息差+情绪模型 |
+| [references/outline/advanced-plot-techniques.md](references/outline/advanced-plot-techniques.md) | 高级技法：小纲四步法+高潮逆推+情绪拉扯+金手指+双线+AB交织法 |
+| [references/outline/micro-innovation.md](references/outline/micro-innovation.md) | 题材微创新+差异化设计 |
+| [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md) | 反转类型+时机+误导底层路径 |
 
-### 角色与情绪
+### structure/ — 故事结构理论
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/character-design.md](references/character-design.md) | 人物全流程：主角/配角/反派+人物关系+动机链+性格体系+配角功能 |
-| [references/character-design-2.md](references/character-design-2.md) | 角色成长：主角调子/反派分量/感情流/男频女频/群像 |
-| [references/character-design-3.md](references/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课（卖报笔记已并入 maibao-live-notes.md） |
-| [references/character-design-4.md](references/character-design-4.md) | 经验笔记（下）：男频恋爱文/装逼打脸/移情标签/爽点模板 |
-| [references/emotional-arc-design.md](references/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
-| [references/reversal-toolkit.md](references/reversal-toolkit.md) | 反转类型+时机+误导底层路径 |
+| [references/structure/story-structure.md](references/structure/story-structure.md) | 故事结构：大纲设计/循环写法/并列式/节奏控制/情绪驱动/爽点/双线/分镜 |
+| [references/structure/story-structure-2.md](references/structure/story-structure-2.md) | 剧情过渡/拉长剧情/换地图/长线节奏/矛盾设计 |
+| [references/structure/story-structure-3.md](references/structure/story-structure-3.md) | 八节点结构+实用技巧（五重驱动/真相逆推/细纲实务） |
+| [references/structure/story-structure-4.md](references/structure/story-structure-4.md) | 经验笔记（上）：拆书/三幕五幕/主线类型/冲突结构（卖报笔记已并入 maibao-live-notes.md） |
+| [references/structure/story-structure-5.md](references/structure/story-structure-5.md) | 经验笔记（下）：故事本质论/核心梗/阵营手牌/矛盾理论/悬念冲突 |
 
-### 质量与润色
-
-| 文件 | 何时加载 |
-|------|----------|
-| [references/quality-checklist.md](references/quality-checklist.md) | 质量检查+毒点排查+常见问题速查 |
-| [references/anti-ai-gates.md](references/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测+高压区 1-7（含揭晓体）+快速自检口诀（含证伪）（门禁必读） |
-| [references/anti-ai-polish.md](references/anti-ai-polish.md) | 去AI味：可编辑范围分级+信息账本+修补顺序+三遍法+改写范例库（门禁打回/润色/重写时读） |
-| [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待（权威版）+三翻四震+心态（按需） |
-| [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯（卖报笔记已并入 maibao-live-notes.md） |
-| [references/maibao-live-notes.md](references/maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（2026-10-11 由 6 文件合并） |
-
-### 语雀集成（可选）
+### hook/ — 钩子与期待感
 
 | 文件 | 何时加载 |
 |------|----------|
-| [references/yuque-integration.md](references/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
+| [references/hook/hook-techniques.md](references/hook/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+钩子禁忌 |
+| [references/hook/hook-techniques-2.md](references/hook/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪 |
+| [references/hook/hook-techniques-3.md](references/hook/hook-techniques-3.md) | 进阶钩子：上瘾模型+狗哨理论+看点爽点+金手指替换（三翻四震/钩子链已并入 writing-craft / expectation-techniques） |
 
+### opening/ — 开篇与上架物料
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/opening/opening-design.md](references/opening/opening-design.md) | 开头设计：黄金一章法则+六大标准+开头模板+诊断 |
+| [references/opening/genre-opening-database.md](references/opening/genre-opening-database.md) | 8大题材开头模板+真实范例+决策树+书名起名法 |
+| [references/opening/book-name-vetting.md](references/opening/book-name-vetting.md) | 书名查重（番茄上线前必做）：查重方法+判据+改名准则+实弹记录 |
+| [references/opening/description-tags.md](references/opening/description-tags.md) | 简介 Tag 生成策略（番茄小说）：阅读标签规则+四类选项列表+选 tag 决策准则+实战示例 |
+
+### genre/ — 题材框架
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/genre/genre-frameworks-unified.md](references/genre/genre-frameworks-unified.md) | 题材框架：追妻/重生/婚恋/世情/仙侠/高武/霸总/同人/脑洞/凡人流/历史/文娱 |
+| [references/genre/genre-frameworks-unified-2.md](references/genre/genre-frameworks-unified-2.md) | 核心梗解析+事业线/爱情线设计 |
+| [references/genre/genre-frameworks-unified-3.md](references/genre/genre-frameworks-unified-3.md) | 扩展题材：规则怪谈/长生流/西幻/新媒体/搞笑/飞卢/刺猬猫+进阶补充 |
+
+### character/ — 角色与情绪
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/character/character-design.md](references/character/character-design.md) | 人物全流程：主角/配角/反派+人物关系+动机链+性格体系+配角功能 |
+| [references/character/character-design-2.md](references/character/character-design-2.md) | 角色成长：主角调子/反派分量/感情流/男频女频/群像 |
+| [references/character/character-design-3.md](references/character/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课（卖报笔记已并入 maibao-live-notes.md） |
+| [references/character/character-design-4.md](references/character/character-design-4.md) | 经验笔记（下）：男频恋爱文/装逼打脸/移情标签/爽点模板 |
+| [references/character/emotional-arc-design.md](references/character/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
+
+### style/ — 风格与写法
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/style/style-modules.md](references/style/style-modules.md) | 风格模块：幽默/悬疑/言情/推理/恐怖/奇幻/现实/升级流 8 大题材风格 |
+| [references/style/style-modules-2.md](references/style/style-modules-2.md) | 代入感/期待/装逼/爽点/爱情线/毒点/救赎/边界感 |
+| [references/style/style-modules-3.md](references/style/style-modules-3.md) | 轻小说/沙雕/赛博朋克/盘点/模拟/直播/网站差异/打斗智斗 |
+| [references/style/style-modules-4.md](references/style/style-modules-4.md) | 镜头式写作/基础技巧/舞台搭建/战斗描写/文笔 |
+| [references/style/style-modules-5.md](references/style/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名（**格式大全权威版**）/留存/情绪技法（卖报笔记已并入 maibao-live-notes.md） |
+| [references/style/style-modules-6.md](references/style/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
+| [references/style/dialogue-mastery.md](references/style/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
+| [references/style/writing-craft.md](references/style/writing-craft.md) | 写作心法+毒点清单+断期待（权威版）+三翻四震+心态（按需） |
+
+### quality/ — 质量与去 AI
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/quality/quality-checklist.md](references/quality/quality-checklist.md) | 质量检查+毒点排查+常见问题速查 |
+| [references/quality/anti-ai-gates.md](references/quality/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测+高压区 1-7（含揭晓体）+快速自检口诀（含证伪）（门禁必读） |
+| [references/quality/anti-ai-polish.md](references/quality/anti-ai-polish.md) | 去AI味：可编辑范围分级+信息账本+修补顺序+三遍法+改写范例库（门禁打回/润色/重写时读） |
+
+### notes/ — 作者经验与心态
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/notes/maibao-live-notes.md](references/notes/maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（2026-10-11 由 6 文件合并） |
+| [references/notes/writer-psychology.md](references/notes/writer-psychology.md) | 写作心理建设+职业规划+码字习惯（卖报笔记已并入 maibao-live-notes.md） |
+
+### integrations/ — 语雀集成（可选）
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.19_
+_版本：v3.5.20_

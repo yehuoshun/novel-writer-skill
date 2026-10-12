@@ -32,7 +32,7 @@
 
 ### 以身入局四步法
 
-> 2026-10-12 去重：完整版见 [expectation-techniques.md](expectation-techniques.md)「以身入局——代入感的核心方法」。
+> 2026-10-12 去重：完整版见 [expectation-techniques.md](../outline/expectation-techniques.md)「以身入局——代入感的核心方法」。
 > 反面教训：共情后必须抽身而出（《一人镇守孤城》作者沉浸主角悲伤致情绪核心崩塌），否则情绪无限蔓延。
 
 ### 情绪写作底层逻辑
@@ -237,7 +237,7 @@ CP行为是好感度到达一定程度才会自然出现的，好感度不足时
 
 ## 以退为进拉期待法（付出变爽点）
 
-> 2026-10-12 去重：权威版（三种错误/正确手法四步）见 [writing-craft.md](writing-craft.md)「断期待」节；实操版见 [hook-techniques-2.md](hook-techniques-2.md)「"以退为进"拉情绪法」。
+> 2026-10-12 去重：权威版（三种错误/正确手法四步）见 [writing-craft.md](writing-craft.md)「断期待」节；实操版见 [hook-techniques-2.md](../hook/hook-techniques-2.md)「"以退为进"拉情绪法」。
 > 本处保留独有要点：四步 = 铺垫价值 → 制造困境 → 主角选择付出 → 付出带来超额回报；关键——代价必须可控（读者要有"能翻盘"的信心）、回报多维（实力+名望+关系）、付出后留 1-2 章"憋屈期"让期待感发酵。
 
 ---
@@ -370,7 +370,7 @@ CP行为是好感度到达一定程度才会自然出现的，好感度不足时
 
 ## 微创新与新瓶装旧酒
 
-> 2026-10-12 去重：微创新方法体系（精炼/升级/加料/反套路/组合五法）见 [micro-innovation.md](micro-innovation.md)；题材微创新三套路见 [style-modules-5.md](style-modules-5.md)「微创新三法与套路化写作」。
+> 2026-10-12 去重：微创新方法体系（精炼/升级/加料/反套路/组合五法）见 [micro-innovation.md](../outline/micro-innovation.md)；题材微创新三套路见 [style-modules-5.md](style-modules-5.md)「微创新三法与套路化写作」。
 > 本处保留速查：操作方向 = 换世界观/换职业/换金手指形式/跨题材移植（聊天群、国运对决嫁接到历史/特摄）；平台差异提醒——学我者生似我者死，难点在辨别书因何而火（只能靠经验积累），换瓶子注意匹配度。
 
 - 学我者生，似我者死
@@ -381,7 +381,7 @@ CP行为是好感度到达一定程度才会自然出现的，好感度不足时
 
 ## 描写核心公式
 
-> 2026-10-12 去重：完整版（故事 = 人类情绪 × 虚构世界 + 三层情绪分离 + 故事基本结构 + 有效描写公式 + 描写即情绪工具）见 [emotional-arc-design.md](emotional-arc-design.md)「情绪核心公式」。
+> 2026-10-12 去重：完整版（故事 = 人类情绪 × 虚构世界 + 三层情绪分离 + 故事基本结构 + 有效描写公式 + 描写即情绪工具）见 [emotional-arc-design.md](../character/emotional-arc-design.md)「情绪核心公式」。
 
 ---
 
@@ -578,7 +578,7 @@ CP行为是好感度到达一定程度才会自然出现的，好感度不足时
 
 ## 毒点解析与规避
 
-> 2026-10-12 去重：完整毒点体系（本质/爽点写不到位/题材通用/后宫同人玄幻专属/敏感红线/自检五问）见 [writing-craft.md](writing-craft.md)「毒点识别与规避清单」；检查项形态见 [quality-checklist.md](quality-checklist.md)「毒点排查」。
+> 2026-10-12 去重：完整毒点体系（本质/爽点写不到位/题材通用/后宫同人玄幻专属/敏感红线/自检五问）见 [writing-craft.md](writing-craft.md)「毒点识别与规避清单」；检查项形态见 [quality-checklist.md](../quality/quality-checklist.md)「毒点排查」。
 > 本处保留独有项：五大毒点方向之一「题材选择」——盲目跟风大神题材必死，学三五千均订的作品，大神行≠你行。
 
 ---

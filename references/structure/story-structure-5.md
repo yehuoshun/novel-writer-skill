@@ -92,7 +92,7 @@
 
 ## 换地图的割裂感与三种解决方法
 
-> 2026-10-12 去重：**换地图方法论权威版**（原 story-structure-4「宅猪讲换地图」/ outline-arrangement-2「四代演进+宅猪三法」与本处重复，已归一至此）。期待感衔接视角（三链接口诀/诡秘拆解/失败案例）见 [hook-techniques-2.md](hook-techniques-2.md)「换地图期待感衔接案例」；写作本质认知见 [writing-craft.md](writing-craft.md)「换地图的本质」。
+> 2026-10-12 去重：**换地图方法论权威版**（原 story-structure-4「宅猪讲换地图」/ outline-arrangement-2「四代演进+宅猪三法」与本处重复，已归一至此）。期待感衔接视角（三链接口诀/诡秘拆解/失败案例）见 [hook-techniques-2.md](../hook/hook-techniques-2.md)「换地图期待感衔接案例」；写作本质认知见 [writing-craft.md](../style/writing-craft.md)「换地图的本质」。
 
 > 宅猪十年写书经验总结。换大地图是订阅暴跌的最大风险源，核心问题是割裂感。
 

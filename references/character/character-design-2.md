@@ -92,7 +92,7 @@
 
 ## 以身入局：作者与角色共情四步法
 
-> 2026-10-12 去重：完整版见 [expectation-techniques.md](expectation-techniques.md)「以身入局——代入感的核心方法」。
+> 2026-10-12 去重：完整版见 [expectation-techniques.md](../outline/expectation-techniques.md)「以身入局——代入感的核心方法」。
 > 四步：放下自己 → 保持清醒（问三问）→ 代入角色 → 共情演绎；两种实践路径：先构思剧情再代入 / 先代入再构思剧情。
 
 ## 复合型配角设计：白手套角色

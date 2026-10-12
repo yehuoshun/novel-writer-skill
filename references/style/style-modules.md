@@ -111,7 +111,7 @@
 - 每 5 章必须有一次世界观层面的新信息
 
 ### 金手指设计要点
-> 2026-10-12 去重：完整版（合格五问/碎片化处理/爽点上限/一次性秘宝警示）见 [outline-arrangement.md](outline-arrangement.md)「金手指设计要点」；本处保留独有：设定是作者一句话的事，不要被自己的设定困住，主角是最特殊的那一个。
+> 2026-10-12 去重：完整版（合格五问/碎片化处理/爽点上限/一次性秘宝警示）见 [outline-arrangement.md](../outline/outline-arrangement.md)「金手指设计要点」；本处保留独有：设定是作者一句话的事，不要被自己的设定困住，主角是最特殊的那一个。
 
 ### 升级感设计
 - 得到奖励的过程和期待感比结果更吸引人
@@ -147,16 +147,16 @@
 
 ### 换地图处理技巧（速查）
 
-> 2026-10-12 去重：完整版（失败案例/正确做法六条）见 [hook-techniques-2.md](hook-techniques-2.md)「换地图期待感衔接进阶」；方法论权威版见 [story-structure-5.md](story-structure-5.md)「换地图的割裂感与三种解决方法」。
+> 2026-10-12 去重：完整版（失败案例/正确做法六条）见 [hook-techniques-2.md](../hook/hook-techniques-2.md)「换地图期待感衔接进阶」；方法论权威版见 [story-structure-5.md](../structure/story-structure-5.md)「换地图的割裂感与三种解决方法」。
 > 本处保留独有要点：
 > - 非必要不换地图，不能为了换而换（原因：当前阶层到达顶点，关系网潜力耗尽）
 > - 减少割裂感 = 贯穿目标 / 承上启下人物 / 支线连接下一地图 / 带上小伙伴 / 留钩子
 
 ### 节点设计法
-> 2026-10-12 去重：完整版（核心框架/设计原则/设计步骤）见 [outline-arrangement.md](outline-arrangement.md)「节点设计法」。
+> 2026-10-12 去重：完整版（核心框架/设计原则/设计步骤）见 [outline-arrangement.md](../outline/outline-arrangement.md)「节点设计法」。
 
 ### 副本切入公式
-> 2026-10-12 去重：完整版（含韩立/玄骨实例）见 [genre-frameworks-unified.md](genre-frameworks-unified.md)「副本切入公式」（十一、凡人流）。
+> 2026-10-12 去重：完整版（含韩立/玄骨实例）见 [genre-frameworks-unified.md](../genre/genre-frameworks-unified.md)「副本切入公式」（十一、凡人流）。
 
 ---
 

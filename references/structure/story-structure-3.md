@@ -207,7 +207,7 @@
 
 ### 情绪拉扯=斗地主法
 
-> 2026-10-12 去重：完整版见 [genre-opening-database.md](genre-opening-database.md)「情绪拉扯=斗地主模型」。
+> 2026-10-12 去重：完整版见 [genre-opening-database.md](../opening/genre-opening-database.md)「情绪拉扯=斗地主模型」。
 > 要点速查：每次小角力主角稍占上风→拉扯后爽感远大于单纯碾压；逼格塑造（歇斯底里≠爽，风轻云淡一指灭杀=爽；升级是升级，心态是心态）。
 
 ### 五重驱动检查（每 3-5 章必查）

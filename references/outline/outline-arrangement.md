@@ -173,7 +173,7 @@
 2. 逆推各级目标（世界首富←本州←本国←省←市←县←镇←村←家庭）
 3. 大主线→中主线→小主线，不断细化拆分
 4. 小主线完成，中主线变新小主线，循环推进
-> 另见 [genre-opening-database.md](genre-opening-database.md)「高潮逆推法 + AB 粗纲」——场景反推版（从高潮场景反推人物/铺垫，AB 交替排纲）。
+> 另见 [genre-opening-database.md](../opening/genre-opening-database.md)「高潮逆推法 + AB 粗纲」——场景反推版（从高潮场景反推人物/铺垫，AB 交替排纲）。
 
 ### 主线=冲突驱动（Os）
 - 主线故事 = 解决冲突，大冲突拆分为多个小冲突形成故事线
@@ -342,7 +342,7 @@
 
 ### 情绪拉扯 = 打牌
 
-> 2026-10-12 去重：斗地主模型完整版见 [genre-opening-database.md](genre-opening-database.md)「情绪拉扯=斗地主模型」；要点：每次小角力主角稍占上风→拉扯后爽感远大于单纯碾压。
+> 2026-10-12 去重：斗地主模型完整版见 [genre-opening-database.md](../opening/genre-opening-database.md)「情绪拉扯=斗地主模型」；要点：每次小角力主角稍占上风→拉扯后爽感远大于单纯碾压。
 
 ### 逼格心态
 写书时幻想主角是大人物，不是小混混。被反派骂时：
@@ -570,7 +570,7 @@
 ## 信息传达顺序体系
 
 ### 四种顺序模板
-> 表格见 [hook-techniques.md](hook-techniques.md)「四种悬念信息顺序模板」（直白/探索/意外/意外+反转四类结构）。
+> 表格见 [hook-techniques.md](../hook/hook-techniques.md)「四种悬念信息顺序模板」（直白/探索/意外/意外+反转四类结构）。
 
 - 信息只有成为"疑问"时，读者才会关心
 - 觉得读者可能看不懂时，立即增加正常提示
