@@ -17,7 +17,7 @@
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
 | [outline-arrangement.md](outline-arrangement.md) | 写大纲/写章节前 | 五步大纲法、剧情质量控制、升级感、节点设计、矛盾设计、故事卡系统 |
-| [outline-arrangement-2.md](outline-arrangement-2.md) | 进阶设计时 | 反派视角/题材循环/困境循环/黄金五章/断期待诊断/核心梗三分/三步两线/升级文技法 |
+| [outline-arrangement-2.md](outline-arrangement-2.md) | 进阶设计时 | 反派视角/题材循环/困境循环/黄金五章/核心梗三分/三步两线/升级文技法（断期待诊断已并入 writing-craft.md） |
 | [outline-arrangement-3.md](outline-arrangement-3.md) | 工程化设计时 | 桥段节奏/多线写长/卖点需求/开篇切入点/创作辅助方法论 |
 | [expectation-techniques.md](expectation-techniques.md) | 写大纲/写章节前 | 期待感设计、铺垫/爽点/多线期待、信息差、情绪模型 |
 
@@ -26,7 +26,7 @@
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
 | [hook-techniques.md](hook-techniques.md) | 写章节时 | 章尾钩子13式+章首钩子7式+实战模板+段落级钩子+悬念编排+钩子禁忌 |
-| [hook-techniques-2.md](hook-techniques-2.md) | 期待感设计时 | 期待感模型/心理操控/反预判/高潮/情绪波浪/断期待/以退为进 |
+| [hook-techniques-2.md](hook-techniques-2.md) | 期待感设计时 | 期待感模型/心理操控/反预判/高潮/情绪波浪/以退为进（断期待已并入 writing-craft.md） |
 | [hook-techniques-3.md](hook-techniques-3.md) | 进阶钩子时 | 三翻四震/上瘾模型/狗哨理论/看点爽点/钩子链/金手指替换/飞卢风向 |
 
 ## P2 — 开头设计
@@ -67,7 +67,7 @@
 | 文件 | 加载时机 | 内容 |
 |------|----------|------|
 | [style-modules.md](style-modules.md) | 写章节时可参考 | 8 大题材风格模块：幽默/悬疑/言情/推理/恐怖/奇幻玄幻/现实世情/升级流爽文 |
-| [style-modules-2.md](style-modules-2.md) | 代入感/爽点设计时 | 代入感构建/事业爱情线/人设塑造/断期待/装逼/开局基点/爽点释放/毒点/救赎/边界感 |
+| [style-modules-2.md](style-modules-2.md) | 代入感/爽点设计时 | 代入感构建/事业爱情线/人设塑造/装逼/开局基点/爽点释放/毒点/救赎/边界感（断期待已并入 writing-craft.md） |
 | [style-modules-3.md](style-modules-3.md) | 场景风格设计时 | 轻小说/沙雕/赛博朋克/盘点文/模拟文/直播流/网站差异/打斗智斗 |
 | [style-modules-4.md](style-modules-4.md) | 写作技法参考时 | 镜头式写作/基础技巧/舞台搭建/基本功/打脸节奏/战斗描写/文笔 |
 | [style-modules-5.md](style-modules-5.md) | 经验参考（上） | 新媒体文/商业写作/书名/留存/情绪技法/脑洞/蜻蜓直播（卖报笔记已并入 maibao-live-notes.md） |
@@ -75,7 +75,7 @@
 | [dialogue-mastery.md](dialogue-mastery.md) | 对话场景写作时 | 对话节奏、潜台词、信息控制、对话模式数据库 |
 | [quality-checklist.md](quality-checklist.md) | 完本/阶段性检查时 | 质量检查清单、毒点排查、常见问题速查 |
 | [anti-ai-polish.md](anti-ai-polish.md) | 门禁打回/润色/重写时 | 去 AI 三遍法、补充技法、全套改写范例 |
-| [writing-craft.md](writing-craft.md) | 按需偶读 | 写作心法、补充技巧、题材策略、长篇结构管理、毒点清单、断期待、三翻四震、心态 |
+| [writing-craft.md](writing-craft.md) | 按需偶读 | 写作心法、补充技巧、题材策略、长篇结构管理、毒点清单、断期待（权威版）、三翻四震、心态 |
 
 ## 作者经验归档（2026-10-11 合并）
 

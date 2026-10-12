@@ -1084,11 +1084,11 @@ GET /repos/{book_id}/toc
 | 文件 | 何时加载 |
 |------|----------|
 | [references/outline-arrangement.md](references/outline-arrangement.md) | 大纲排布：五步大纲法+故事结构分级+剧情质量控制+升级感+节点设计+矛盾设计 |
-| [references/outline-arrangement-2.md](references/outline-arrangement-2.md) | 进阶：反派视角/黄金五章/断期待诊断/核心梗三分/升级文技法 |
+| [references/outline-arrangement-2.md](references/outline-arrangement-2.md) | 进阶：反派视角/黄金五章/核心梗三分/升级文技法 |
 | [references/outline-arrangement-3.md](references/outline-arrangement-3.md) | 工程化：桥段节奏/多线写长/卖点需求/开篇切入点 |
 | [references/expectation-techniques.md](references/expectation-techniques.md) | 期待感设计：铺垫/爽点/多线期待+信息差+情绪模型 |
 | [references/hook-techniques.md](references/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+钩子禁忌 |
-| [references/hook-techniques-2.md](references/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪+断期待 |
+| [references/hook-techniques-2.md](references/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪 |
 | [references/hook-techniques-3.md](references/hook-techniques-3.md) | 进阶钩子：三翻四震+上瘾模型+狗哨理论+钩子链+金手指替换 |
 | [references/opening-design.md](references/opening-design.md) | 开头设计：黄金一章法则+六大标准+开头模板+诊断 |
 | [references/genre-opening-database.md](references/genre-opening-database.md) | 8大题材开头模板+真实范例+决策树+书名起名法 |
@@ -1135,7 +1135,7 @@ GET /repos/{book_id}/toc
 | [references/quality-checklist.md](references/quality-checklist.md) | 质量检查+毒点排查+常见问题速查 |
 | [references/anti-ai-gates.md](references/anti-ai-gates.md) | 6 Gate 门禁细则+质量维度+7 种 AI 模式检测+高压区 1-7（含揭晓体）+快速自检口诀（含证伪）（门禁必读） |
 | [references/anti-ai-polish.md](references/anti-ai-polish.md) | 去AI味：可编辑范围分级+信息账本+修补顺序+三遍法+改写范例库（门禁打回/润色/重写时读） |
-| [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待+三翻四震+心态（按需） |
+| [references/writing-craft.md](references/writing-craft.md) | 写作心法+毒点清单+断期待（权威版）+三翻四震+心态（按需） |
 | [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯（卖报笔记已并入 maibao-live-notes.md） |
 | [references/maibao-live-notes.md](references/maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（2026-10-11 由 6 文件合并） |
 
