@@ -70,7 +70,7 @@
 | [style-modules-2.md](style-modules-2.md) | 代入感/爽点设计时 | 代入感构建/事业爱情线/人设塑造/装逼/开局基点/爽点释放/毒点/救赎/边界感（断期待已并入 writing-craft.md） |
 | [style-modules-3.md](style-modules-3.md) | 场景风格设计时 | 轻小说/沙雕/赛博朋克/盘点文/模拟文/直播流/网站差异/打斗智斗 |
 | [style-modules-4.md](style-modules-4.md) | 写作技法参考时 | 镜头式写作/基础技巧/舞台搭建/基本功/打脸节奏/战斗描写/文笔 |
-| [style-modules-5.md](style-modules-5.md) | 经验参考（上） | 新媒体文/商业写作/书名/留存/情绪技法/脑洞/蜻蜓直播（卖报笔记已并入 maibao-live-notes.md） |
+| [style-modules-5.md](style-modules-5.md) | 经验参考（上） | 新媒体文/商业写作/书名（**格式大全权威版**）/留存/情绪技法/脑洞/蜻蜓直播（卖报笔记已并入 maibao-live-notes.md） |
 | [style-modules-6.md](style-modules-6.md) | 经验参考（下） | 黄金三章/市场定位/题材本质/期待感/文笔解析/新人全流程/梗收集 |
 | [dialogue-mastery.md](dialogue-mastery.md) | 对话场景写作时 | 对话节奏、潜台词、信息控制、对话模式数据库 |
 | [quality-checklist.md](quality-checklist.md) | 完本/阶段性检查时 | 质量检查清单、毒点排查、常见问题速查 |
