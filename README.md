@@ -84,7 +84,7 @@ novel-writer-skill/
     ├── hook/             # 钩子与期待感
     ├── opening/          # 开篇与上架物料
     ├── genre/            # 题材框架
-    ├── character/        # 角色与情绪
+    ├── character/        # 角色设计
     ├── style/            # 风格与写法
     ├── quality/          # 质量与去 AI
     ├── notes/            # 作者经验与心态
