@@ -26,30 +26,33 @@ _参考文件，按需加载。语雀是可选项，`save_location=local` 的用
 ```json
 {
   "save_location": "yuque",
-  "backup": { "mode": "yuque_history" },
+  "backup": {
+    "mode": "yuque_history"
+  },
   "yuque": {
     "book": "84415848",
     "groups": {
       "content": "…uuid…",
-      "protagonist": "…uuid…",
-      "antagonist": "…uuid…",
-      "supporting": "…uuid…",
-      "deceased": "…uuid…",
-      "item": "…uuid…",
-      "location": "…uuid…",
-      "faction": "…uuid…",
+      "characters_protagonist": "…uuid…",
+      "characters_antagonist": "…uuid…",
+      "characters_supporting": "…uuid…",
+      "characters_deceased": "…uuid…",
+      "items": "…uuid…",
+      "locations": "…uuid…",
+      "factions": "…uuid…",
       "foreshadowing": "…uuid…",
       "timeline": "…uuid…",
       "outline": "…uuid…",
-      "detailed_outline": "…uuid…",
-      "key_dialogue": "…uuid…",
+      "dialogs": "…uuid…",
       "level_system": "…uuid…",
       "change_log": "…uuid…",
-      "sweet_spot": "…uuid…",
-      "hook": "…uuid…",
-      "emotion": "…uuid…",
+      "sweet_spot_tracking": "…uuid…",
+      "hook_tracking": "…uuid…",
+      "detailed_outline": "…uuid…",
+      "emotion_arc": "…uuid…",
       "world_view": "…uuid…",
-      "mermaid": "…uuid…",
+      "mermaid_graph": "…uuid…",
+      "snapshot": "…uuid…",
       "changes": "…uuid…"
     }
   }
@@ -129,32 +132,30 @@ _参考文件，按需加载。语雀是可选项，`save_location=local` 的用
 └── [DOC] 状态快照（挂「变更记录」下、置于分组首位）
 ```
 
-### groups 映射表（配置文件 `yuque.groups`，22 个 key 全必填，与「22 个分组全建」一一对应）
+### groups 映射表（配置文件 `yuque.groups`，22 个 key 全必填，与「22 个分组全建」一一对应；**key 名以 `config.schema.json` 为准**）
 
-| key | 分组节点 | 用途 |
-|-----|----------|------|
 | `content` | 正文/（TITLE） | 正文章节文档 |
-| `protagonist` | 角色设定/主角组/（TITLE，嵌套） | 主角档案 |
-| `antagonist` | 角色设定/反派组/（TITLE，嵌套） | 反派档案 |
-| `supporting` | 角色设定/配角组/（TITLE，嵌套） | 配角档案 |
-| `deceased` | 角色设定/已故角色/（TITLE，嵌套） | 已故角色档案 |
-| `item` | 物品设定/（TITLE） | 物品档案 |
-| `location` | 地点设定/（TITLE） | 地点档案 |
-| `faction` | 势力设定/（TITLE） | 势力档案 |
-| `foreshadowing` | 伏笔追踪/（TITLE） | 伏笔档案（vX-伏笔名.md） |
+| `characters_protagonist` | 角色设定/主角组/（TITLE） | 主角档案 |
+| `characters_antagonist` | 角色设定/反派组/（TITLE） | 反派档案 |
+| `characters_supporting` | 角色设定/配角组/（TITLE） | 配角档案 |
+| `characters_deceased` | 角色设定/已故角色/（TITLE） | 已故角色档案 |
+| `items` | 物品设定/（TITLE） | 物品档案 |
+| `locations` | 地点设定/（TITLE） | 地点档案 |
+| `factions` | 势力设定/（TITLE） | 势力档案 |
+| `foreshadowing` | 伏笔追踪/（TITLE） | 伏笔文档（vX-伏笔名.md） |
 | `timeline` | 时间线/（TITLE） | 时间线文档 |
 | `outline` | 大纲/（TITLE） | 大纲分组节点（含全书大纲/卷大纲/章节大纲） |
+| `dialogs` | 关键对话/（TITLE） | 关键对话记录 |
+| `level_system` | 等级体系/（TITLE） | 等级体系文档 |
+| `change_log` | 变更日志/（TITLE） | 按日期的变更记录（手动修正/写作后记录） |
+| `sweet_spot_tracking` | 爽点追踪/（TITLE） | 爽点追踪文档 |
+| `hook_tracking` | 钩子追踪/（TITLE） | 钩子追踪文档 |
 | `detailed_outline` | 大纲/细纲/（TITLE，嵌套） | 细纲分组节点（旧库若平级建过则复用） |
-| `key_dialogue` | 关键对话/（TITLE） | 关键台词记录 |
-| `level_system` | 等级体系/（TITLE） | 等级设定 |
-| `change_log` | 变更日志/（TITLE） | 章节摘要（按卷分篇「章节摘要-第N卷」） |
-| `sweet_spot` | 爽点追踪/（TITLE） | 爽点追踪文档 |
-| `hook` | 钩子追踪/（TITLE） | 钩子追踪文档 |
-| `emotion` | 情绪曲线/（TITLE） | 情绪曲线文档 |
+| `emotion_arc` | 情绪曲线/（TITLE） | 情绪曲线文档 |
 | `world_view` | 世界观/（TITLE） | 世界观文档 |
-| `mermaid` | Mermaid关系图/（TITLE） | 关系图 + 地理方位表 |
-| `changes` | 变更记录/（TITLE） | chXXX-changes 增量文档（永久保留）+ 状态快照 DOC（首位） |
-
+| `mermaid_graph` | Mermaid关系图/（TITLE） | 关系图文档（含**地理方位** DOC：地点方位表 + Mermaid 地图，防方位漂移） |
+| `snapshot` | 状态快照（DOC） | `状态快照.md` 的 UUID |
+| `changes` | 变更记录/（TITLE） | chXXX-changes 增量文档（永久保留） |
 ---
 
 ## 5. API 操作速查（2026-10-07~12 实弹验证）
@@ -249,7 +250,7 @@ GET /repos/{book_id}/toc
 
 ### 6.4 双写（both）的本地侧
 
-正文存**完整版（含 CHANGES 块，工作态）**，另存 prepare-upload.js 剥离版供上传；**CHANGES 只归档到语雀「变更记录」分组（chXXX-changes 文档）——本地不建 changes 目录**（2026-10-12 老板定：语雀是 changes 的权威备份；backup-snapshot 快照时从正文提取 CHANGES 归档）。
+正文存**完整版（含 CHANGES 块，工作态）**，另存 prepare-upload.js 剥离版供上传；**CHANGES 以语雀「变更记录」分组为权威归档**（chXXX-changes 文档，2026-10-12 老板定），本地 `设定/changes/` 目录**可选**（旧布局兼容：backup-snapshot 快照优先读 changes/chXXX.md，无则从正文提取归档）。
 
 ### 6.5 快照更新（语雀模式）
 

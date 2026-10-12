@@ -160,6 +160,22 @@ test('config schema 枚举 ↔ SKILL.md 词表一致（爽点类型 / 钩子类�
   assert.deepStrictEqual([...new Set(missing)], [], `SKILL.md 未记载的枚举值: ${missing.join(', ')}`);
 });
 
+test('语雀手册 groups key ↔ config.schema.json 一致（22 个同名同序，防抽离改写漂移）', () => {
+  // v3.5.17 语雀抽离时曾把 key 名改写为简化名且丢失 snapshot（22→21），validate-config 按 schema 拒
+  //（“yuque 模式缺分组（22 必需）”），而手册却自称零丢失——现有测试覆盖不到，此处固化防重演。
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'configs', 'config.schema.json'), 'utf-8'));
+  const req = schema.properties.yuque.properties.groups.required;
+  const manual = fs.readFileSync(path.join(ROOT, 'references', 'yuque-integration.md'), 'utf-8');
+  const sec2 = manual.slice(manual.indexOf('## 2.'), manual.indexOf('## 3.'));
+  const jsonBlock = sec2.match(/```json\n([\s\S]*?)\n```/);
+  assert.ok(jsonBlock, '手册第 2 节应含示例 JSON 块');
+  const keys = Object.keys(JSON.parse(jsonBlock[1]).yuque.groups);
+  const table = manual.slice(manual.indexOf('### groups 映射表'), manual.indexOf('## 5.'));
+  const tableKeys = [...table.matchAll(/\|\s*`([a-z_]+)`\s*\|/g)].map((m) => m[1]);
+  assert.deepStrictEqual(keys, req, '手册第 2 节示例 JSON groups key 应与 schema required 同名同序');
+  assert.deepStrictEqual(tableKeys, req, '手册第 4 节映射表 key 应与 schema required 同名同序');
+});
+
 test('示例配置 chapter_words.min 与 SKILL 内嵌样例一致（防 v3.3.51 漂移重演）', () => {
   // v3.3.51 把默认字数改为 2500-4000 时三份示例配置没跟上（仍 2000），AI 照抄示例会降低门禁下限。
   // 以 SKILL.md 内嵌配置样例为准，校验全部示例配置的 min 与之相等。
