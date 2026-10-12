@@ -47,7 +47,7 @@
 | [story-structure-2.md](story-structure-2.md) | 剧情推进设计时 | 剧情过渡与衔接/拉长剧情/换地图/长线节奏/矛盾设计与动机链 |
 | [story-structure-3.md](story-structure-3.md) | 章节结构设计时 | 八节点故事结构+实用技巧（五重驱动/嵌套结构/真相逆推/细纲实务） |
 | [story-structure-4.md](story-structure-4.md) | 经验参考（上） | 逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法（卖报笔记已并入 maibao-live-notes.md） |
-| [story-structure-5.md](story-structure-5.md) | 经验参考（下） | 强主线弱主线/故事本质论/核心梗/阵营手牌/矛盾理论/悬念与冲突 |
+| [story-structure-5.md](story-structure-5.md) | 经验参考（下） | 强主线弱主线/故事本质论/核心梗/阵营手牌/矛盾理论/悬念与冲突 + **换地图方法论权威版**（宅猪三法/蜜汁姬进化论） |
 | [advanced-plot-techniques.md](advanced-plot-techniques.md) | 深入设计剧情时 | 小纲四步法、高潮逆推、情绪拉扯、金手指、双线法则 |
 | [micro-innovation.md](micro-innovation.md) | 差异化设计时 | 题材微创新方法 |
 
