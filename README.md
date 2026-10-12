@@ -102,6 +102,27 @@ bash tools/simulate-backup.sh
 bash tools/simulate-longform.sh
 ```
 
+## 发版（半自动）
+
+版本号手动控制语义（patch/minor/major 需人判断），tag / Release / 钉钉通知全自动：
+
+```bash
+bash tools/bump-version.sh patch   # 一键同步 package.json + SKILL.md frontmatter + 尾部
+# 或 minor / major
+
+git add -A && git commit -m "<改动描述> v<新版本>" && git push
+```
+
+push 后 CI（`.github/workflows/release.yml`）自动完成：
+
+1. 跑全部测试 + 集成回归（失败则不发版）
+2. 检测 `package.json` 版本是否已打 tag——未打则自动创建 GitHub Release
+3. Release 正文 = 自上个 tag 以来的 commit 变更记录
+4. 钉钉通知（`DINGTALK_WEBHOOK` secret，未配置不阻断）
+
+> 版本不变时不发版（日常改动不 bump 就只会触发 test.yml）。
+> 首次启用后，当前未打 tag 的版本会在下次 push 时自动补发。
+
 ## 许可
 
 MIT

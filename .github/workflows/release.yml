@@ -1,57 +1,62 @@
 name: Release
 
+# 自动发版：push 到 main 且 package.json 版本未打 tag 时，测试全绿后
+# 自动创建 GitHub Release（含自上个 tag 以来的 changelog）+ 钉钉通知。
+# 版本号由 bump-version.sh 人工控制（patch/minor/major 语义需人判断）。
+
 on:
   push:
-    tags:
-      - "v*"
-
-permissions:
-  contents: write
+    branches: [main]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # 需要 tags 历史生成 changelog
 
-      - name: 打包 zip（tag 时刻完整内容）
-        run: git archive --format=zip -o "novel-writer-skill-${GITHUB_REF_NAME}.zip" "${GITHUB_REF_NAME}"
-
-      - name: 生成发布说明（git log 中文）
-        id: notes
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          PREV=$(git describe --abbrev=0 --tags --match 'v[0-9]*' "${TAG}^" 2>/dev/null || echo "")
-          BODY="## 📦 novel-writer-skill ${TAG}"
-          BODY+=$'\n\n### 更新内容'
-          if [ -n "$PREV" ]; then
-            LOG=$(git log --oneline --no-merges "${PREV}..${TAG}" | sed 's/^/- /')
-            BODY+=$'\n'"${LOG}"
-          else
-            BODY+=$'\n\n首次发布'
-          fi
-          BODY+=$'\n\n[查看文档](https://github.com/yehuoshun/novel-writer-skill#readme)'
-          printf '%s' "$BODY" > release_body.md
-          {
-            echo "body<<CHANGELOG_EOF"
-            echo "$BODY"
-            echo "CHANGELOG_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: 创建 release 并上传 zip
-        uses: softprops/action-gh-release@v2
+      - uses: actions/setup-node@v4
         with:
-          files: "novel-writer-skill-${{ github.ref_name }}.zip"
-          body: ${{ steps.notes.outputs.body }}
+          node-version: "20"
 
-      # 钉钉通知：tag push 事件无 commits，action 的 push() 会发「0 提交」空消息；
-      # 且默认 GITHUB_TOKEN 创建的 release 不会级联触发监听 release 事件的 workflow。
-      # 故在此自包含发送（带完整 changelog）。
-      - name: 钉钉通知（Release）
+      - name: 运行测试（node 内置 test runner，零依赖）
+        run: node --test
+
+      - name: 集成回归（生命周期 + 备份快照 + 50 章长篇）
+        run: |
+          bash tools/simulate-lifecycle.sh
+          bash tools/simulate-backup.sh
+          bash tools/simulate-longform.sh
+
+      - name: 自动发版（版本未打 tag 时）
+        if: github.ref == 'refs/heads/main'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
-          TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
-        run: python3 tools/notify-release.py release_body.md
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          if git tag -l "v$VERSION" | grep -q .; then
+            echo "✅ v$VERSION 已发过版，跳过"
+            exit 0
+          fi
+          PREV="$(git tag --sort=-v:refname | grep -v "^v$VERSION$" | head -1 || true)"
+          if [ -n "$PREV" ]; then
+            NOTES="$(git log --oneline --no-merges "$PREV..HEAD")"
+            echo "变更（自 $PREV）："
+          else
+            NOTES="$(git log --oneline --no-merges)"
+            echo "首次发版，变更："
+          fi
+          printf '%s\n' "$NOTES"
+          { echo "## 变更记录"; echo; printf '%s\n' "$NOTES"; } > /tmp/release-body.md
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file /tmp/release-body.md
+          echo "✅ Release v$VERSION 已创建"
+          # 钉钉通知（自包含发送，缺配置不阻断）
+          TAG="v$VERSION" python3 tools/notify-release.py /tmp/release-body.md
