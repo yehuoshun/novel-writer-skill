@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.16
+version: 3.5.17
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -27,7 +27,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 配置
 
-配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式 / `configs/example-both.json` 双写模式）
+配置文件路径：`~/.openclaw/workspace/skills/novel-writer-skill/configs/[小说名].json`（完整示例见 `configs/example.json` 本地模式 / `configs/example-yuque.json` 语雀模式 / `configs/example-both.json` 双写模式；**语雀是可选项，全部语雀操作细节见 [references/yuque-integration.md](references/yuque-integration.md)**）
 
 > ⚠️ 实际配置不入 git 仓库，skill 重装/更新前注意备份 `configs/[小说名].json`
 
@@ -80,16 +80,14 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 **配置说明**：
 - `save_location`：保存位置（yuque / local / both）
-  - `yuque`：正文+设定都存语雀（同一个知识库，TOC 分组区分正文/设定）
-  - `local`：正文+设定都存本地（两个目录）
-  - `both`：双写——正文/设定同时写语雀和本地，互为备份；读取优先本地，本地缺则回退语雀
+  - `local`（**主线**）：正文+设定都存本地（两个目录）
+  - `yuque` / `both`（**可选**）：语雀/双写模式，配置字段与全部操作细节见 [references/yuque-integration.md](references/yuque-integration.md)
 - `backup.mode`：备份模式
-  - `yuque_history`（默认）：依赖语雀历史版本功能，不另做本地备份
   - `local`：每次写章节回写后由 `scripts/backup-snapshot.js` 生成本地快照（状态快照 + 本章正文 + chXXX-changes → `local_path/<时间戳>-chXXX/`）；加 `--full` 可全量备份 正文/ + 设定/ 两棵树
+  - `yuque_history`（默认）：依赖语雀历史版本功能，不另做本地备份（仅语雀/both 模式使用；纯本地用户建议改 `local`）
 - `backup.local_path`：本地备份路径（仅当 backup.mode=local 时需要）
 - `info.written_chapters`：已写章节编号列表，用于追踪写作进度
-- `yuque.book`：小说知识库 ID 或 namespace（二选一，至少填其一；正文+设定同库，仅语雀需要）
-- `yuque.groups`：语雀分组UUID（仅语雀需要）
+- `yuque.book` / `yuque.groups`：语雀配置块（仅 yuque/both 需要，字段说明与 22 key 分组映射见 [references/yuque-integration.md](references/yuque-integration.md) 第 2/4 节）
 - `local.content_path` / `local.settings_path`：本地正文/设定保存路径（仅 save_location=local/both 时需要）
 - 本地路径统一格式：`./小说名/正文` / `./小说名/设定`（相对路径以运行时的当前工作目录为基准；**⚠️ 一律写绝对路径**——`backup-snapshot.js` 等脚本按运行 cwd 解析相对路径，若在小说目录内运行（最自然的操作），`./小说名/正文` 会被解析成 `小说名/小说名/正文` 双重嵌套导致备份失败；2026-10-10 实弹暴露）
 - 配置里 `yuque` 和 `local` 两个块只需填当前 save_location 对应的块；both 时两个块都必填
@@ -111,7 +109,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 ```
 **流程**：
 1. 问：「小说类型是？」
-2. 问：「保存到哪？A 语雀 B 本地 C 语雀+本地」（正文和设定同一处）
+2. 问：「保存到哪？A 语雀 B 本地 C 语雀+本地」（正文和设定同一处；**推荐 B 本地**，语雀为可选项）
    - A 语雀 → 问：「知识库ID或namespace（二选一即可）」（正文+设定同一个知识库；repo 标识用数字 id 或 namespace 均可）
    - B 本地 → 问：「正文保存路径」（默认：./小说名/正文/）「设定保存路径」（默认：./小说名/设定/）
    - C 语雀+本地（双写）→ 语雀知识库（单个）和本地路径都问，正文/设定两处都写
@@ -127,15 +125,11 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 9. 生成配置文件，发给你确认
 10. 你确认后，创建设定文档模板
 11. 根据存储方式创建设定目录结构：
-    - **语雀模式**：调用语雀 API（`PUT /repos/{book_id}/toc`，body 带 action=appendNode、action_mode=child 及 title/type）自动创建目录分组，**从响应 data 直接取各分组 UUID 回写配置（无需再读）**
-      - **22 项映射全建 = 22 个 TITLE 节点 + 1 个快照 DOC**：21 个 TITLE 对应配置 key——正文/主角组/反派组/配角组/已故角色/物品设定/地点设定/势力设定/伏笔追踪/时间线/大纲/细纲/关键对话/等级体系/变更日志/爽点追踪/钩子追踪/情绪曲线/世界观/Mermaid关系图/变更记录；另需建 **角色设定** 一个 TITLE 作主角组/反派组/配角组/已故角色的**结构父组**（不是配置 key）。**`snapshot`（快照）是 DOC 不是分组**——用 `yuque_create_doc` 建一篇「状态快照」文档、取其数字 id 作 uuid 回写；**快照 DOC 挂「变更记录」分组下、置于分组首位**（2026-10-12 老板定：与 chXXX-changes 同属运行数据；prependNode 首插；此前建 TOC 根部——把快照当 TITLE 建是错的；漏建「角色设定」父组则 4 个子组挂不上）
-      - `content`（正文）分组存正文章节文档（挂 `第XXX章` DOC），**必须第一个建**（`prependNode` 或先建保证 TOC 置顶；2026-10-09 实测：从角色设定开始建会导致正文不置顶，后续要用 `prependNode` 移回）。其余分组按下方配置表顺序建（注意嵌套：主角组/反派组/配角组/已故角色 挂在 角色设定 下，细纲 挂在 大纲 下；MCP 批建用 `target_title` 指向父组名即可，无需先拿 uuid）
-      - 旧库缺组时自动补建：**先 `GET /toc` 查同名节点**（裸 API 同名不复用），存在则复用 UUID、缺失才 appendNode 创建（尤其 `世界观`、`Mermaid关系图`）
+    - **语雀模式 / 双写（both）**：调用语雀 API 自动创建目录分组并回写 UUID——22 项分组映射、content 首建、旧库补建、快照 DOC 特殊处理、MCP/裸 API 选择等全部细节见 [references/yuque-integration.md](references/yuque-integration.md) 第 3 节
     - **本地模式**：在设定路径下创建完整的本地目录树（角色设定/主角+反派+配角+已故、物品设定、地点设定、势力设定、等级体系、时间线、伏笔追踪、爽点追踪、钩子追踪、情绪曲线、大纲/细纲、关键对话、世界观、Mermaid关系图、变更日志、状态快照.md、changes/）
-    - **双写模式（both）**：语雀和本地两套都创建（见上方两个模式），`yuque` 和 `local` 配置块都必须填全
 12. 开始写全书大纲（**必完成**：全书大纲+卷大纲+章节细纲含蓝图出场清单；不完成不进写章节流程）
 13. **书名查重（番茄站内，上线前必做，2026-10-11 老板定）**：按 [references/book-name-vetting.md](references/book-name-vetting.md) 查**番茄站内**同名/近名——同名必换、近名提醒、设定撞车提醒不阻断；**现阶段只审查番茄**（非番茄平台同名不列入）；改名保留「分类关键词+核心卖点」，长名转「又名」；改名后全库同步（配置 info.name / 简介 / 大纲 / 知识库名 / 本地 / 记忆）（实弹：《炼气一万年》番茄近名 2 本 → 改《炼气万古》）
-14. **生成简介（含发布 tag）**：按 [references/description-tags.md](references/description-tags.md) 生成简介正文 + 番茄 tag 块（**目前仅支持番茄小说 tag**：主分类必选×1、主题/角色/情节各≤2，选项列表与决策准则见该文档；其他平台待实弹需求再扩展）；简介落库——语雀：建「简介」DOC（挂 content 分组下）；本地：`设定/简介.md`；双写：两处都写
+14. **生成简介（含发布 tag）**：按 [references/description-tags.md](references/description-tags.md) 生成简介正文 + 番茄 tag 块（**目前仅支持番茄小说 tag**：主分类必选×1、主题/角色/情节各≤2，选项列表与决策准则见该文档；其他平台待实弹需求再扩展）；简介落库——本地：`设定/简介.md`；语雀/both：另见手册第 3.5 节
 
 **设定问答中途停止**：
 - 用户输入「够了」→ 用已有信息生成设定
@@ -229,7 +223,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 2. 读取下章交接包：读 `状态快照.md` 顶部的 `## 下章交接包`（上一章留下的交接单），再读快照正文确认当前所有实体状态（不读历史）
 3. 按需加载相关设定（本章涉及的角色/地点/物品的详细档案；**涉及多地相对位置时加载「地理方位」表**核对，2026-10-12 补）
 4. 参考本章细纲（含蓝图出场清单），必要时加载 [references/outline-arrangement.md](references/outline-arrangement.md) 和 [references/expectation-techniques.md](references/expectation-techniques.md)
-   - ⚠️ **细纲缺失禁止开写**：设定中无细纲文档（语雀：大纲/细纲 分组无 DOC；本地：`设定/大纲/细纲/` 无文件）时，先执行「写大纲」生成全书大纲+细纲（含蓝图出场清单），再回来写章节——不允许跳过大纲直接开写
+   - ⚠️ **细纲缺失禁止开写**：设定中无细纲文档（本地：`设定/大纲/细纲/` 无文件；语雀：见手册 6.1）时，先执行「写大纲」生成全书大纲+细纲（含蓝图出场清单），再回来写章节——不允许跳过大纲直接开写
    - **校对本草对白体例（2026-10-12 补）**：先读本书近 1-2 章正文，确认对白写法（如本书=「说，…」无引号体，「」仅用于引述片段；或引号体），照本书体例写——勿套用通用引号体（实弹：第22章误用「」引号体，全章改写）
    - **细纲/蓝图缺本章行（2026-10-12 补）**：细纲存在但蓝图清单无本章行 → **先补该行**（含必出场角色/势力/地点 + 戏分）再写；蓝图「必出场势力」若本章悬疑设计刻意不点名，填「无」或与正文一致的表述，勿写设定标签词（实弹：第22章蓝图要求「外部势力」出场但正文刻意不点名 → 校验失败）
 5. 生成这章大纲（标注：核心事件、本章爽点类型、章首钩子类型、章尾悬念 + **每个核心事件的场景字数配额**，Σ 落在 `writing.chapter_words` 目标区间、一般 2800-3400）
@@ -257,7 +251,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 > | 伏笔闭环 | 条目 16 | 伏笔状态机一致性 |
 > 注：文档内「门禁 N」统一指**阶段三条目号**（如「门禁 14」= 未知实体，见条目 14）；勿按 12 门禁序数换算（按序数数蓝图是第 11 个、伏笔是第 12 个，会与「门禁 11=引用校验」冲突）。
 > ⚠️ **顺序铁律**：一致性 / 描写一致性 / 伏笔闭环 / 蓝图校验必须基于**上一章快照**、在**状态回写（阶段四）之前**执行——回写后快照已是本章目标态，再校验会误报。本地模式跑 `node scripts/check-consistency.js <状态快照.md> <本章.md> <设定目录> [细纲.md]` 自动查「引用 / 一致性 / 描写一致性 / 伏笔闭环 / 蓝图出场合规 / 未知实体候选 / 交接包必填」（对应条目 11/12/13/15/16/14；交接包必填为协议兜底，缺失打回）。蓝图校验另有警告：细纲存在但蓝图清单无本章行（文档要求每章附蓝图）、必出场角色仅出场 1 次（叙事力度）、无法从文件名解析章号（跳过校验，不再静默）；未知实体候选仅警告不阻断。
-> 📌 **语雀模式跑脚本**：脚本按文件路径工作，须先把本章正文、上一章快照、涉及设定档（角色/地点/物品）导出到临时目录再跑 `check-consistency.js` / `check-indentation.js` / `scan-text-health.js`，`prepare-upload.js` 同理（2026-10-10 纯语雀实弹补注）。
+> 📌 **语雀模式跑脚本**：脚本按文件路径工作，语雀模式须先把本章正文、上一章快照、涉及设定档导出到临时目录再跑（临时目录法见 [references/yuque-integration.md](references/yuque-integration.md) 6.1）。
 > ⚠️ **工具操作坑（2026-10-12 补）**：① `mcporter` 必须在 **workspace 目录**（`config/mcporter.json` 所在）执行，在别的 cwd 调用会报「Unknown MCP server」（`mcporter list` 却仍能列出——别被迷惑）；② `scan-text-health.js` 用 `文件路径 [config.json]` 作**参数**，**别用 `< 重定向 + config`**（会把 config 当正文读，假报「字数不足」）。
 10. **写作质量门禁**（6 Gate，全名见 [references/anti-ai-gates.md](references/anti-ai-gates.md)：Gate 1 文本健康 / Gate 2 AI句式 / Gate 3 心理外化 / Gate 4 节奏 / Gate 5 对话 / Gate 6 结尾）；本地模式跑 `node scripts/scan-text-health.js < 正文文件.md [config.json]` 自检 Gate 1（词无定性，分布是判据；**传 config.json 时对照 `writing.chapter_words` 做字数门禁：正文汉字数 < min → 硬伤打回，> max → 提示**——此前字数约束只靠写作时自觉，2026-10-10 实弹暴露后补脚本兑底），Gate 2–6 的**可规则化子集**跑 `node scripts/scan-ai-tells.js <正文.md>`（序数/总结/时代套话、心理外化成簇、段落等厚、对话占比/连发、章尾钩子信号——**仅提示不判硬伤**，语义判断仍归 AI；其中 Gate6「章尾钩子信号」为**启发式**，误报以 AI/复核终判、不必为误报改文——2026-10-12 第22章实弹：危机钩齐全仍报「疑似无钩子」）。下列为 Gate 1 检测维度：破折号统计（`——` 计数，**>3 判硬伤打回**且附上下文，≤3 时列出上下文供人工核对是否全为对话打断——2026-10-12 第23章实弹：此前靠复核第一轮人工数才抓出 5 处超限，主报告还数漏，现脚本直接兑底）
     - **断句检测**：逗号链（单句 ≥6 逗号警告）、句长分布（25 字+ 占比、≤8 字碎片）
@@ -310,45 +304,37 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - **AI 味密度（2026-10-11 第11章实战固化）**：① 数金句（带俏皮/对仗/格言味、可独立成句被记住的句子）≤2；② 数同类句式成簇（有人…有人…/想起X想起Y/说…的… 同章 ≥2 处即违规）≤1；③ 探子/转述台词信息点 ≥3 必须已拆轮；④ 章尾妙笔（意象收尾/对仗钩）已改朴素；⑤ 对仗句（A；B 对称）已拆；⑥ 精确数字未成簇（布局/距离/时长枚举式 ≥3 处即模糊化）；⑦ 章尾无宣言句（X会知道/究竟是什么式已改口语）；⑧ 顺滑编排插桩（对话轮转插停顿/动作链插迟钝/群体反应延迟化/章尾意象改动作）——详见 [references/anti-ai-gates.md](references/anti-ai-gates.md)「顺滑编排型指纹」（⑥⑦为第13章实弹固化；⑧为第14章实弹固化）
 - **结构指纹·讲解章（2026-10-12 第16章实战固化）**：动笔前先判章节类型——动作/场景章天然安全；**问答/讲古/汇报型纯对话章天然高危**，须按 [references/anti-ai-gates.md](references/anti-ai-gates.md)「结构指纹·讲解章」自查（对话段占比 >50% / 段均字 <30 / 「>60字」段 <5% 命中 ≥3 即高危）并主动「对话并段 + 长段承载叙述 + 长短夹杂」。**注意：脚本门禁与双模型复核都抓不到本指纹，三者全绿 ≠ 外部检测器过**，不得拿「门禁全绿」当交付依据
 - **语句检查**：叙述层通顺（口语杂质只进对话层——2026-10-11 实弹：「不知道什么时候落的」→「落下的」）、病句/错别字/漏字、标点
-- 交付 = 章节给老板验收/发布；**检查必须在回写前完成**，改完正文再上传（避免回写后又改正文造成快照/语雀不一致）
+- 交付 = 章节给老板验收/发布；**检查必须在回写前完成**，改完正文再上传（避免回写后又改正文造成快照/存储不一致）
 
 **阶段四：落地 + 状态回写**
-> ⚠️ **改版备份铁律（2026-10-12 老板定）**：正文任何版本改动（朱雀迭代 / 复核修复 / 润色重写）**开始前**，先把**当前版全文**存到语雀「正文版本备份」TITLE 分组（uuid 见各书配置；新建 DOC 命名 `ch{NNN}-v{版本号}`，如 `ch020-v3`），并更新同分组下 `ch{NNN}-版本备份索引`（版本表 + 检测值 + 状态）。v4.1 全文因未备份而不可考（教训：反复覆盖后无法溯源）。本地侧同步留档 `novel/<书>/版本备份/`。
-17. 门禁全部通过后 → 上传（按 save_location：语雀 / 本地 / 双写）
-    - **⚠️ 上传前预处理（必做）**：先跑 `node scripts/prepare-upload.js <正文.md> <out.md>` 生成可上传正文，再用 out.md 上传（2026-10-09 实弹验证，缺一步语雀就顶格/露协议块）。脚本自动做三件事：
-      1. **剥离 CHANGES 块**：`---CHANGES---…---END CHANGES---` 不进正文页面（只进 chXXX-changes 文档）；实测不剥离会整块渲染进正文文档
-      2. **前置占位注释** `<!-- 语雀渲染占位（首段缩进保护） -->`：实测语雀 lake 转换会吃掉「文档第一段」行首的全角空格（其余段落不受影响），注释占位让原第一段变成第二段，缩进全保
-      3. **内置段首缩进校验**：与 `check-indentation.js` 同规则（自然段段首两全角空格「　　」，标题/空行/列表/引用块/表格/代码块/场景分隔符豁免；规则源为两脚本共用 `scripts/lib/text-format.js`，防两处漂移），退出码非 0 → 先补齐再上传，禁止跳过
-    - 语雀模式：正文 DOC 创建到 `content` 分组下（**推荐：`node scripts/yuque-doc.js create-mount --book <id> --title <标题> --file <out.md> --group 正文` 一步完成「创建+挂载」，自带查分组/异常提示；手动两步：① `POST /repos/{book_id}/docs` 创建（body 用 prepare-upload.js 输出的 out.md，不用原始正文文件；⚠️ 实测 parent_uuid 参数不生效，创建出的文档不在 TOC 树内）；② `PUT /repos/{book_id}/toc` 挂载：`{"action":"appendNode","action_mode":"child","type":"DOC","target_uuid":"<分组TITLE uuid>","node_uuid":"<TOC节点uuid>"}`**——node_uuid 是 TOC 节点 uuid（非 doc_id），appendNode+doc_ids 对已入树的 doc 无效（2026-10-12 实弹）；`ls-groups` 子命令可列全部分组）
-    - **本地模式 / 双写（both）的本地侧**：正文存**完整版（含 CHANGES 块，工作态）**，另存 prepare-upload.js 剥离版供上传；**CHANGES 只归档到语雀「变更记录」分组（chXXX-changes 文档）——本地不建 changes 目录**（2026-10-12 老板定：语雀是 changes 的权威备份；backup-snapshot 快照时从正文提取 CHANGES 归档）
-17.5. **双写对账（2026-10-12 补）**：本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步
+> ⚠️ **改版备份铁律（2026-10-12 老板定）**：正文任何版本改动（朱雀迭代 / 复核修复 / 润色重写）**开始前**，先把**当前版全文**留档（本地：`novel/<书>/版本备份/` 下存 `ch{NNN}-v{版本号}.md`，并更新 `ch{NNN}-版本备份索引`：版本表 + 检测值 + 状态；语雀/both：存语雀「正文版本备份」分组，见手册 6.9）。v4.1 全文因未备份而不可考（教训：反复覆盖后无法溯源）。
+17. 门禁全部通过后 → 落地（按 save_location）：
+    - **本地模式（主线）**：正文存**完整版（含 CHANGES 块，工作态）**到 `local.content_path`；**本地不建 changes 目录**——CHANGES 作为正文内嵌块 + 本地备份快照时提取归档（backup-snapshot 从正文提取）
+    - **语雀 / 双写（both）模式**：上传前预处理（`prepare-upload.js` 剥离 CHANGES + 占位注释 + 缩进校验）→ 创建+挂载正文 DOC，全程细节（含 2026-10-09/11/12 语雀渲染与挂载踩坑记录）见 [references/yuque-integration.md](references/yuque-integration.md) 第 6 节
+17.5. **双写对账（both 模式，2026-10-12 补）**：本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步（详见手册第 7 节）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - 更新 `状态快照.md`（当前态覆盖，非追加）
-      - 语雀模式：更新 `snapshot` 分组下的 DOC，用 `PUT /repos/{book_id}/docs/{doc_id}` 覆盖（doc_id 为文档数字 id 或 slug，均可）
       - 本地模式：覆盖 `设定/状态快照.md`
-      - 双写模式：两处都更新
+      - 语雀 / 双写模式：两处都更新（语雀侧更新 `snapshot` 分组 DOC，见手册 6.5）
     - **覆盖 `## 下章交接包` 整段**（旧包作废）：从 CHANGES 的 `<!-- 交接包 -->` 声明生成，供下一章读取
     - **按伏笔状态机更新伏笔状态表**：🔨埋设→新增行（已埋设）**并创建 `伏笔追踪/vX-伏笔名.md` 文档**（含类型/预期读者效果/线索，与快照同步——漏建会导致下一章推进被门禁误拦「未登记伏笔」）；➡️推进→状态改已推进+追加推进章；✅回收→状态改已回收+写揭晓章；❌废弃→状态改已废弃
       - ⚠️ **伏笔档案回写铁律（2026-10-11 第11章复检固化）**：推进/回收/废弃时，`伏笔追踪/vX-*.md` 档案的**状态字段 + 推进记录**必须与快照伏笔表同步更新（本次 v1 快照已改「已推进」、档案还停「已埋设/待推进」，复检才抓到）。检查口径：回写后 grep vX 档案状态字段 ≠ 快照状态即漏
-    - 保存 `ch{001}-changes.md` 到 `变更记录/` 分组（增量日志，永久保留，编号三位零填充：ch001、ch002…ch999）
-      - 语雀模式：在 `changes` TITLE 节点下创建 DOC（两步：`POST /repos/{book_id}/docs` 创建 + `PUT /toc` appendNode 挂载，同正文 DOC，见上文阶段四第 17 条）
-      - 本地模式：**不落盘**（语雀「变更记录」分组是权威；本地正文完整版自带 CHANGES 块）
-      - 双写模式：两处都保存
+    - **CHANGES 归档**：本地模式**不落盘**（本地正文完整版自带 CHANGES 块 + backup 快照提取归档）；语雀/both 模式归档到语雀「变更记录」分组（chXXX-changes 文档，编号三位零填充，永久保留），两步建 DOC 细节见手册 6.6
     - 更新各角色/地点/物品/势力/伏笔设定文档（双写模式两处都更新）
-    - **更新追踪分组（2026-10-12 补，防再漏）**：每章回写必须同步 7 个追踪文档（本地 设定/爽点追踪、钩子追踪、情绪曲线、时间线、等级体系、世界观、关键对话）——从本章摘要/CHANGES 提取爽点类型、首尾钩、情绪峰值、天数推进、新修为/新世界观信息、影响剧情的关键台词，追加或更新对应行；双写模式两处都更新。历史教训：7 个空分组空了两百多章，建库时建了但回写流程没要求填。**目录镜像铁律（2026-10-12 老板定）**：本地 设定/ 目录与语雀分组**一一对应同构**（角色设定/主角组·反派组·配角组·已故角色、物品设定、地点设定、势力设定、伏笔追踪、细纲、大纲、变更日志、爽点追踪、钩子追踪、情绪曲线、时间线、等级体系、世界观、关键对话、Mermaid关系图）；新增档案按类型归对应分组，语雀调整分组时本地同步挪；audit 的路径分组校验会拦不一致
+    - **更新追踪分组（2026-10-12 补，防再漏）**：每章回写必须同步 7 个追踪文档（本地 设定/爽点追踪、钩子追踪、情绪曲线、时间线、等级体系、世界观、关键对话）——从本章摘要/CHANGES 提取爽点类型、首尾钩、情绪峰值、天数推进、新修为/新世界观信息、影响剧情的关键台词，追加或更新对应行；语雀/both 模式两处都更新。历史教训：7 个空分组空了两百多章，建库时建了但回写流程没要求填。
     - **更新 Mermaid 关系图**（写章节后必做，规则见下方「更新图」命令）：地点图——每个地点一个节点，角色在两地间移动过则连线、线上标角色名；新增地点/角色移动时自动刷新关系图 DOC（2026-10-09 修正：此前「默认自动更新」未落入流程步骤导致写章后从不生成）
     - **本地备份快照**（`backup.mode=local` 时）：跑 `node scripts/backup-snapshot.js <config.json> <章节号>`，把 状态快照 + 本章正文 + chXXX-changes 快照到 `backup.local_path/<时间戳>-chXXX/`（加 `--full` 全量备份 正文/ + 设定/）；非 local 模式自动跳过、退出码 0；失败不阻断（2026-10-10 补实现，此前是空承诺）
-19. **冲突检测**：状态回写后跑 `node scripts/check-conflicts.js <状态快照.md> <设定目录>`——快照内部确定性冲突：角色重复登记 / 已死角色未标死 / 物品双持有 / 时间线倒流（另位置留空给提示）；**含档案完整性对账**：快照角色/物品表 vs 设定目录档案文件，缺档列提示（龙套合法无档可忽略，重要角色需补档——2026-10-12 实弹：设定/ 曾缺 30+ 份档案且语雀缺苏正档案，靠这招兜底）；自由文本 / 跨章区间位置冲突归 AI 侧；有冲突则提示
+19. **冲突检测**：状态回写后跑 `node scripts/check-conflicts.js <状态快照.md> <设定目录>`——快照内部确定性冲突：角色重复登记 / 已死角色未标死 / 物品双持有 / 时间线倒流（另位置留空给提示）；**含档案完整性对账**：快照角色/物品表 vs 设定目录档案文件，缺档列提示（龙套合法无档可忽略，重要角色需补档——2026-10-12 实弹：曾缺 30+ 份档案，靠这招兜底）；自由文本 / 跨章区间位置冲突归 AI 侧；有冲突则提示
 20. 反馈更新内容（含门禁结果摘要 + 冲突检测结果）
 21. 更新 `info.written_chapters` 列表
 22. 更新配置追踪字段：
     - **2026-10-12 P2-7 落地：回写配置一条命令**——`node scripts/finalize-config.js <config.json> <小说目录> [--chapter N] [--sweet-spot 类型] [--hook-start 类型,强度] [--hook-end 类型,强度] [--emotion 情绪,强度]`：自动算 `current_chapter`（最大章号）/`written_chapters`（全部章号）/`total_words`（全量重算，口径统一），LLM 判断字段（爽点/钩子/情绪峰值）显式传参，4 个 consecutive_* 自动重置；其余字段不动
-    - **语雀档案批量同步（P2-7 落地）**：回写改完本地档案后，`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run]` 一键把本地 设定/ 全部推语雀（含 changes，标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑
+    - **语雀档案批量同步（both 模式，P2-7 落地）**：`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run]` 一键把本地 设定/ 推语雀（含 changes，标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑（详见手册 7.2）
     - `info.last_sweet_spot` / `consecutive_no_spot` / `consecutive_same_type`
     - `info.last_hook_start` / `last_hook_end` / `consecutive_weak_hooks`
     - `info.last_emotion_peak` / `consecutive_flat_emotion`
 23. 更新章节摘要（含爽点类型+铺放比、钩子类型+强度、情绪基调强度链）
-    - **存储位置**：**按卷分篇**——「章节摘要-第N卷」（每章一节）——语雀挂 `change_log`（变更日志）分组下；本地 `设定/变更日志/章节摘要-第N卷.md`；双写两处都更新（⚠️ 2026-10-12 按卷拆：单篇累计后期会过大导致语雀 IO 超时，老板定；第二卷开写时新建「章节摘要-第二卷」）
+    - **存储位置**：**按卷分篇**——「章节摘要-第N卷」（每章一节）——本地 `设定/变更日志/章节摘要-第N卷.md`；语雀/both 模式挂 `change_log` 分组（见手册 6.7）（⚠️ 2026-10-12 按卷拆：单篇累计后期会过大导致 IO 超时，老板定；第二卷开写时新建「章节摘要-第二卷」）
 
 **门禁结果输出格式**：
 ```
@@ -382,7 +368,7 @@ CHANGES 协议、写作技巧速查、字数节奏参考等详见 [references/ch
 2. 恢复上下文：
    - 读取下章交接包（`状态快照.md` 顶部 `## 下章交接包`）
    - 读取当前章节状态（`info.current_chapter`）
-   - 读取已写内容的摘要（从语雀/本地获取）
+   - 读取已写内容的摘要（本地：`设定/变更日志/`；语雀模式见手册 6.7）
    - 按需加载相关设定（当前场景涉及的角色、地点）
 3. 问：「写到哪了？/ 当前场景是？」
 4. 你告诉我场景/情节
@@ -427,7 +413,7 @@ CHANGES 协议、写作技巧速查、字数节奏参考等详见 [references/ch
 查设定 [时间线]
 查设定 [势力]
 ```
-**数据来源**：优先读该实体的详细档案文档（本地：`设定/角色设定/主角/张三.md`；语雀：对应分组 DOC）；档案缺失时回退 `状态快照.md` 摘要（快照只含等级/位置/状态/背包/出场章，不含关系/亲密/动机等详细字段）。
+**数据来源**：优先读该实体的详细档案文档（本地：`设定/角色设定/主角/张三.md`；语雀模式：对应分组 DOC，见手册 6.10）；档案缺失时回退 `状态快照.md` 摘要（快照只含等级/位置/状态/背包/出场章，不含关系/亲密/动机等详细字段）。
 
 **查询结果格式**：
 ```
@@ -504,7 +490,7 @@ graph LR
 - 孤立但重要的地点（无连通线）也要入图，用注释标注存在感（如远景/回忆出现）
 - **与「地理方位」表同步（2026-10-12 补）**：地图节点的相对位置/距离必须与「地理方位」表一致；新增或调整地点方位时，**两处一起改**，防漂移
 
-**Mermaid 语法合规（2026-10-12 补，防图不渲染）**：语雀**能渲染正文里的 ` ```mermaid ` 代码块**（**无需 board 画板**；实弹验证：本库「地点关系图」即此写法，可显示）。但 mermaid 对中文/特殊字符很挑，写法务必照已验证样式：
+**Mermaid 语法合规（2026-10-12 补，防图不渲染）**：mermaid 对中文/特殊字符很挑，写法务必照已验证样式（语雀渲染说明见手册 6.11）：
 - ① 节点**必须带 id**（`A[中文标签]`），不写裸中文节点；
 - ② 中文标签用 `[]` 包裹，边标注用 `|中文|`；
 - ③ **不用中文 subgraph 名**（避免 `subgraph 青云宗一带`）；
@@ -529,124 +515,7 @@ graph LR
 
 ### 语雀知识库（单库模式）
 
-> 语雀没有文件夹概念，用 TOC 树实现：TITLE 节点 = 分组目录，DOC 节点 = 文档。
-> 正文和设定存同一个知识库，下面的树中，`/` 结尾的是 TITLE 分组节点，`.md` 结尾的是独立 DOC 文档。
-
-```
-小说知识库（根）
-├── [TITLE] 正文/             ← 正文章节 DOC（第001章、第002章…）
-├── [TITLE] 角色设定/
-│   ├── [TITLE] 主角组/
-│   ├── [TITLE] 反派组/
-│   ├── [TITLE] 配角组/
-│   └── [TITLE] 已故角色/
-├── [TITLE] 物品设定/
-├── [TITLE] 地点设定/
-├── [TITLE] 势力设定/
-├── [TITLE] 等级体系/
-├── [TITLE] 时间线/
-├── [TITLE] 伏笔追踪/
-├── [TITLE] 爽点追踪/
-├── [TITLE] 钩子追踪/
-├── [TITLE] 情绪曲线/
-├── [TITLE] 大纲/
-│   ├── [DOC] 全书大纲
-│   ├── [TITLE] 卷大纲/
-│   ├── [TITLE] 章节大纲/
-│   └── [TITLE] 细纲/
-├── [TITLE] 关键对话/
-├── [TITLE] 世界观/
-├── [TITLE] Mermaid关系图/
-├── [TITLE] 变更日志/
-├── [DOC] 状态快照          ← 独立 DOC，存当前所有实体状态
-└── [TITLE] 变更记录/         ← TITLE 分组，存每章增量 CHANGES
-    ├── [DOC] ch001-changes
-    ├── [DOC] ch002-changes
-    └── ...
-```
-
-**语雀 groups 映射**（配置文件 `yuque.groups`，22 个 key 全必填，与「22 个分组全建」一一对应）：
-| key | 分组节点 | 用途 |
-|-----|-----------|------|
-| `content` | 正文/（TITLE） | 正文章节文档 |
-| `characters_protagonist` | 角色设定/主角组/（TITLE） | 主角档案 |
-| `characters_antagonist` | 角色设定/反派组/（TITLE） | 反派档案 |
-| `characters_supporting` | 角色设定/配角组/（TITLE） | 配角档案 |
-| `characters_deceased` | 角色设定/已故角色/（TITLE） | 已故角色档案 |
-| `items` | 物品设定/（TITLE） | 物品档案 |
-| `locations` | 地点设定/（TITLE） | 地点档案 |
-| `factions` | 势力设定/（TITLE） | 势力档案 |
-| `foreshadowing` | 伏笔追踪/（TITLE） | 伏笔文档（vX-伏笔名.md） |
-| `timeline` | 时间线/（TITLE） | 时间线文档 |
-| `outline` | 大纲/（TITLE） | 大纲分组节点（含全书大纲/卷大纲/章节大纲） |
-| `detailed_outline` | 大纲/细纲/（TITLE，嵌套） | 细纲分组节点（旧库若平级建过则复用） |
-| `dialogs` | 关键对话/（TITLE） | 关键对话记录 |
-| `level_system` | 等级体系/（TITLE） | 等级体系文档 |
-| `change_log` | 变更日志/（TITLE） | 按日期的变更记录（手动修正/写作后记录） |
-| `sweet_spot_tracking` | 爽点追踪/（TITLE） | 爽点追踪文档 |
-| `hook_tracking` | 钩子追踪/（TITLE） | 钩子追踪文档 |
-| `emotion_arc` | 情绪曲线/（TITLE） | 情绪曲线文档 |
-| `world_view` | 世界观/（TITLE） | 世界观文档 |
-| `mermaid_graph` | Mermaid关系图/（TITLE） | 关系图文档（含**地理方位** DOC：地点方位表 + Mermaid 地图，防方位漂移） |
-| `snapshot` | 状态快照（DOC） | `状态快照.md` 的 UUID |
-| `changes` | 变更记录/（TITLE） | chXXX-changes 增量文档（永久保留） |
-
-### 语雀 API 调用速查（2026-10-07 实弹验证）
-
-> 优先使用 yuque-mcp 工具（`yuque_create_doc` 建文档 / `yuque_batch_update_toc` 批量建分组等；`createTitle` 是 `yuque_batch_update_toc` 支持的 action——**参数 `ops` 传 JSON 数组**（每项 `{"action":"createTitle","title":"正文"}`，子组加 `target_title:"角色设定"` 按名挂父组），**另必填 `confirm:"RESTRUCTURE"` 安全闸**；批量建 TITLE 自动去重（返回 `results[].new_node_uuid`）、复用已有目录，新建 22 组时优先用它；`yuque_update_toc` 仅透传单条 action：appendNode/prependNode/editNode/removeNode，无 createTitle 封装）。MCP 不可用时按下方裸 API 调用（裸 API 与 yuque-mcp **同源**——MCP 即该 API 的封装，2026-10-10 经 `yuque_update_toc` 透传实测行为一致；若所在环境禁止直连 API，则等 MCP 恢复，勿硬闯）。
-> 认证：请求头 `X-Auth-Token: <token>`，基地址 `https://www.yuque.com/api/v2`，repo 标识用数字 id 或 namespace 均可。
-
-**建分组（新建小说 22 组，含正文组）**：
-
-- MCP 路径：`yuque_batch_update_toc`（`ops`=JSON 数组；`confirm:"RESTRUCTURE"` 必填；自动去重 + 复用已有目录，`results[].new_node_uuid` 直接回写 `yuque.groups`；嵌套子组用 `target_title` 指向父组名，一次建全）
-  - ⚠️ 实测（2026-10-10）：批量建组偶发个别失败（重跑即可，createTitle 自动去重用已有目录，不会重复）；正文组**必须首个建**才能置顶
-- 裸 API 路径（MCP 不可用时）：
-
-```
-PUT /repos/{book_id}/toc
-{
-  "action": "appendNode",   // 合法枚举：appendNode/prependNode/appendChild/moveAfter/...
-  "action_mode": "child",    // 仅 sibling/child 二选一（必填）
-  "type": "TITLE",
-  "title": "角色设定"
-}
-```
-
-- **响应 `data` = 更新后的全量 TOC 节点数组**（含新节点 uuid；appendNode/prependNode/editNode/removeNode 均返回），从数组里取新节点 uuid 回写 `yuque.groups`，无需再 GET（2026-10-10 实测）
-- ⚠️ **裸 API 同名不复用**：重复建同名会生成重复节点；旧库缺组补建必须**先 `GET /toc` 查同名**，有则复用 uuid、无才建
-- ⚠️ **`action_mode: sibling` 必须配 `target_uuid`（锚点 uuid）**，否则**静默 no-op**——返回 200 + 原 TOC，什么都不建，极易误判成功（2026-10-10 实测）；建组用 `child` 最稳；`prependNode` 已验证可置顶
-- 删除节点：`{"action":"removeNode","action_mode":"child","node_uuid":"<uuid>","confirm":"DELETE"}`——**`confirm:"DELETE"` 必填**（缺了报二次确认错误）
-
-**创建文档（设定模板 / chXXX 变更记录）**：
-
-```
-POST /repos/{book_id}/docs
-{
-  "title": "张三",
-  "body": "...",
-  "slug": "zhangsan"        // 可选，kebab-case；不传自动生成
-}
-// ⚠️ 2026-10-11 实测：parent_uuid 参数不生效，创建出的文档不在 TOC 树内（孤儿文档）！
-// 挂到分组必须第二步：PUT /repos/{book_id}/toc
-{"action":"appendNode","action_mode":"child","type":"DOC","target_uuid":"<分组TITLE uuid>","doc_ids":[<doc id>]}
-```
-
-**更新文档（状态快照覆盖等）**：
-
-```
-PUT /repos/{book_id}/docs/{doc_id}
-// doc_id = 文档数字 id 或 slug，均可
-{ "title": "...", "body": "...", "slug": "..." }
-```
-
-> ⚠️ MCP 路径 `yuque_update_doc` **必须带 `book_id`**（schema 强制，漏传报 -32602 Input validation error；2026-10-09 实测）。参数：`{"book_id": "<数字id或namespace>", "id": "<doc_id>", "title": "...", "body": "...", "slug": "..."}`。另注意：MCP 返回有时平铺有时 `data` 包装，解析 `id`/`doc_id` 时两处都要兼容
-
-**读目录（查分组/取 uuid）**：
-
-```
-GET /repos/{book_id}/toc
-// 返回节点数组，含 type(TITLE/DOC)/uuid/title
-```
+> 语雀为**可选**存储：TITLE/DOC 结构树、22 key groups 映射表、API 调用速查（MCP/裸 API 全踩坑记录：appendNode/sibling 静默 no-op/parent_uuid 不生效/confirm 必填等）全部见 [references/yuque-integration.md](references/yuque-integration.md) 第 4-5 节。
 
 ### 本地设定文件夹
 
@@ -682,7 +551,7 @@ GET /repos/{book_id}/toc
 
 ---
 
-**伏笔追踪分组命名**：每条伏笔一个文档，命名 `vX-伏笔名.md`（如 `v1-假死真相.md`），与快照伏笔状态表的伏笔ID 一一对应；CHANGES 伏笔动作引用的 ID 必须能在该分组中找到文档。**🔨埋设即建档**：伏笔在快照登记的同时必须创建对应文档，不得只改快照。
+**伏笔追踪命名**：每条伏笔一个文档，命名 `vX-伏笔名.md`（如 `v1-假死真相.md`），与快照伏笔状态表的伏笔ID 一一对应；CHANGES 伏笔动作引用的 ID 必须能在该目录/分组中找到对应文档。**🔨埋设即建档**：伏笔在快照登记的同时必须创建对应文档，不得只改快照。
 
 状态快照格式、更新规则等详见 [references/state-snapshot.md](references/state-snapshot.md)。
 
@@ -731,10 +600,10 @@ GET /repos/{book_id}/toc
 用户：玄幻修仙
 ↓
 我：保存到哪？（A 语雀 / B 本地 / C 语雀+本地）
-用户：A 语雀
+用户：B 本地
 ↓
-我：知识库ID或namespace？（二选一即可；正文+设定同一个知识库）
-用户：12345678（或 yehuoshun/tianlong-novel）
+我：正文保存路径？设定保存路径？
+用户：默认就行
 ↓
 我：人称？（第一人称/第三人称）
 用户：第三人称
@@ -765,8 +634,8 @@ GET /repos/{book_id}/toc
 我：创建设定文档模板
 ↓
 我：[根据存储方式创建目录]
-- 语雀：调用 API 创建目录分组，UUID 回写配置
 - 本地：创建完整目录树（角色设定/物品设定/...全部目录结构见下方「本地设定文件夹」）
+- 语雀/both：另见语雀手册第 3 节
 ↓
 开始写全书大纲
 ```
@@ -1073,7 +942,7 @@ GET /repos/{book_id}/toc
 4. **更新追踪数据**：写完章节后更新 `written_chapters` 和所有追踪字段（爽点/钩子/情绪）
 5. **写完跑冲突检测**：设定更新后自动跑冲突检测，有冲突报错让用户决定
 6. **去AI味自动执行**：写完后自动过 6 Gate 门禁，输出摘要不询问
-7. **设定变更通知**：用户手动改语雀后，必须通知我「设定已更新」
+7. **设定变更通知**：用户手动改设定（语雀/本地文件）后，必须通知我「设定已更新」
 8. **切换小说时清缓存**：避免上一本小说的设定污染新会话
 
 ### 禁止
@@ -1103,7 +972,7 @@ GET /repos/{book_id}/toc
 3. **关注追踪数据**：定期查看爽点/钩子/情绪追踪，发现警报及时调整
 4. **及时记录伏笔**：埋下伏笔时立即记录
 5. **冲突早处理**：发现冲突立即处理，不要积累
-6. **保持配置简洁**：配置文件只放核心配置，详细设定放语雀文档
+6. **保持配置简洁**：配置文件只放核心配置，详细设定放设定文档
 
 ---
 
@@ -1180,6 +1049,12 @@ GET /repos/{book_id}/toc
 | [references/writer-psychology.md](references/writer-psychology.md) | 写作心理建设+职业规划+码字习惯（卖报笔记已并入 maibao-live-notes.md） |
 | [references/maibao-live-notes.md](references/maibao-live-notes.md) | 卖报小郎君直播笔记合并归档：人物塑造/题材解析/黄金开篇/节奏与高潮/悬念与伏笔/创作实务（2026-10-11 由 6 文件合并） |
 
+### 语雀集成（可选）
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/yuque-integration.md](references/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
+
 ---
 
-_版本：v3.5.16_
+_版本：v3.5.17_
