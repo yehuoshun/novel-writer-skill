@@ -105,7 +105,7 @@ if (full) {
   if (settings && fs.existsSync(chChangesSrc)) {
     copyTo(chChangesSrc, path.join('changes', `ch${ch}-changes.md`));
   } else if (content && fs.existsSync(content)) {
-    // 本地不再存 changes（语雀变更记录分组是权威，老板定 2026-10-12）；快照时从本章正文提取 CHANGES 块归档
+    // 本地不强制存 changes（正文内嵌块为权威；旧书可能已有 changes/ 目录，兼容读取）；快照时从本章正文提取 CHANGES 块归档（2026-10-12 老板定）
     const re = new RegExp(`^第\\s*0*${chNum}\\s*章`);
     const f = fs.readdirSync(content).find(x => x.endsWith('.md') && re.test(x) && !x.includes('上传版'));
     if (f) {

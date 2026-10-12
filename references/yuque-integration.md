@@ -123,11 +123,14 @@ _参考文件，按需加载。语雀是可选项，`save_location=local` 的用
 ├── [TITLE] 钩子追踪/
 ├── [TITLE] 情绪曲线/
 ├── [TITLE] 大纲/
-│   └── [TITLE] 细纲/
+│   ├── [DOC] 全书大纲
+│   ├── [TITLE] 卷大纲/
+│   ├── [TITLE] 章节大纲/
+│   └── [TITLE] 细纲/（= detailed_outline，不重复建）
 ├── [TITLE] 关键对话/
 ├── [TITLE] 世界观/
 ├── [TITLE] Mermaid关系图/
-├── [TITLE] 变更日志/         ← 章节摘要（按卷分篇）
+├── [TITLE] 变更日志/         ← 章节摘要（按卷分篇）+ 手动修正/写作后变更记录
 ├── [TITLE] 变更记录/         ← TITLE 分组，存每章增量 CHANGES（chXXX-changes）+ 状态快照 DOC（首位）
 └── [DOC] 状态快照（挂「变更记录」下、置于分组首位）
 ```
@@ -144,10 +147,10 @@ _参考文件，按需加载。语雀是可选项，`save_location=local` 的用
 | `factions` | 势力设定/（TITLE） | 势力档案 |
 | `foreshadowing` | 伏笔追踪/（TITLE） | 伏笔文档（vX-伏笔名.md） |
 | `timeline` | 时间线/（TITLE） | 时间线文档 |
-| `outline` | 大纲/（TITLE） | 大纲分组节点（含全书大纲/卷大纲/章节大纲） |
+| `outline` | 大纲/（TITLE） | 大纲分组（含全书大纲/卷大纲/章节大纲；细纲在 `detailed_outline`） |
 | `dialogs` | 关键对话/（TITLE） | 关键对话记录 |
 | `level_system` | 等级体系/（TITLE） | 等级体系文档 |
-| `change_log` | 变更日志/（TITLE） | 按日期的变更记录（手动修正/写作后记录） |
+| `change_log` | 变更日志/（TITLE） | 章节摘要（按卷分篇「章节摘要-第N卷」）+ 手动修正/写作后变更记录 |
 | `sweet_spot_tracking` | 爽点追踪/（TITLE） | 爽点追踪文档 |
 | `hook_tracking` | 钩子追踪/（TITLE） | 钩子追踪文档 |
 | `detailed_outline` | 大纲/细纲/（TITLE，嵌套） | 细纲分组节点（旧库若平级建过则复用） |
