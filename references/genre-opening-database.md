@@ -700,6 +700,7 @@
 2. 反推需要哪些人物在场
 3. 反推需要哪些前置铺垫
 4. 按 AB 交替排列
+> 另见 [outline-arrangement.md](outline-arrangement.md)「高潮逆推法」——目标链逆推版（一句话结局→逆推目标层级）。
 
 ### AB 粗纲
 
