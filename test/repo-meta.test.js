@@ -116,7 +116,7 @@ test('SKILL.md「参考资料」表覆盖 references/ 全部文件（含子目�
   const walkRefs = (dir) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (e.isDirectory()) walkRefs(path.join(dir, e.name));
-      else if (e.name.endsWith('.md') && e.name !== 'README.md') refs.push(path.relative(path.join(ROOT, 'references'), path.join(dir, e.name)));
+      else if (e.name.endsWith('.md') && e.name !== 'README.md') refs.push(path.relative(path.join(ROOT, 'references'), path.join(dir, e.name)).split(path.sep).join('/')); // path.sep→'/'：防 Windows 下反斜杠与 SKILL 正斜杠不匹配误报
     }
   };
   walkRefs(path.join(ROOT, 'references'));

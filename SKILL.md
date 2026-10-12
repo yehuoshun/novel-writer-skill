@@ -561,7 +561,7 @@ graph LR
 
 写完一定章节后，加载 [references/quality/quality-checklist.md](references/quality/quality-checklist.md) 做检查。
 
-**黄金三章专项**：写完前三章后自动跑评估（⚠️ 开篇趋势已前置：见 [references/opening/opening-design.md](references/opening/opening-design.md)「黄金一章」——钩子要提前到第一章、乃至前 500 字；「三章」是「定调 + 爽点密度」的底线窗口，「五章」是完整开篇公式见 outline-arrangement-2.md）：
+**黄金三章专项**：写完前三章后自动跑评估（⚠️ 开篇趋势已前置：见 [references/opening/opening-design.md](references/opening/opening-design.md)「黄金一章」——钩子要提前到第一章、乃至前 500 字；「三章」是「定调 + 爽点密度」的底线窗口，「五章」是完整开篇公式见 [references/outline/outline-arrangement-2.md](references/outline/outline-arrangement-2.md)）：
 
 | 维度 | 评分标准 |
 |------|----------|
