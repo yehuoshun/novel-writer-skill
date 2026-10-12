@@ -131,6 +131,8 @@ bash tools/simulate-longform.sh
 
 版本号手动控制语义（patch/minor/major 需人判断），tag / Release / 钉钉通知全自动：
 
+> **版本约定（2026-10-12 拍板）**：**每次改动都 bump**，含纯文档、微修补丁、文案修正——不留「无版本提交」。提交标题一律带 `v<新版本>`（repo-meta 测试会校验标题版本与 package.json 一致，对不上即红）。
+
 ```bash
 bash tools/bump-version.sh patch   # 一键同步 package.json + SKILL.md frontmatter + 尾部
 # 或 minor / major
