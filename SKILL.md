@@ -1097,7 +1097,7 @@ GET /repos/{book_id}/toc
 | [references/style-modules-2.md](references/style-modules-2.md) | 代入感/期待/装逼/爽点/爱情线/毒点/救赎/边界感 |
 | [references/style-modules-3.md](references/style-modules-3.md) | 轻小说/沙雕/赛博朋克/盘点/模拟/直播/网站差异/打斗智斗 |
 | [references/style-modules-4.md](references/style-modules-4.md) | 镜头式写作/基础技巧/舞台搭建/战斗描写/文笔 |
-| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名/留存/情绪技法（卖报笔记已并入 maibao-live-notes.md） |
+| [references/style-modules-5.md](references/style-modules-5.md) | 经验笔记（上）：新媒体文/商业写作/书名（**格式大全权威版**）/留存/情绪技法（卖报笔记已并入 maibao-live-notes.md） |
 | [references/style-modules-6.md](references/style-modules-6.md) | 经验笔记（下）：黄金三章/市场定位/题材本质/文笔解析/新人全流程 |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 对话节奏/潜台词/信息控制+对话模式数据库 |
 | [references/description-tags.md](references/description-tags.md) | 简介 Tag 生成策略（番茄小说）：阅读标签规则+四类选项列表+选 tag 决策准则+实战示例 |
