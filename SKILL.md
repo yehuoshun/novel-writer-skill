@@ -1090,7 +1090,7 @@ GET /repos/{book_id}/toc
 | [references/expectation-techniques.md](references/expectation-techniques.md) | 期待感设计：铺垫/爽点/多线期待+信息差+情绪模型 |
 | [references/hook-techniques.md](references/hook-techniques.md) | 钩子系统：章尾钩子13式+章首钩子7式+段落级钩子+悬念编排+钩子禁忌 |
 | [references/hook-techniques-2.md](references/hook-techniques-2.md) | 期待感体系：期待感模型+心理操控+反预判+高潮+情绪波浪 |
-| [references/hook-techniques-3.md](references/hook-techniques-3.md) | 进阶钩子：三翻四震+上瘾模型+狗哨理论+钩子链+金手指替换 |
+| [references/hook-techniques-3.md](references/hook-techniques-3.md) | 进阶钩子：上瘾模型+狗哨理论+看点爽点+金手指替换（三翻四震/钩子链已并入 writing-craft / expectation-techniques） |
 | [references/opening-design.md](references/opening-design.md) | 开头设计：黄金一章法则+六大标准+开头模板+诊断 |
 | [references/genre-opening-database.md](references/genre-opening-database.md) | 8大题材开头模板+真实范例+决策树+书名起名法 |
 | [references/style-modules.md](references/style-modules.md) | 风格模块：幽默/悬疑/言情/推理/恐怖/奇幻/现实/升级流 8 大题材风格 |

@@ -27,7 +27,7 @@
 |------|----------|------|
 | [hook-techniques.md](hook-techniques.md) | 写章节时 | 章尾钩子13式+章首钩子7式+实战模板+段落级钩子+悬念编排+钩子禁忌 |
 | [hook-techniques-2.md](hook-techniques-2.md) | 期待感设计时 | 期待感模型/心理操控/反预判/高潮/情绪波浪/以退为进（断期待已并入 writing-craft.md） |
-| [hook-techniques-3.md](hook-techniques-3.md) | 进阶钩子时 | 三翻四震/上瘾模型/狗哨理论/看点爽点/钩子链/金手指替换/飞卢风向 |
+| [hook-techniques-3.md](hook-techniques-3.md) | 进阶钩子时 | 上瘾模型/狗哨理论/看点爽点/金手指替换/飞卢风向（三翻四震/钩子链已并入 writing-craft / expectation-techniques） |
 
 ## P2 — 开头设计
 
