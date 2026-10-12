@@ -116,7 +116,7 @@ git add -A && git commit -m "<改动描述> v<新版本>" && git push
 push 后 CI（`.github/workflows/release.yml`）自动完成：
 
 1. 跑全部测试 + 集成回归（失败则不发版）
-2. 检测 `package.json` 版本是否已打 tag——未打则自动创建 GitHub Release
+2. 检测 `package.json` 版本是否已打 tag——未打则自动创建 GitHub Release（含 changelog + 整仓 zip 资产 `novel-writer-skill-v<版本>.zip`）
 3. Release 正文 = 自上个 tag 以来的 commit 变更记录
 4. 钉钉通知（`DINGTALK_WEBHOOK` secret，未配置不阻断）
 

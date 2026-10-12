@@ -54,9 +54,13 @@ jobs:
           fi
           printf '%s\n' "$NOTES"
           { echo "## 变更记录"; echo; printf '%s\n' "$NOTES"; } > /tmp/release-body.md
+          # 打包 skill 资产（git archive 不依赖 zip 命令，不含 .git）
+          ASSET="novel-writer-skill-v$VERSION.zip"
+          git archive --format=zip -o "$ASSET" HEAD
           gh release create "v$VERSION" \
             --title "v$VERSION" \
-            --notes-file /tmp/release-body.md
-          echo "✅ Release v$VERSION 已创建"
+            --notes-file /tmp/release-body.md \
+            "$ASSET"
+          echo "✅ Release v$VERSION 已创建（含 $ASSET）"
           # 钉钉通知（自包含发送，缺配置不阻断）
           TAG="v$VERSION" python3 tools/notify-release.py /tmp/release-body.md
