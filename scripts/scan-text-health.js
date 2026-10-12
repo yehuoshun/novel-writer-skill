@@ -173,6 +173,24 @@ if (cfgArg) {
 }
 if (!enough) notes.push(`字数 ${zhCount} < ${MIN_SAMPLE}：密度类指标（口语虚词/比喻/连接词）样本不足未判，仅供参考`);
 
+// ---- 5.6 破折号（——）统计：SKILL 硬规则「叙述层破折号 ≤3 处且仅限对话打断」
+// （2026-10-12 ch023 实弹暴露：破折号靠复核第一轮人工数才抓出 5 处超限，主门禁报告还数漏了——
+// 从此脚本直接计数，超限即硬伤，报告直接引用脚本输出，不再人工数）
+const dashRe = /——/g;
+const dashes = [];
+let dm;
+while ((dm = dashRe.exec(body)) !== null) {
+  const ctx = body.slice(Math.max(0, dm.index - 12), dm.index + 14).replace(/\n/g, ' ');
+  dashes.push(ctx.trim());
+}
+if (dashes.length > 3) {
+  issues.push(`破折号 ${dashes.length} 处 > 上限 3（SKILL 硬规则：叙述层破折号 ≤3 处且仅限对话打断）`);
+  hard = 1;
+  for (const c of dashes) notes.push(`  破折号上下文: 「…${c}…」`);
+} else if (dashes.length >= 1) {
+  notes.push(`破折号 ${dashes.length} 处（上限 3）: ${dashes.map(c => `「…${c}…」`).join(' / ')} — 人工核对是否全为对话打断用法（禁止内心独白引导）`);
+}
+
 // ---- 输出 ----
 console.log('🏥 文本健康检测报告\n');
 console.log(`字数: ${zhCount} | 句数: ${sents.length}\n`);

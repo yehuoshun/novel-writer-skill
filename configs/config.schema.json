@@ -138,6 +138,7 @@
         "perspective": { "type": "string", "enum": ["single", "multi"], "description": "视角" },
         "style": { "type": "string", "description": "文风（classical/modern/humorous/serious 等）" },
         "narrative_style": { "type": "string", "description": "叙事节奏（fast-paced/slow-burn/detailed 等）" },
+        "dialogue_style": { "type": "string", "enum": ["quoted", "unquoted"], "description": "对白体例：quoted=引号体；unquoted=「说，…」无引号体（写章节前须对照本书近 1-2 章正文确认）" },
         "chapter_words": {
           "type": "object",
           "required": ["min", "max"],

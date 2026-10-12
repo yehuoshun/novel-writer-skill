@@ -99,12 +99,30 @@ if (full) {
   copyTree(content, '正文');
   copyTree(settings, '设定');
 } else {
-  // 单章检查点：状态快照 + 本章 changes + 本章正文
+  // 单章检查点：状态快照 + 本章 changes（本地无 changes 目录时从正文 CHANGES 块提取，2026-10-12 适配）+ 本章正文
   copyTo(settings && path.join(settings, '状态快照.md'), '状态快照.md');
-  copyTo(settings && path.join(settings, 'changes', `ch${ch}-changes.md`), path.join('changes', `ch${ch}-changes.md`));
+  const chChangesSrc = settings && path.join(settings, 'changes', `ch${ch}-changes.md`);
+  if (settings && fs.existsSync(chChangesSrc)) {
+    copyTo(chChangesSrc, path.join('changes', `ch${ch}-changes.md`));
+  } else if (content && fs.existsSync(content)) {
+    // 本地不再存 changes（语雀变更记录分组是权威，老板定 2026-10-12）；快照时从本章正文提取 CHANGES 块归档
+    const re = new RegExp(`^第\\s*0*${chNum}\\s*章`);
+    const f = fs.readdirSync(content).find(x => x.endsWith('.md') && re.test(x) && !x.includes('上传版'));
+    if (f) {
+      const full = fs.readFileSync(path.join(content, f), 'utf-8');
+      const m = full.match(/---CHANGES---[\s\S]*?---END CHANGES---/);
+      if (m) {
+        fs.mkdirSync(path.join(dest, 'changes'), { recursive: true });
+        fs.writeFileSync(path.join(dest, 'changes', `ch${ch}-changes.md`), m[0]);
+        copied.push(`changes/ch${ch}-changes.md（自正文提取）`);
+      }
+    }
+  }
   if (content && fs.existsSync(content)) {
     const re = new RegExp(`^第\\s*0*${chNum}\\s*章`);
-    const f = fs.readdirSync(content).find(x => x.endsWith('.md') && re.test(x));
+    const all = fs.readdirSync(content).filter(x => x.endsWith('.md') && re.test(x));
+    // 优先完整版（工作态，含 CHANGES 块）；上传版/备份类作后备
+    const f = all.find(x => !/(上传版|备份|润色版|旧版|初稿|三轮版|版本)/.test(x)) || all[0];
     if (f) copyTo(path.join(content, f), path.join('正文', f));
   }
 }

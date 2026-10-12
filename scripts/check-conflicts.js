@@ -120,6 +120,40 @@ for (const [name, pos] of posOf) {
   }
 }
 
+// 6. 档案完整性：快照角色/物品表 vs 设定目录档案文件（2026-10-12 ch023 实弹暴露：
+//    设定/ 目录曾缺 30+ 份档案（10-11 重构搬漏，第17-22章校验靠旧目录撑着），
+//    且语雀也缺苏正档案——加对账提示，缺档当场暴露）
+//    无名龙套（外部势力先头队、主人/后队等势力成员）合法无独立档案 → 只提示不判错，AI 判断
+const files = [];
+(function walk(d) {
+  if (!fs.existsSync(d)) return;
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) {
+      if (['已故', 'changes', '伏笔追踪', '大纲', '变更日志'].includes(e.name)) continue;
+      walk(p);
+    } else if (e.name.endsWith('.md')) files.push(path.basename(e.name, '.md'));
+  }
+})(setDir);
+const nameSet = new Set(files);
+// 别名注册：档案名「外部势力来使（灰袍人）」→ 同时注册「灰袍人」（快照常用简称）
+for (const f of files) {
+  const m = f.match(/^(.*?)（([^）]+)）$/);
+  if (m) nameSet.add(m[2]);
+}
+// 非独立角色：含势力前缀/斜杠合写/占位符
+const NON_PERSON = /^(—|-{1,2}|－|未知|不详|待定|无|？|\?)$|\/|外部势力|后队|先头队|来使/;
+for (const name of seen) {
+  if (NON_PERSON.test(name)) continue;
+  if (nameSet.has(name) || nameSet.has(name + '_')) continue;
+  warnings.push(`[档案完整性] 快照角色「${name}」在设定目录无同名档案——龙套可忽略，重要角色需补档`);
+}
+for (const [item] of ownerOf) {
+  if (/^(—|-{1,2}|－|未知|不详|待定|无|？|\?)$/.test(item)) continue;
+  if (nameSet.has(item)) continue;
+  warnings.push(`[档案完整性] 快照物品「${item}」在设定目录无同名档案——需补档或说明归并到哪份档案`);
+}
+
 if (warnings.length) {
   console.log(`⚠️ 提示（${warnings.length} 项，非冲突）:`);
   warnings.forEach(w => console.log(`  ${w}`));
