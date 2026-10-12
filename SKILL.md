@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.20
+version: 3.5.21
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -804,7 +804,7 @@ graph LR
 
 ### 情绪追踪
 
-每章写完后更新情绪数据，加载 [references/character/emotional-arc-design.md](references/character/emotional-arc-design.md) 和 [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md)。
+每章写完后更新情绪数据，加载 [references/outline/emotional-arc-design.md](references/outline/emotional-arc-design.md) 和 [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md)。
 
 **单章情绪**：章节摘要的情绪基调改为强度链格式，如 `紧张(7) → 释放(3) → 悬疑(8)`。
 
@@ -989,7 +989,7 @@ graph LR
 | [references/hook/](references/hook/) | 钩子与期待感 |
 | [references/opening/](references/opening/) | 开篇与上架物料 |
 | [references/genre/](references/genre/) | 题材框架 |
-| [references/character/](references/character/) | 角色与情绪 |
+| [references/character/](references/character/) | 角色设计 |
 | [references/style/](references/style/) | 风格与写法 |
 | [references/quality/](references/quality/) | 质量与去 AI |
 | [references/notes/](references/notes/) | 作者经验与心态 |
@@ -1014,6 +1014,7 @@ graph LR
 | [references/outline/advanced-plot-techniques.md](references/outline/advanced-plot-techniques.md) | 高级技法：小纲四步法+高潮逆推+情绪拉扯+金手指+双线+AB交织法 |
 | [references/outline/micro-innovation.md](references/outline/micro-innovation.md) | 题材微创新+差异化设计 |
 | [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md) | 反转类型+时机+误导底层路径 |
+| [references/outline/emotional-arc-design.md](references/outline/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
 
 ### structure/ — 故事结构理论
 
@@ -1050,7 +1051,7 @@ graph LR
 | [references/genre/genre-frameworks-unified-2.md](references/genre/genre-frameworks-unified-2.md) | 核心梗解析+事业线/爱情线设计 |
 | [references/genre/genre-frameworks-unified-3.md](references/genre/genre-frameworks-unified-3.md) | 扩展题材：规则怪谈/长生流/西幻/新媒体/搞笑/飞卢/刺猬猫+进阶补充 |
 
-### character/ — 角色与情绪
+### character/ — 角色设计
 
 | 文件 | 何时加载 |
 |------|----------|
@@ -1058,7 +1059,6 @@ graph LR
 | [references/character/character-design-2.md](references/character/character-design-2.md) | 角色成长：主角调子/反派分量/感情流/男频女频/群像 |
 | [references/character/character-design-3.md](references/character/character-design-3.md) | 经验笔记（上）：九维人设/以梗塑造/金手指与人设/大师课（卖报笔记已并入 maibao-live-notes.md） |
 | [references/character/character-design-4.md](references/character/character-design-4.md) | 经验笔记（下）：男频恋爱文/装逼打脸/移情标签/爽点模板 |
-| [references/character/emotional-arc-design.md](references/character/emotional-arc-design.md) | 情绪曲线设计+弧形模板+期待感管理+题材赛道策略 |
 
 ### style/ — 风格与写法
 
@@ -1095,4 +1095,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.20_
+_版本：v3.5.21_

@@ -5,12 +5,12 @@
 | 子目录 | 主题 | 文件数 |
 |--------|------|--------|
 | [core/](core/) | 核心协议与模板 | 3 |
-| [outline/](outline/) | 大纲与剧情设计 | 7 |
+| [outline/](outline/) | 大纲与剧情设计 | 8 |
 | [structure/](structure/) | 故事结构理论 | 5 |
 | [hook/](hook/) | 钩子与期待感 | 3 |
 | [opening/](opening/) | 开篇与上架物料 | 4 |
 | [genre/](genre/) | 题材框架 | 3 |
-| [character/](character/) | 角色与情绪 | 5 |
+| [character/](character/) | 角色设计 | 4 |
 | [style/](style/) | 风格与写法 | 8 |
 | [quality/](quality/) | 质量与去 AI | 3 |
 | [notes/](notes/) | 作者经验与心态 | 2 |
@@ -40,6 +40,7 @@
 | [advanced-plot-techniques.md](outline/advanced-plot-techniques.md) | 深入设计剧情时 | 小纲四步法、高潮逆推、情绪拉扯、金手指、双线法则 |
 | [micro-innovation.md](outline/micro-innovation.md) | 差异化设计时 | 题材微创新方法 |
 | [reversal-toolkit.md](outline/reversal-toolkit.md) | 设计反转时 | 反转类型、时机、误导底层路径 |
+| [emotional-arc-design.md](outline/emotional-arc-design.md) | 情绪追踪/设计高潮时 | 情绪弧线模板（6种）+ 期待感管理 + 情绪调动 + 题材赛道策略 |
 
 ## P1.5 — 钩子与期待（写章节/设计剧情时）
 
@@ -82,7 +83,7 @@
 | [story-structure-4.md](structure/story-structure-4.md) | 经验参考（上） | 逆天邪神拆解/三幕五幕六幕/主线类型/冲突结构/拆书法（卖报笔记已并入 maibao-live-notes.md） |
 | [story-structure-5.md](structure/story-structure-5.md) | 经验参考（下） | 强主线弱主线/故事本质论/核心梗/阵营手牌/矛盾理论/悬念与冲突 + **换地图方法论权威版**（宅猪三法/蜜汁姬进化论） |
 
-## P4 — 角色与情绪（按需加载）
+## P4 — 角色设计（按需加载）
 
 ### character/
 
@@ -92,7 +93,6 @@
 | [character-design-2.md](character/character-design-2.md) | 角色成长设计时 | 主角调子/反派分量/人推事件/感情流/男频女频/主角逼格/群像 |
 | [character-design-3.md](character/character-design-3.md) | 经验参考（上） | 九维人设/以梗塑造/情绪调动/金手指与人设/万订大师课/实操方法（卖报笔记已并入 maibao-live-notes.md） |
 | [character-design-4.md](character/character-design-4.md) | 经验参考（下） | 男频恋爱文攻略/装逼打脸/移情与标签/高级爽点模板 |
-| [emotional-arc-design.md](character/emotional-arc-design.md) | 情绪追踪/设计高潮时 | 情绪弧线模板（6种）+ 期待感管理 + 情绪调动 + 题材赛道策略 |
 
 ## P5 — 风格与润色（按需加载）
 

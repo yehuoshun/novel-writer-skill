@@ -381,7 +381,7 @@ CP行为是好感度到达一定程度才会自然出现的，好感度不足时
 
 ## 描写核心公式
 
-> 2026-10-12 去重：完整版（故事 = 人类情绪 × 虚构世界 + 三层情绪分离 + 故事基本结构 + 有效描写公式 + 描写即情绪工具）见 [emotional-arc-design.md](../character/emotional-arc-design.md)「情绪核心公式」。
+> 2026-10-12 去重：完整版（故事 = 人类情绪 × 虚构世界 + 三层情绪分离 + 故事基本结构 + 有效描写公式 + 描写即情绪工具）见 [emotional-arc-design.md](../outline/emotional-arc-design.md)「情绪核心公式」。
 
 ---
 
