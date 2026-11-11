@@ -100,7 +100,9 @@ test('无未识别的 CHANGES 分节标记', () => {
 
 test('所有文本文件以换行结尾 + 无行尾空白', () => {
   const bad = [];
-  for (const f of TEXT) {
+  // 含无扩展名的文本文件（如 LICENSE）——仅按扩展名过滤会漏检（2026-11-11 补）
+  const targets = [...new Set([...TEXT, ...ALL.filter(f => !path.extname(f))])];
+  for (const f of targets) {
     const s = fs.readFileSync(f, 'utf-8');
     if (s.length && !s.endsWith('\n')) bad.push(`${rel(f)} 末尾无换行`);
     if (/[ \t]+\n/.test(s)) bad.push(`${rel(f)} 有行尾空白`);

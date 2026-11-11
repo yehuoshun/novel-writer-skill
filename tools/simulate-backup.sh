@@ -35,10 +35,11 @@ for f in 状态快照.md changes/ch001-changes.md 正文/第001章.md manifest.j
 done
 
 echo "===== 2) 真实回滚：写坏快照 → 从快照恢复 ====="
-cp "$D1/状态快照.md" /tmp/_orig_snap.md
+ORIG="$WORK/_orig_snap.md"
+cp "$D1/状态快照.md" "$ORIG"
 printf 'BROKEN\n' > "$BOOK/设定/状态快照.md"
 cp "$D1/状态快照.md" "$BOOK/设定/状态快照.md"
-if python3 -c "import sys;sys.exit(0 if open('/tmp/_orig_snap.md').read()==open('$BOOK/设定/状态快照.md').read() else 1)"; then
+if python3 -c "import sys;sys.exit(0 if open('$ORIG').read()==open('$BOOK/设定/状态快照.md').read() else 1)"; then
   PASS=$((PASS+1)); echo "✅ [回滚恢复] 内容一致"
 else
   FAIL=$((FAIL+1)); echo "❌ [回滚恢复] 内容不一致"
@@ -80,5 +81,5 @@ AFTER=$(ls "$BOOK/backup" | wc -l)
 
 echo ""
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
-cd / && rm -rf "$WORK" /tmp/_orig_snap.md
+cd / && rm -rf "$WORK"
 exit $FAIL

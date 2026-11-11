@@ -15,6 +15,7 @@
  *
  * 行为:
  *   - current_chapter：--chapter 优先，否则取目录中最大章号（第NNN章）
+ *     （--chapter 必须为正整数，且不得小于目录最大章号——否则会把进度写回退，直接报错）
  *   - written_chapters：目录中全部章号，升序
  *   - total_words：目录中全部正文（第NNN章*.md，排除 上传版/备份/润色版）汉字数总和
  *   - --sweet-spot/--hook-start/--hook-end/--emotion：写 info.last_*（含 chapter 字段）
@@ -33,12 +34,13 @@ function argParse(argv) {
   const out = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a.startsWith('--')) {
-      const k = a.slice(2);
-      const v = argv[i + 1];
-      if (v === undefined || v.startsWith('--')) out[k] = true;
-      else { out[k] = v; i++; }
-    }
+    if (!a.startsWith('--')) continue;
+    const k = a.slice(2);
+    const v = argv[i + 1];
+    // 缺值（末尾或紧跟下一个 --flag）→ 立即报用法错误；
+    // 否则「--chapter」会被当成 true → Number(true)=1，静默把 current_chapter 回写成 1
+    if (v === undefined || v.startsWith('--')) die(`参数 --${k} 缺少取值（用法见本脚本头注释）`, 2);
+    out[k] = v; i++;
   }
   return out;
 }
@@ -54,12 +56,12 @@ if (!fs.existsSync(novelDir)) die(`小说目录不存在: ${novelDir}`, 2);
 const a = argParse(process.argv.slice(4));
 const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
 const info = cfg.info;
-if (!info) die('配置缺 info 块');
+if (!info) die('配置缺 info 块', 1);
 
 // 1. 正文文件：第NNN章*.md（排除 上传版/备份/润色版/旧版/初稿/三轮版/版本）
 const files = fs.readdirSync(novelDir).filter(f =>
   /^第\d+章 .+\.md$/.test(f) && !/(上传版|备份|润色版|旧版|初稿|三轮版|版本)/.test(f));
-if (!files.length) die('目录里没有 第NNN章*.md 正文文件');
+if (!files.length) die('目录里没有 第NNN章*.md 正文文件', 1);
 
 const chapters = files
   .map(f => Number((f.match(/^第(\d+)章/) || [])[1]))
@@ -75,8 +77,13 @@ const totalWords = files.reduce((sum, f) => {
 const changes = [];
 const setInt = (k, v) => { if (typeof v === 'number') { info[k] = v; changes.push(`${k}=${v}`); } };
 
-const chapter = a.chapter !== undefined ? Number(a.chapter) : chapters[chapters.length - 1];
-if (Number.isNaN(chapter)) die('--chapter 不是数字');
+const maxChapter = chapters[chapters.length - 1];
+const chapter = a.chapter !== undefined ? Number(a.chapter) : maxChapter;
+if (!Number.isInteger(chapter) || chapter < 1) die('--chapter 必须是正整数', 2);
+// 护栏：显式传入的章号若小于目录最大章号，会把 current_chapter 写回退（手滑常见），直接拦住
+if (a.chapter !== undefined && chapter < maxChapter) {
+  die(`--chapter ${chapter} 小于目录最大章号 ${maxChapter}（会把 current_chapter 写回退）；请省略 --chapter 用自动值，确需回退请手工改配置`, 1);
+}
 setInt('current_chapter', chapter);
 info.written_chapters = chapters;
 changes.push(`written_chapters=${chapters.join(',')}`);

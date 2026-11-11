@@ -303,7 +303,7 @@ if (outlinePath) {
     if (t.length < 2 || knownNames.has(t) || STOP.has(t) || inKnown(t)) return;
     cand.set(t, (cand.get(t) || 0) + 1);
   };
-  for (const run of chapterBody.match(/[\u4e00-\u9fa5]+/g) || []) {
+  for (const run of chapterBody.match(/[\u4e00-\u9fff]+/g) || []) {
     for (let i = 0; i < run.length; i++) {
       // 地点/势力：锚定后缀词，向左取 2-3 字（4 字噪声大，不取）
       if (LOC_SUF.includes(run[i])) {
