@@ -10,8 +10,10 @@ const gate = require('../scripts/lib/gate-suite');
 
 const REPORT = path.join(__dirname, '..', 'scripts', 'gate-report.js');
 const PUBLISH = path.join(__dirname, '..', 'scripts', 'publish-chapter.js');
+const STATUS = path.join(__dirname, '..', 'scripts', 'publish-status.js');
 const runReport = (args) => spawnSync(process.execPath, [REPORT, ...args], { encoding: 'utf-8' });
 const runPublish = (args) => spawnSync(process.execPath, [PUBLISH, ...args], { encoding: 'utf-8' });
+const runStatus = (args) => spawnSync(process.execPath, [STATUS, ...args], { encoding: 'utf-8' });
 
 // 合格正文：段首两全角空格、全角标点、无半角引号、无破折号、汉字 ≥100
 const BODY = [
@@ -320,4 +322,115 @@ test('publish：--chapter 指定章号 → 正文文件按 3 位补零命名', (
   const r = runPublish([f.config, f.draft, '--chapter', '7', '--no-gate']);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.ok(fs.existsSync(path.join(f.contentDir, '第007章.md')));
+});
+
+// ---------------- 快照回写（CHANGES 欠账）----------------
+
+/** 在同一个书目录里造第 2 章草稿（内容与第 1 章同构，指纹相同不影响判定） */
+function addChapter2(f) {
+  const draft2 = path.join(f.dir, '草稿', '第002章.md');
+  fs.writeFileSync(draft2, BODY + CHANGES);
+  return draft2;
+}
+
+function touchSnapshot(f, line) {
+  fs.appendFileSync(path.join(f.settingsDir, '状态快照.md'), line + '\n');
+}
+
+test('publish：第 1 章发布后快照没回写 → 第 2 章 exit 4，正文不落盘但留报告', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const draft2 = addChapter2(f);
+  const r = runPublish([f.config, draft2, '--ai-gates', f.aiGates]);
+  assert.strictEqual(r.status, 4, r.stdout + r.stderr);
+  assert.match(r.stderr, /状态快照欠账/);
+  assert.match(r.stderr, /未被改动/);
+  assert.ok(!fs.existsSync(path.join(f.contentDir, '第002章.md')), '欠账时不许落盘');
+  assert.ok(!fs.existsSync(path.join(f.settingsDir, 'changes', 'ch002-publish.json')), '欠账时不许记账');
+  const report = JSON.parse(fs.readFileSync(path.join(f.settingsDir, 'changes', 'ch002-gate-report.json'), 'utf-8'));
+  assert.strictEqual(report.snapshotFreshness.verdict, 'fail');
+  assert.strictEqual(report.snapshotFreshness.previousChapter, 1);
+});
+
+test('publish：回写快照后第 2 章放行（快照指纹变了即视为已回写）', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const draft2 = addChapter2(f);
+  touchSnapshot(f, '\n## 已回写\n\n- 林山：青云山前殿');
+  const r = runPublish([f.config, draft2, '--ai-gates', f.aiGates]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.ok(fs.existsSync(path.join(f.contentDir, '第002章.md')));
+  const ledger2 = JSON.parse(fs.readFileSync(path.join(f.settingsDir, 'changes', 'ch002-publish.json'), 'utf-8'));
+  assert.strictEqual(ledger2.publishes[0].staleSnapshot, false);
+  assert.match(ledger2.publishes[0].snapshotFingerprint, /^sha256:[0-9a-f]{64}$/);
+});
+
+test('publish：--allow-stale-snapshot 认账放行，账本记 staleSnapshot=true', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const draft2 = addChapter2(f);
+  const r = runPublish([f.config, draft2, '--ai-gates', f.aiGates, '--allow-stale-snapshot']);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const ledger2 = JSON.parse(fs.readFileSync(path.join(f.settingsDir, 'changes', 'ch002-publish.json'), 'utf-8'));
+  assert.strictEqual(ledger2.publishes[0].staleSnapshot, true);
+});
+
+test('publish：--no-gate 的补救发布不受快照欠账拦截', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const draft2 = addChapter2(f);
+  const r = runPublish([f.config, draft2, '--no-gate']);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+});
+
+// ---------------- publish-status（账本审计）----------------
+
+test('publish-status：账本、报告、正文一致 → exit 0', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  touchSnapshot(f, '- 林山：青云山前殿');
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /账本与报告一致/);
+  assert.match(r.stdout, /第001章/);
+});
+
+test('publish-status：报告被手改 → exit 1 并指出 integrity 不一致', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const reportPath = path.join(f.settingsDir, 'changes', 'ch001-gate-report.json');
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+  report.gates[0].verdict = 'fail';
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2) + '\n');
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /发现需要处理的问题/);
+  assert.match(r.stdout, /报告自检不通过|integrity/);
+});
+
+test('publish-status：快照欠账 → exit 1 并点出未回写', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /状态快照\.md 未改动/);
+});
+
+test('publish-status：正文发布后被改 → exit 0 但给待确认提示', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  touchSnapshot(f, '- 林山：青云山前殿');
+  // 改正文（不是改 CHANGES 块——CHANGES 不参与正文指纹，这是刻意口径）
+  const edited = fs.readFileSync(f.target, 'utf-8').replace('青云山的晨雾还没散', '青云山的浓雾还没散');
+  fs.writeFileSync(f.target, edited);
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /正文在发布后被改动/);
+});
+
+test('publish-status：没有账本 → exit 0，明说尚无记录', () => {
+  const f = setup();
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /尚无发布记录|没有发布记录/);
 });

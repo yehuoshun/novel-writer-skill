@@ -37,6 +37,14 @@ function die(msg) {
   process.exit(2);
 }
 
+/** 报告附加字段——必须在算 integrity 之前并入（事后赋值会让报告过不了自己的自检） */
+function buildExtra(merged, snapshotNote) {
+  const extra = {};
+  if (merged && merged.aiOmitted) extra.aiOmitted = true;
+  if (snapshotNote) extra.snapshotFreshness = snapshotNote;
+  return Object.keys(extra).length ? extra : null;
+}
+
 function parseArgs(argv) {
   const opts = { positional: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -127,6 +135,26 @@ const merged = gate.mergeAiDeclarations(ruleResult.gates, aiDecl, {
   allowMissingAi: !!opts.allowMissingAi,
 });
 
+// ---- 快照回写检查（这里只报告；真正的阻断在 publish-chapter 的 exit 4）----
+let snapshotNote = null;
+if (settingsDir && Number.isInteger(chapter)) {
+  const snapPath = snapshotPath || path.join(settingsDir, '状态快照.md');
+  let snapFp = null;
+  try {
+    if (fs.existsSync(snapPath)) snapFp = gate.fileFingerprint(fs.readFileSync(snapPath, 'utf-8'));
+  } catch (e) {
+    die(`读状态快照失败：${e.message}`);
+  }
+  const ledgers = gate.loadPublishLedgers(path.join(settingsDir, 'changes'));
+  const prev = gate.previousPublish(ledgers, chapter);
+  const fresh = gate.snapshotFreshness({
+    currentFp: snapFp,
+    previousChapter: prev ? prev.chapter : null,
+    previousFp: prev ? prev.record.snapshotFingerprint : null,
+  });
+  snapshotNote = { verdict: fresh.verdict, reason: fresh.reason, previousChapter: prev ? prev.chapter : null };
+}
+
 const report = gate.buildReport({
   novel: (config && config.info && config.info.name) || '',
   chapter: Number.isInteger(chapter) ? chapter : null,
@@ -134,7 +162,7 @@ const report = gate.buildReport({
   gates: ruleResult.gates,
   checks: ruleResult.checks,
   blockReasons: merged.blockReasons,
-  extra: merged.aiOmitted ? { aiOmitted: true } : null,
+  extra: buildExtra(merged, snapshotNote),
 });
 
 const selfCheck = gate.verifyReport(report, { draftText });
@@ -164,6 +192,10 @@ if (opts.json) {
     if (c.verdict === 'pass' || c.verdict === 'skip') continue;
     console.log(`   ${icon[c.verdict]} 检查项 ${c.label} ${c.verdict}`);
     for (const it of c.items.slice(0, 3)) console.log(`        · ${it.text.slice(0, 160)}`);
+  }
+  if (snapshotNote && snapshotNote.verdict !== 'pass') {
+    const mark = snapshotNote.verdict === 'fail' ? '❌' : '⏭️';
+    console.log(`   ${mark} 状态快照回写 ${snapshotNote.verdict}：${snapshotNote.reason}`);
   }
   if (report.blocked) {
     console.error(`\n❌ 门禁阻断（${report.blockReasons.length} 条）——本稿不可发布：`);

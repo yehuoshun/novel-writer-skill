@@ -101,9 +101,14 @@ function contentFingerprint(text) {
   return 'sha256:' + sha256(bodyOf(text).replace(/[ \t]+$/gm, '').trimEnd());
 }
 
+/** 文档指纹：换行归一 + 去行尾空白 + 去尾部空白后哈希（状态快照这类无 CHANGES 块的文档用） */
+function fileFingerprint(text) {
+  return 'sha256:' + sha256(normalizeNewlines(text).replace(/[ \t]+$/gm, '').replace(/\s+$/, ''));
+}
+
 /** 全稿指纹：含 CHANGES 块，仅供审计（幂等判据用 contentFingerprint） */
 function draftFingerprint(text) {
-  return 'sha256:' + sha256(normalizeNewlines(text).replace(/[ \t]+$/gm, '').replace(/\s+$/, ''));
+  return fileFingerprint(text);
 }
 
 /** 去空白（含全角空格）：引文比对时只认字，不认排版 */
@@ -605,6 +610,70 @@ function verifyReport(report, opts) {
   return { ok: problems.length === 0, problems };
 }
 
+// ---- 账本与快照回写（「发布之后 CHANGES 到底有没有落到 状态快照.md」）----
+
+const LEDGER_NAME_RE = /^ch(\d+)-publish\.json$/;
+
+/** 读 changes 目录下所有分章账本 → [{chapter, publishes, file}]，按章号升序 */
+function loadPublishLedgers(changesDir) {
+  const out = [];
+  if (!changesDir || !fs.existsSync(changesDir)) return out;
+  for (const name of fs.readdirSync(changesDir)) {
+    const m = name.match(LEDGER_NAME_RE);
+    if (!m) continue;
+    const file = path.join(changesDir, name);
+    let publishes = [];
+    try {
+      const raw = readJsonIfExists(file);
+      if (raw && Array.isArray(raw.publishes)) publishes = raw.publishes;
+      out.push({ chapter: Number(m[1]), publishes, file });
+    } catch (e) {
+      // 账本坏了不能装作没有：留一条带 error 的空记录，让审计看得见
+      out.push({ chapter: Number(m[1]), publishes: [], file, error: e.message });
+    }
+  }
+  return out.sort((a, b) => a.chapter - b.chapter);
+}
+
+/** 账本里「章号小于本章」的最近一次发布 → {chapter, record} | null */
+function previousPublish(ledgers, chapter) {
+  let prev = null;
+  for (const l of ledgers) {
+    if (l.chapter >= chapter || !l.publishes.length) continue;
+    prev = { chapter: l.chapter, record: l.publishes[l.publishes.length - 1] };
+  }
+  return prev;
+}
+
+/**
+ * 快照回写判定：上一章发布时记下的快照指纹若与当前快照指纹相同，说明这一章发布后
+ * 状态快照.md 一个字没改——CHANGES 没回写，一致性 6 门禁整族在拿旧事实比对，
+ * 而且会「全过」。这是闸门里最后一处静默失效，靠指纹比对就能抓（纯函数，不做 IO）。
+ * @returns {{verdict:'pass'|'fail'|'skip', reason:string, previousChapter?:number}}
+ */
+function snapshotFreshness({ currentFp, previousChapter, previousFp }) {
+  if (!currentFp) {
+    return { verdict: 'skip', reason: '没有状态快照文件，无法判定回写（一致性 6 门禁同样 skip）' };
+  }
+  if (!previousChapter) {
+    return { verdict: 'skip', reason: '账本里没有更早的发布记录，无从比较' };
+  }
+  if (!previousFp) {
+    return { verdict: 'skip', reason: `第${previousChapter}章的账本没记快照指纹（旧版账本），无法判定回写` };
+  }
+  if (currentFp === previousFp) {
+    return {
+      verdict: 'fail',
+      previousChapter,
+      reason:
+        `第${previousChapter}章发布后 状态快照.md 未被改动（指纹仍是 ${String(currentFp).slice(0, 15)}…）——` +
+        `CHANGES 没回写，一致性 6 门禁在比对旧事实。先按第${previousChapter}章 CHANGES 更新快照；` +
+        `确认无需回写时加 --allow-stale-snapshot（账本会记 staleSnapshot=true）`,
+    };
+  }
+  return { verdict: 'pass', previousChapter, reason: `状态快照在第${previousChapter}章发布后已更新` };
+}
+
 module.exports = {
   SCHEMA_VERSION,
   RULE_VERSION,
@@ -620,6 +689,10 @@ module.exports = {
   bodyOf,
   contentFingerprint,
   draftFingerprint,
+  fileFingerprint,
+  loadPublishLedgers,
+  previousPublish,
+  snapshotFreshness,
   stripSpace,
   quotedSpans,
   groundedQuote,

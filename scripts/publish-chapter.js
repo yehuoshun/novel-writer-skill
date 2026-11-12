@@ -11,6 +11,7 @@
  *   --ai-gates <声明.json>  AI 侧门禁声明（Gate 2–6 语义结论 + 证据，见 SKILL「AI 侧门禁声明」）
  *   --allow-missing-ai     缺 AI 声明时不阻断（报告与账本记 aiOmitted=true）
  *   --revise               允许覆盖已存在的本章正文（内容指纹不同时默认拒绝）
+ *   --allow-stale-snapshot 承认「上一章发布后状态快照没回写」，照常发布（账本记 staleSnapshot=true）
  *   --no-gate              跳过门禁（账本记 forced=true，报告 12 项全 skip——用于已人工定稿的补救发布）
  *   --dry-run              只跑门禁与报告，不写正文、不写账本
  *   --json                 把结果打到 stdout（给脚本/agent 读）
@@ -25,15 +26,18 @@
  *   2. 同一章重复发布、正文指纹一致 → 幂等 no-op（可安全重试，账本不重复记账）。
  *   3. 同一章正文已存在、指纹不同 → 默认拒绝（exit 3），必须显式 --revise 才覆盖，
  *      覆盖前旧指纹进账本 history（定稿正文不能被一次误跑静默改写）。
+ *   4. 上一章发布后 状态快照.md 没被改动 → 默认拒绝（exit 4）：CHANGES 欠账会让一致性
+ *      6 门禁拿旧事实比对且「全过」，所以回写没落地就不许继续往下发。
  *
- * 退出码: 0=已发布/幂等跳过, 1=门禁阻断, 2=用法或 IO 错误, 3=正文已存在且指纹不同（需 --revise）
+ * 退出码: 0=已发布/幂等跳过, 1=门禁阻断, 2=用法或 IO 错误, 3=正文已存在且指纹不同（需 --revise）,
+ *         4=上一章的状态变化没回写快照（需回写或 --allow-stale-snapshot）
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
 
-const FLAGS = new Set(['--allow-missing-ai', '--revise', '--no-gate', '--dry-run', '--json']);
+const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json']);
 const VALUED = new Set(['--chapter', '--outline', '--ai-gates']);
 
 function die(msg) {
@@ -113,6 +117,27 @@ const ledgerDir = path.join(settingsDir, 'changes');
 const reportPath = path.join(ledgerDir, `ch${String(chapter).padStart(3, '0')}-gate-report.json`);
 const ledgerPath = path.join(ledgerDir, `ch${String(chapter).padStart(3, '0')}-publish.json`);
 
+// ---- 0. 快照回写检查：上一章发布后 状态快照.md 有没有真的被改动 ----
+// 一致性 6 门禁全靠快照比对，快照陈旧时它们会「全过」——这是闸门里唯一还静默失效的地方。
+let snapshotFp = null;
+try {
+  if (fs.existsSync(snapshotPath)) snapshotFp = gate.fileFingerprint(fs.readFileSync(snapshotPath, 'utf-8'));
+} catch (e) {
+  die(`读状态快照失败：${e.message}`);
+}
+const ledgers = gate.loadPublishLedgers(ledgerDir);
+const prevPublish = gate.previousPublish(ledgers, chapter);
+const freshness = gate.snapshotFreshness({
+  currentFp: snapshotFp,
+  previousChapter: prevPublish ? prevPublish.chapter : null,
+  previousFp: prevPublish ? prevPublish.record.snapshotFingerprint : null,
+});
+const snapshotNote = {
+  verdict: freshness.verdict,
+  reason: freshness.reason,
+  previousChapter: prevPublish ? prevPublish.chapter : null,
+};
+
 // ---- 1. 门禁 ----
 let report;
 if (opts.noGate) {
@@ -127,7 +152,7 @@ if (opts.noGate) {
     gates,
     checks: [],
     blockReasons: [],
-    extra: { gatesSkipped: true },
+    extra: { gatesSkipped: true, snapshotFreshness: snapshotNote },
   });
 } else {
   let ruleResult;
@@ -156,6 +181,8 @@ if (opts.noGate) {
     bodyText: draftText,
     allowMissingAi: !!opts.allowMissingAi,
   });
+  const extra = { snapshotFreshness: snapshotNote };
+  if (merged.aiOmitted) extra.aiOmitted = true;
   report = gate.buildReport({
     novel: (config.info && config.info.name) || '',
     chapter,
@@ -163,7 +190,7 @@ if (opts.noGate) {
     gates: ruleResult.gates,
     checks: ruleResult.checks,
     blockReasons: merged.blockReasons,
-    extra: merged.aiOmitted ? { aiOmitted: true } : null,
+    extra,
   });
 }
 
@@ -184,6 +211,7 @@ const out = {
   blockReasons: report.blockReasons,
   reportPath: show(reportPath),
   ledgerPath: show(ledgerPath),
+  snapshotFreshness: snapshotNote,
   published: false,
   noop: false,
   dryRun: !!opts.dryRun,
@@ -252,6 +280,22 @@ if (publishedFileExists && !opts.revise) {
   }
 }
 
+// ---- 4.5 定稿保护之后：快照欠账 → 拒绝继续（一致性门禁在拿旧事实比对）----
+const staleBlocked = freshness.verdict === 'fail' && !opts.allowStaleSnapshot && !opts.noGate;
+if (staleBlocked) {
+  if (!opts.dryRun) gate.writeJsonAtomic(reportPath, report);
+  out.reason = 'stale-snapshot';
+  out.blocked = true;
+  if (!opts.json) {
+    console.error('❌ 状态快照欠账：上一章的状态变化没有回写，拒绝发布——正文目录未改动：');
+    console.error(`   ${freshness.reason}`);
+    console.error(`   快照: ${show(snapshotPath)}  ${snapshotFp}`);
+    if (!opts.dryRun) console.error(`   报告已落盘：${show(reportPath)}（回写快照后重跑）`);
+  }
+  printResult([]);
+  process.exit(4);
+}
+
 // ---- 5. dry-run：到此为止 ----
 if (opts.dryRun) {
   out.published = false;
@@ -270,6 +314,7 @@ gate.writeJsonAtomic(reportPath, report);
 
 const record = {
   publishedAt: new Date().toISOString(),
+  chapter,
   contentFingerprint: curFp,
   draftFingerprint: report.draftFingerprint,
   fileName: path.basename(targetPath),
@@ -279,6 +324,9 @@ const record = {
   summary: report.summary,
   forced: !!opts.noGate,
   aiOmitted: !!report.aiOmitted,
+  // 供「下一章发布时」判断快照有没有回写：发布当时快照长什么样
+  snapshotFingerprint: snapshotFp,
+  staleSnapshot: freshness.verdict === 'fail',
   revised: !!opts.revise && !!publishedFileExists,
   revisedFrom: opts.revise && publishedFileExists ? existingFp : null,
 };
@@ -296,7 +344,8 @@ out.publishCount = publishes.length;
 if (opts.json) {
   console.log(JSON.stringify(out, null, 2));
 } else {
-  const flags = [record.forced ? 'forced' : '', record.revised ? 'revise' : '', record.aiOmitted ? 'aiOmitted' : '']
+  const flags = [record.forced ? 'forced' : '', record.revised ? 'revise' : '', record.aiOmitted ? 'aiOmitted' : '',
+    record.staleSnapshot ? 'staleSnapshot' : '']
     .filter(Boolean).join(' ');
   console.log(`✅ 已发布 第${chapter}章 → ${show(targetPath)}${flags ? ` [${flags}]` : ''}`);
   console.log(`   正文指纹 ${curFp}`);

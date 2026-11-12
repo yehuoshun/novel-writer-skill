@@ -226,3 +226,54 @@ test('writeJsonAtomic / readJsonIfExists：往返一致且不留临时文件', (
   assert.deepStrictEqual(left, []);
   assert.strictEqual(gate.readJsonIfExists(path.join(dir, 'nope.json')), null);
 });
+
+// ---------------- 快照回写判定 / 账本读取 ----------------
+
+test('fileFingerprint：换行与行尾空白不影响，改内容才变（与 draftFingerprint 同口径）', () => {
+  const a = gate.fileFingerprint('# 快照\n\n| 角色 | 状态 |\n| 林山 | 健康 |\n');
+  const b = gate.fileFingerprint('# 快照\r\n\r\n| 角色 | 状态 |   \r\n| 林山 | 健康 |\r\n');
+  assert.strictEqual(a, b);
+  assert.strictEqual(a, gate.draftFingerprint('# 快照\n\n| 角色 | 状态 |\n| 林山 | 健康 |\n'));
+  assert.notStrictEqual(a, gate.fileFingerprint('# 快照\n\n| 角色 | 状态 |\n| 林山 | 重伤 |\n'));
+  assert.match(a, /^sha256:[0-9a-f]{64}$/);
+});
+
+test('loadPublishLedgers / previousPublish：按章号升序、只看 publish 账本、坏账本留 error', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-ledger-'));
+  const cd = path.join(dir, 'changes');
+  fs.mkdirSync(cd, { recursive: true });
+  gate.writeJsonAtomic(path.join(cd, 'ch003-publish.json'), { chapter: 3, publishes: [{ snapshotFingerprint: 'sha256:s3' }] });
+  gate.writeJsonAtomic(path.join(cd, 'ch001-publish.json'), { chapter: 1, publishes: [{ snapshotFingerprint: 'sha256:s1' }] });
+  fs.writeFileSync(path.join(cd, 'ch002-gate-report.json'), '{}');
+  fs.writeFileSync(path.join(cd, 'ch004-publish.json'), '{ 坏掉的 json');
+  const ledgers = gate.loadPublishLedgers(cd);
+  assert.deepStrictEqual(ledgers.map((l) => l.chapter), [1, 3, 4]);
+  assert.ok(ledgers[2].error, '坏账本不能装作不存在');
+  assert.strictEqual(gate.previousPublish(ledgers, 3).chapter, 1);
+  assert.strictEqual(gate.previousPublish(ledgers, 5).chapter, 3);
+  assert.strictEqual(gate.previousPublish(ledgers, 1), null);
+  assert.deepStrictEqual(gate.loadPublishLedgers(path.join(dir, 'nope')), []);
+});
+
+test('snapshotFreshness：没快照 / 没有更早发布 / 旧账本无指纹 → skip（skip 不是通过）', () => {
+  assert.strictEqual(gate.snapshotFreshness({ currentFp: null, previousChapter: 3, previousFp: 'sha256:a' }).verdict, 'skip');
+  assert.strictEqual(gate.snapshotFreshness({ currentFp: 'sha256:a', previousChapter: null, previousFp: 'sha256:a' }).verdict, 'skip');
+  const old = gate.snapshotFreshness({ currentFp: 'sha256:a', previousChapter: 2, previousFp: null });
+  assert.strictEqual(old.verdict, 'skip');
+  assert.match(old.reason, /旧版账本/);
+});
+
+test('snapshotFreshness：指纹没变 → fail（CHANGES 没回写），给章号与放行开关', () => {
+  const r = gate.snapshotFreshness({ currentFp: 'sha256:abc', previousChapter: 7, previousFp: 'sha256:abc' });
+  assert.strictEqual(r.verdict, 'fail');
+  assert.strictEqual(r.previousChapter, 7);
+  assert.match(r.reason, /第7章发布后/);
+  assert.match(r.reason, /--allow-stale-snapshot/);
+});
+
+test('snapshotFreshness：指纹变了 → pass', () => {
+  assert.strictEqual(gate.snapshotFreshness({ currentFp: 'sha256:new', previousChapter: 7, previousFp: 'sha256:old' }).verdict, 'pass');
+});
