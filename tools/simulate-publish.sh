@@ -9,6 +9,7 @@ set +e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PUB="node $ROOT/scripts/publish-chapter.js"
 STATUS="node $ROOT/scripts/publish-status.js"
+NEXT="node $ROOT/scripts/next-chapter.js"
 REPORT="node $ROOT/scripts/gate-report.js"
 WORK="$(mktemp -d /tmp/nw-publish.XXXXXX)"
 cd "$WORK" || exit 2
@@ -205,6 +206,29 @@ echo ""
 echo "===== 场景 9：账本审计（含失败章节也未污染账本）====="
 OUT=$($STATUS config.json 2>&1); CODE=$?
 check "publish-status 复审" 0 $CODE "$OUT"
+
+echo ""
+echo "===== 场景 10：断点续跑（next-chapter 报「停在哪、下一章读什么」）====="
+OUT=$($NEXT config.json 2>&1); CODE=$?
+check "快照欠账时 next-chapter 拦一下" 1 $CODE "$OUT"
+ok "报出下一章第3章" "$(printf '%s' "$OUT" | grep -q '下一章：第3章' && echo 1 || echo 0)" "$OUT"
+ok "交接包回退到上一章 CHANGES" "$(printf '%s' "$OUT" | grep -q '上一章 CHANGES' && echo 1 || echo 0)" "$OUT"
+cat > 设定/状态快照.md <<'EOF'
+# 状态快照（截止第2章）
+
+## 下章交接包
+- 剧情当前位置：前殿西廊
+- 下章该写：与竹牌主人交接
+
+## 角色状态
+| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |
+|------|------|----------|------|------|-----------|
+| 林山 | 炼气三层 | 前殿西廊 | 健康 | 断锋剑 | 2 |
+EOF
+OUT=$($NEXT config.json 2>&1); CODE=$?
+check "回写快照后可继续" 0 $CODE "$OUT"
+ok "交接包取自快照" "$(printf '%s' "$OUT" | grep -q '来自 .*状态快照\.md' && echo 1 || echo 0)" "$OUT"
+ok "交接包内容原样带出" "$(printf '%s' "$OUT" | grep -q '与竹牌主人交接' && echo 1 || echo 0)" "$OUT"
 
 echo ""
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
