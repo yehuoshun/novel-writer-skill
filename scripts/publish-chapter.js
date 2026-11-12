@@ -138,6 +138,26 @@ const snapshotNote = {
   previousChapter: prevPublish ? prevPublish.chapter : null,
 };
 
+// 账本提前读：阻断/幂等分支也要据此判断「这次要不要覆盖已发布的那份验收记录」
+let ledger = null;
+try {
+  ledger = gate.readJsonIfExists(ledgerPath);
+} catch (e) {
+  die(e.message);
+}
+const publishes = (ledger && Array.isArray(ledger.publishes)) ? ledger.publishes : [];
+const last = publishes.length ? publishes[publishes.length - 1] : null;
+const publishedFileExists = !!existing && fs.existsSync(existing);
+// 旧稿指纹必须在覆盖**之前**读出来（写后再读会拿到新内容，账本的 revisedFrom 就成假记录）
+const existingFp = publishedFileExists ? gate.contentFingerprint(fs.readFileSync(existing, 'utf-8')) : null;
+// 已发布过「另一稿」时，被拦/幂等运行的报告另存草稿名：chNNN-gate-report.json 是发布当时的验收记录，
+// 被一次没发出去的改稿覆盖掉，账本与报告就对不上了（publish-status 会报 integrity 不一致）
+const draftReportPath = (fp) => path.join(
+  ledgerDir,
+  `ch${String(chapter).padStart(3, '0')}-gate-report-draft-${String(fp).replace(/^sha256:/, '').slice(0, 8)}.json`,
+);
+const blockedReportPath = (last && last.contentFingerprint !== curFp) ? draftReportPath(curFp) : reportPath;
+
 // ---- 1. 门禁 ----
 let report;
 if (opts.noGate) {
@@ -225,43 +245,40 @@ function printResult(lines) {
   }
 }
 
+
 // ---- 2. 阻断：一个字都不落 ----
 if (report.blocked && !opts.dryRun) {
-  gate.writeJsonAtomic(reportPath, report);
-  out.reportPath = show(reportPath);
+  gate.writeJsonAtomic(blockedReportPath, report);
+  out.reportPath = show(blockedReportPath);
 }
 if (report.blocked) {
   if (!opts.json) {
     console.error(`❌ 门禁阻断，未发布（${report.blockReasons.length} 条）——正文目录未改动：`);
     report.blockReasons.forEach((r) => console.error(`  - ${r}`));
-    if (!opts.dryRun) console.error(`   报告已落盘：${show(reportPath)}（改稿后重跑）`);
+    if (!opts.dryRun) {
+      console.error(`   报告已落盘：${show(blockedReportPath)}（改稿后重跑）`);
+      if (blockedReportPath !== reportPath) {
+        console.error(`   已发布的验收记录 ${show(path.basename(reportPath))} 保持不动（这一稿没发出去）`);
+      }
+    }
   }
   printResult([]);
   process.exit(1);
 }
 
 // ---- 3. 幂等：同指纹且正文已在 → no-op ----
-let ledger = null;
-try {
-  ledger = gate.readJsonIfExists(ledgerPath);
-} catch (e) {
-  die(e.message);
-}
-const publishes = (ledger && Array.isArray(ledger.publishes)) ? ledger.publishes : [];
-const last = publishes.length ? publishes[publishes.length - 1] : null;
-const publishedFileExists = !!existing && fs.existsSync(existing);
-// 旧稿指纹必须在覆盖**之前**读出来（写后再读会拿到新内容，账本的 revisedFrom 就成假记录）
-const existingFp = publishedFileExists ? gate.contentFingerprint(fs.readFileSync(existing, 'utf-8')) : null;
 if (last && publishedFileExists && last.contentFingerprint === curFp && path.basename(targetPath) === last.fileName) {
   out.noop = true;
   out.publishCount = publishes.length;
-  if (!opts.dryRun) gate.writeJsonAtomic(reportPath, report);
+  // 不重写报告：重生成会换掉 generatedAt 与 integrity，账本里记的还是发布当时那份，审计就会报「报告被改过」
   printResult([
     `⏭️ 幂等跳过：第${chapter}章正文指纹未变（${curFp}），已发布过 ${publishes.length} 次，本次不重复落盘`,
     `   目标: ${show(targetPath)}`,
+    `   发布时的报告: ${show(reportPath)}（未重写）`,
   ]);
   process.exit(0);
 }
+
 
 // ---- 4. 定稿保护：已存在且指纹不同 → 需 --revise ----
 if (publishedFileExists && !opts.revise) {
@@ -283,14 +300,20 @@ if (publishedFileExists && !opts.revise) {
 // ---- 4.5 定稿保护之后：快照欠账 → 拒绝继续（一致性门禁在拿旧事实比对）----
 const staleBlocked = freshness.verdict === 'fail' && !opts.allowStaleSnapshot && !opts.noGate;
 if (staleBlocked) {
-  if (!opts.dryRun) gate.writeJsonAtomic(reportPath, report);
+  if (!opts.dryRun) gate.writeJsonAtomic(blockedReportPath, report);
   out.reason = 'stale-snapshot';
   out.blocked = true;
+  out.reportPath = show(blockedReportPath);
   if (!opts.json) {
     console.error('❌ 状态快照欠账：上一章的状态变化没有回写，拒绝发布——正文目录未改动：');
     console.error(`   ${freshness.reason}`);
     console.error(`   快照: ${show(snapshotPath)}  ${snapshotFp}`);
-    if (!opts.dryRun) console.error(`   报告已落盘：${show(reportPath)}（回写快照后重跑）`);
+    if (!opts.dryRun) {
+      console.error(`   报告已落盘：${show(blockedReportPath)}（回写快照后重跑）`);
+      if (blockedReportPath !== reportPath) {
+        console.error(`   已发布的验收记录 ${show(path.basename(reportPath))} 保持不动（这一稿没发出去）`);
+      }
+    }
   }
   printResult([]);
   process.exit(4);

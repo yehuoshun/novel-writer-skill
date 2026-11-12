@@ -408,12 +408,13 @@ test('publish-status：报告被手改 → exit 1 并指出 integrity 不一致'
   assert.match(r.stdout, /报告自检不通过|integrity/);
 });
 
-test('publish-status：快照欠账 → exit 1 并点出未回写', () => {
+test('publish-status：快照待回写 → exit 0 但提醒（拦截留给下一章发布时）', () => {
   const f = setup();
   assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
   const r = runStatus([f.config]);
-  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
-  assert.match(r.stdout, /状态快照\.md 未改动/);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /状态快照\.md 至今未改动/);
+  assert.match(r.stdout, /回写后本提醒消失/);
 });
 
 test('publish-status：正文发布后被改 → exit 0 但给待确认提示', () => {

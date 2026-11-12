@@ -159,7 +159,9 @@ node scripts/gate-report.js 草稿/第010章.md --emit-ai-template 声明.json
 node scripts/publish-status.js configs/天龙传说.json
 ```
 
-逐章核对：报告还在不在、能不能过自检、integrity 与账本是否同一份、正文指纹有没有被动过、最新一章发布后快照回没回写；顺带汇总 forced / revise / staleSnapshot 各几章。没发现问题 exit 0，有 exit 1（详情列在问题行下面）。
+逐章核对：报告还在不在、能不能过自检、integrity 与账本是否同一份、正文指纹有没有被动过；顺带汇总 forced / revise / staleSnapshot 各几章。最新一章发布后快照还没回写会单独用 `⚠️` 点名（这是「待办」不是「账本坏了」——真正的拦截在下一章发布时 exit 4）。账本与报告对不上 exit 1（详情列在问题行下面）。
+
+> 报告按章号存档（`设定/changes/chNNN-gate-report.json`），记的是**发布当时**那份。发布之后再跑一次被门禁拦下的改稿，报告另存为 `chNNN-gate-report-draft-<指纹前8位>.json`，不会把已发布的验收记录顶掉。
 
 ## 测试
 
@@ -183,13 +185,19 @@ bash tools/simulate-lifecycle.sh
 bash tools/simulate-backup.sh
 ```
 
-三个集成脚本已接入 CI（`.github/workflows/test.yml`，与单测一同跑）。
-
 长篇回归（50 章长期积累：伏笔状态机跨 30+ 章、快照不发胖、跨章位置一致性、冲突检测、门禁报告完整性）：
 
 ```bash
 bash tools/simulate-longform.sh
 ```
+
+发布链路回归（首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计）：
+
+```bash
+bash tools/simulate-publish.sh
+```
+
+四个集成脚本都跑在 CI 上（`.github/workflows/test.yml` 的「集成回归」一步）。
 
 ## 发版（半自动）
 

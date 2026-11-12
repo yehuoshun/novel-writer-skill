@@ -162,10 +162,12 @@ if (audited.length) {
   } else if (!rec.snapshotFingerprint) {
     snapshot = { verdict: 'skip', chapter: latest.chapter, reason: '账本没记快照指纹（旧版账本），无法判定回写' };
   } else if (fp === rec.snapshotFingerprint) {
+    // 回写还没做：这是「待回写」而不是账本出错——发布刚结束、状态还没抄进快照时就是这状态。
+    // 真正的拦截在下一章发布时（publish-chapter exit 4），这里只提醒，不计入问题数。
     snapshot = {
-      verdict: 'fail',
+      verdict: 'pending',
       chapter: latest.chapter,
-      reason: `第${latest.chapter}章发布后 状态快照.md 未改动——CHANGES 没回写，下一章的一致性 6 门禁会比旧事实`,
+      reason: `第${latest.chapter}章发布后 状态快照.md 至今未改动——CHANGES 还没回写，下一章的一致性 6 门禁会比旧事实（回写后本提醒消失）`,
     };
   } else {
     snapshot = { verdict: 'pass', chapter: latest.chapter, reason: `状态快照在第${latest.chapter}章发布后已更新` };
@@ -179,9 +181,10 @@ const summary = {
   staleSnapshot: chapters.filter((c) => c.staleSnapshot).length,
   withIssues: chapters.filter((c) => c.issues.length).length,
   withWarns: chapters.filter((c) => c.warns.length).length,
-  snapshotDebt: snapshot && snapshot.verdict === 'fail' ? 1 : 0,
+  snapshotDebt: snapshot && snapshot.verdict === 'pending' ? 1 : 0,
 };
-const ok = summary.withIssues === 0 && summary.snapshotDebt === 0;
+// 快照待回写不算「账本出错」：真正的闸门在下一章发布时（exit 4），这里只提醒
+const ok = summary.withIssues === 0;
 const novel = (config.info && config.info.name) || '';
 
 if (opts.json) {
@@ -206,10 +209,12 @@ for (const c of chapters) {
   for (const w of c.warns) console.log(`        · ${w}`);
 }
 if (snapshot && snapshot.verdict !== 'pass') {
-  console.log(`  ${snapshot.verdict === 'fail' ? '❌' : '⏭️'} 状态快照回写：${snapshot.reason}`);
+  const icon = snapshot.verdict === 'pending' ? '⚠️' : '⏭️';
+  console.log(`  ${icon} 状态快照回写：${snapshot.reason}`);
 }
 console.log(`\n汇总: ${summary.chapters} 章｜forced ${summary.forced}｜revise ${summary.revised}｜` +
-  `staleSnapshot ${summary.staleSnapshot}｜报告问题 ${summary.withIssues}｜待确认 ${summary.withWarns}`);
+  `staleSnapshot ${summary.staleSnapshot}｜报告问题 ${summary.withIssues}｜待确认 ${summary.withWarns}｜` +
+  `快照待回写 ${summary.snapshotDebt}`);
 if (ok) {
   console.log('✅ 账本与报告一致');
 } else {
