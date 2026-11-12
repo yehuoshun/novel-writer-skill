@@ -20,6 +20,22 @@ import urllib.request
 MAX_BYTES = 19000  # 钉钉 markdown 上限约 20KB
 
 
+def _force_utf8_stdio() -> None:
+    """Windows 控制台默认 GBK，打印 emoji 会 UnicodeEncodeError 直接退出 1。
+
+    Linux CI 不受影响，但本机（含 --print 自测）会因此挂掉；统一按 UTF-8 输出。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
+_force_utf8_stdio()
+
+
 def build_text(tag: str, repo: str, body: str) -> str:
     body = (body or "")[:4000]
     text = (

@@ -1,0 +1,19 @@
+# 统一按 LF 检出
+#
+# 仓库内容一直是 LF，但 Windows 上 core.autocrlf=true 会把它检出成 CRLF，
+# 于是 test/fixtures/changes-template.txt 这类被直接读取的输入与仓库内容不一致
+# （「CRLF 仍可解析」用例叠出 \r\r\n，「语雀手册 groups key」用例拿到 CRLF 文本）。
+# 显式声明后，检出结果与仓库一致，测试在任何平台看到同一份字节。
+* text=auto eol=lf
+
+# 二进制：不做换行归一、不做文本 diff
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.zip  binary
+*.pdf  binary
+
+# 脚本按 LF 存：bash 脚本带 CRLF 会在 Linux CI 上报 "$'\r': command not found"
+*.sh text eol=lf

@@ -7,7 +7,19 @@ const os = require('node:os');
 const path = require('node:path');
 
 const SCRIPT = path.join(__dirname, '..', 'tools', 'notify-release.py');
-const PY = process.env.PYTHON || 'python3';
+
+// Windows 上通常只有 python.exe/py.exe，没有 python3 —— 逐个探活，避免本机 2 条用例以 ENOENT 误报。
+function resolvePython() {
+  if (process.env.PYTHON) return process.env.PYTHON;
+  const candidates = process.platform === 'win32' ? ['python3', 'python', 'py'] : ['python3', 'python'];
+  for (const bin of candidates) {
+    const probe = spawnSync(bin, ['--version'], { encoding: 'utf-8' });
+    if (!probe.error && probe.status === 0) return bin;
+  }
+  return candidates[0];
+}
+
+const PY = resolvePython();
 
 test('notify-release 生成含 changelog 的 markdown（--print 不联网）', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-nr-'));
