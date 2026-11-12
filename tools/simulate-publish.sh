@@ -231,6 +231,33 @@ ok "交接包取自快照" "$(printf '%s' "$OUT" | grep -q '来自 .*状态快�
 ok "交接包内容原样带出" "$(printf '%s' "$OUT" | grep -q '与竹牌主人交接' && echo 1 || echo 0)" "$OUT"
 
 echo ""
+echo "===== 场景 11：--apply-changes（发布后自动回写快照，下一章不再欠账）====="
+cat > 草稿/第004章.md <<'EOF2'
+　　竹林深处的雾气比山道更重，林山把断锋剑横在膝上，听见风穿过竹节的空响。
+　　那声音一截一截地断，像有人在远处数着数。他抬头看天，云压得很低，没有鸟。
+　　竹牌还在袖中，棱角硌着腕骨。他把手伸进去，摸到那道刻痕，指腹来回摩了一下。
+　　有些话没问出口，就只能先记着。林山站起来，往林子更深处走了几步，又停下。
+---CHANGES---
+<!-- 角色状态变化 -->
+- **[林山]**：健康→健康
+<!-- 角色移动 -->
+- **[林山]**：前殿西廊→后山竹林
+<!-- 交接包 -->
+- 剧情当前位置：后山竹林
+- 未了结线索：竹牌上的刻字没人认得
+---END CHANGES---
+EOF2
+make_decl 草稿/第004章.md decl4.json "风穿过竹节的空响"
+OUT=$($PUB config.json 草稿/第004章.md --ai-gates decl4.json --apply-changes 2>&1); CODE=$?
+check "--apply-changes 发布第4章" 0 $CODE "$OUT"
+ok "快照已自动回写（不必手抄）" "$(grep -q '| 林山 | 炼气三层 | 后山竹林 | 健康 | 断锋剑 | 4 |' 设定/状态快照.md && echo 1 || echo 0)" "$(tail -5 设定/状态快照.md)"
+ok "快照标题跟着章号走" "$(grep -q '# 状态快照（截止第4章）' 设定/状态快照.md && echo 1 || echo 0)" "$(head -1 设定/状态快照.md)"
+ok "交接包整段换成本章的" "$(grep -q '竹牌上的刻字没人认得' 设定/状态快照.md && echo 1 || echo 0)" "$(tail -8 设定/状态快照.md)"
+ok "账本记 snapshotApplied=true" "$([ "$(ledger_field 4 0 snapshotApplied)" = "true" ] && echo 1 || echo 0)" "实际 $(ledger_field 4 0 snapshotApplied)"
+OUT=$($NEXT config.json 2>&1); CODE=$?
+check "回写后 next-chapter 直接放行" 0 $CODE "$OUT"
+ok "下一章是第5章" "$(printf '%s' "$OUT" | grep -q '下一章：第5章' && echo 1 || echo 0)" "$OUT"
+echo ""
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
 cd / && rm -rf "$WORK"
 exit $FAIL

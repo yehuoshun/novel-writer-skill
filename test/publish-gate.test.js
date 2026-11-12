@@ -383,6 +383,33 @@ test('publish：--no-gate 的补救发布不受快照欠账拦截', () => {
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
 });
 
+test('publish：--apply-changes → 发布后自动回写快照，下一章不再被判欠账', () => {
+  const f = setup();
+  const r1 = runPublish([f.config, f.draft, '--ai-gates', f.aiGates, '--apply-changes']);
+  assert.strictEqual(r1.status, 0, r1.stdout + r1.stderr);
+  assert.match(r1.stdout, /快照回写/);
+
+  const snap = fs.readFileSync(path.join(f.settingsDir, '状态快照.md'), 'utf-8');
+  assert.match(snap, /# 状态快照（截止第1章）/);
+  assert.match(snap, /\| 林山 \| 炼气三层 \| 青云山前殿 \| 健康 \| 剑 \| 1 \|/);
+  assert.match(snap, /- 剧情当前位置：青云山前殿/);
+  assert.strictEqual(readLedger(f).publishes[0].snapshotApplied, true);
+
+  // 快照已被脚本回写 → 第 2 章不再被判「快照欠账」（exit 4）。
+  // 这里复用的是同一份草稿，它的出发地（后山）与回写后的快照（前殿）不一致，
+  // 所以门禁会按「移动对不上」拦下——那正是该拦的；本用例只关心欠账这一层。
+  const draft2 = addChapter2(f);
+  const r2 = runPublish([f.config, draft2, '--ai-gates', f.aiGates]);
+  assert.notStrictEqual(r2.status, 4, r2.stdout + r2.stderr);
+  assert.ok(!/状态快照欠账/.test(r2.stderr), r2.stderr);
+});
+
+test('publish：没用 --apply-changes 时账本不写 snapshotApplied 字段', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  assert.strictEqual('snapshotApplied' in readLedger(f).publishes[0], false);
+});
+
 // ---------------- publish-status（账本审计）----------------
 
 test('publish-status：账本、报告、正文一致 → exit 0', () => {

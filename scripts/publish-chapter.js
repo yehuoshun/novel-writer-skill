@@ -36,8 +36,9 @@
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
+const { spawnSync } = require('node:child_process');
 
-const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json']);
+const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json', '--apply-changes']);
 const VALUED = new Set(['--chapter', '--outline', '--ai-gates']);
 
 function die(msg) {
@@ -335,6 +336,19 @@ const finalText = normalized.endsWith('\n') ? normalized : normalized + '\n';
 gate.writeFileAtomic(targetPath, finalText);
 gate.writeJsonAtomic(reportPath, report);
 
+// ---- 5.9 可选：把本章 CHANGES 机械回写到状态快照（--apply-changes）----
+// 发布成功才回写；回写失败不改发布结果（正文与账本已落地），但会喊一声，别让欠账悄悄留下
+let snapshotApplied = null;
+if (opts.applyChanges) {
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'apply-changes.js'), configPath, targetPath, '--write', '--quiet'], { encoding: 'utf-8' });
+  snapshotApplied = r.status === 0;
+  out.snapshotApplied = snapshotApplied;
+  if (!opts.json) {
+    if (r.status === 0) console.log(`   快照回写 ${(r.stdout || '').trim() || '完成'}`);
+    else console.error(`   ⚠️ 快照回写失败（正文与账本已发布，快照需手工补）：${((r.stderr || '') + (r.stdout || '')).trim()}`);
+  }
+}
+
 const record = {
   publishedAt: new Date().toISOString(),
   chapter,
@@ -350,6 +364,8 @@ const record = {
   // 供「下一章发布时」判断快照有没有回写：发布当时快照长什么样
   snapshotFingerprint: snapshotFp,
   staleSnapshot: freshness.verdict === 'fail',
+  // --apply-changes 是否成功把本章 CHANGES 机械回写进快照（未用该选项时不写这个字段）
+  snapshotApplied: opts.applyChanges ? !!snapshotApplied : undefined,
   revised: !!opts.revise && !!publishedFileExists,
   revisedFrom: opts.revise && publishedFileExists ? existingFp : null,
 };
@@ -368,7 +384,7 @@ if (opts.json) {
   console.log(JSON.stringify(out, null, 2));
 } else {
   const flags = [record.forced ? 'forced' : '', record.revised ? 'revise' : '', record.aiOmitted ? 'aiOmitted' : '',
-    record.staleSnapshot ? 'staleSnapshot' : '']
+    record.staleSnapshot ? 'staleSnapshot' : '', record.snapshotApplied ? 'applied' : '']
     .filter(Boolean).join(' ');
   console.log(`✅ 已发布 第${chapter}章 → ${show(targetPath)}${flags ? ` [${flags}]` : ''}`);
   console.log(`   正文指纹 ${curFp}`);

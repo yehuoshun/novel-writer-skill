@@ -125,6 +125,15 @@ node scripts/publish-chapter.js configs/天龙传说.json 草稿/第010章.md --
 3. **幂等 + 留痕**：每章一份账本 `设定/changes/chNNN-publish.json`（时间、指纹、报告路径、结论汇总），同内容重跑不重复记账；报告 `chNNN-gate-report.json` 带 integrity 自校验，手改结论会被 `verifyReport` 抓出来。
 4. **状态回写才算完**：发布时把当时的快照指纹记进账本；发下一章若快照一个字没改，闸门拒绝（exit 4）——不拦的话一致性 6 门禁会拿旧事实比对，而且会「全过」。确认无需回写时加 `--allow-stale-snapshot`（账本记 `staleSnapshot: true`）；`--no-gate` 的补救发布不受此拦。
 
+**状态回写可以机械做**：加 `--apply-changes`，闸门在发布成功后直接拿本章 CHANGES 回写 `状态快照.md`（角色状态/移动、伏笔四态、地点与势力、物品归属、冲突进度、时间线、下章交接包），幂等可重跑；回写失败不影响已经落地的发布，但会明确喊一声。也可以单独跑（**默认 dry-run**，只打印将要改哪几行）：
+
+```bash
+node scripts/apply-changes.js configs/天龙传说.json 正文/第010章.md            # 先看
+node scripts/apply-changes.js configs/天龙传说.json 正文/第010章.md --write    # 再写
+```
+
+它只负责快照里的结构化栏目（表格 + 交接包 + 时间线）。伏笔档案的状态字段、爽点/钩子/情绪/等级等追踪文档仍按流程手工补——那些是自由文本，脚本不猜。
+
 AI 侧门禁声明（Gate 2–6 是语义判断，规则扫描替代不了，必须逐项交代）。骨架用脚本生成，指纹由脚本算，省得手抄：
 
 ```bash
@@ -215,7 +224,7 @@ bash tools/simulate-backup.sh
 bash tools/simulate-longform.sh
 ```
 
-发布链路回归（首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计）：
+发布链路回归（11 个场景 / 34 条断言：首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计 → 断点续跑 → `--apply-changes` 自动回写快照后下一章直接放行）：
 
 ```bash
 bash tools/simulate-publish.sh
