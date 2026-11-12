@@ -2,7 +2,8 @@
 # 发布闸门端到端回归（publish-chapter + 分章账本 + publish-status）
 # 用法: bash tools/simulate-publish.sh
 # 覆盖: 首发布落盘与记账 / 幂等重发不重复记账 / 快照欠账 exit 4 / --allow-stale-snapshot 放行并记账 /
-#       改稿默认拒绝 exit 3 / --revise 覆盖并留旧指纹 / 门禁阻断 exit 1 且正文一个字节不动 / 账本审计 exit 0
+#       改稿默认拒绝 exit 3 / --revise 覆盖并留旧指纹 / 门禁阻断 exit 1 且正文一个字节不动 / 账本审计 exit 0 /
+#       --apply-changes 自动回写快照 / housekeeping 清理草稿报告且不碰验收记录与账本
 # 为什么放 CI：node --test 跑的是进程内逻辑；发布链路的真实入口是 shell 里的 CLI，退出码与账本落盘
 # 只有在这里跑一遍才算验过（v3.5.26 的 exit 4 与 v3.5.28 的 --data 比对都靠它兜底）。
 set +e
@@ -11,6 +12,7 @@ PUB="node $ROOT/scripts/publish-chapter.js"
 STATUS="node $ROOT/scripts/publish-status.js"
 NEXT="node $ROOT/scripts/next-chapter.js"
 REPORT="node $ROOT/scripts/gate-report.js"
+HK="node $ROOT/scripts/housekeeping.js"
 WORK="$(mktemp -d /tmp/nw-publish.XXXXXX)"
 cd "$WORK" || exit 2
 mkdir -p 草稿 正文 设定/changes 设定/角色设定/主角 设定/地点设定
@@ -258,6 +260,24 @@ OUT=$($NEXT config.json 2>&1); CODE=$?
 check "回写后 next-chapter 直接放行" 0 $CODE "$OUT"
 ok "下一章是第5章" "$(printf '%s' "$OUT" | grep -q '下一章：第5章' && echo 1 || echo 0)" "$OUT"
 echo ""
+echo "===== 场景 12：housekeeping（草稿报告轮转，验收记录与账本不许动）====="
+# 闸门只在「发过一稿又拿改稿重跑」时才另存草稿报告；这里先造三份，模拟被拦过的改稿
+for s in aa11bb22 cc33dd44 ee55ff66; do echo "{}" > 设定/changes/ch002-gate-report-draft-$s.json; done
+draft_count() { ls 设定/changes/ch*-gate-report-draft-*.json 2>/dev/null | wc -l | tr -d ' '; }
+ledger_before=$(ls 设定/changes/ch*-publish.json 2>/dev/null | wc -l | tr -d ' ')
+OUT=$($HK config.json 2>&1); CODE=$?
+check "housekeeping 默认 dry-run" 0 $CODE "$OUT"
+ok "dry-run 不删东西" "$([ "$(draft_count)" = "3" ] && echo 1 || echo 0)" "实际 $(draft_count) 份"
+OUT=$($HK config.json --write --keep-drafts 1 2>&1); CODE=$?
+check "housekeeping --write --keep-drafts 1" 0 $CODE "$OUT"
+ok "草稿报告只留最新 1 份" "$([ "$(draft_count)" = "1" ] && echo 1 || echo 0)" "剩 $(ls 设定/changes/ch*-gate-report-draft-*.json 2>/dev/null | tr '\n' ' ')"
+ok "发布当时的验收记录还在" "$([ -f 设定/changes/ch001-gate-report.json ] && [ -f 设定/changes/ch004-gate-report.json ] && echo 1 || echo 0)" "$(ls 设定/changes | tr '\n' ' ')"
+ok "分章账本一份没少" "$([ "$(ls 设定/changes/ch*-publish.json 2>/dev/null | wc -l | tr -d ' ')" = "$ledger_before" ] && echo 1 || echo 0)" "之前 $ledger_before 之后 $(ls 设定/changes/ch*-publish.json 2>/dev/null | wc -l | tr -d ' ')"
+OUT=$($HK config.json --write --keep-drafts 1 2>&1); CODE=$?
+check "housekeeping 重跑幂等" 0 $CODE "$OUT"
+ok "第二次说无需清理" "$(printf '%s' "$OUT" | grep -q '无需清理' && echo 1 || echo 0)" "$OUT"
+OUT=$($STATUS config.json 2>&1); CODE=$?
+check "清理后账本审计照样通过" 0 $CODE "$OUT"
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
 cd / && rm -rf "$WORK"
 exit $FAIL

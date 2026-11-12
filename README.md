@@ -196,6 +196,23 @@ node scripts/next-chapter.js configs/天龙传说.json        # 加 --json 给�
 三件事它替你核对：**到第几章**（账本与正文目录不一致就点名：账本说有、正文没了 = `⛔` 阻塞；正文有、账本没记 = 绕过闸门落盘的提醒）、**下一章几号**（取两者较大值 +1，跳号会单独提）、**该读什么**（快照的 `## 下章交接包` 优先，快照还没回写就回退到上一章 CHANGES 的 `<!-- 交接包 -->` 并说明来源）。有 `⛔` 时 exit 1——多半是上一章的 CHANGES 欠账，先回写再写新章。
 
 
+### 收尾清理：删掉该删的
+
+写完几十章，`设定/changes/` 里会攒下每次被拦下的改稿报告（`chNNN-gate-report-draft-<指纹前8位>.json`）、原子写中断留下的 `*.tmp`，本地备份也会垒成一摞。**默认 dry-run，只报不删**：
+
+```bash
+node scripts/housekeeping.js configs/天龙传说.json                       # 先看
+node scripts/housekeeping.js configs/天龙传说.json --write                # 再删
+node scripts/housekeeping.js configs/天龙传说.json --write --keep-drafts 1 --keep-backups 5
+```
+
+- **草稿报告**：每章只留最新 N 份（默认 3）。`chNNN-gate-report.json`（发布当时的验收记录）和分章账本**永远不在删除范围**——那是 `publish-status` 复核的凭据。
+- **临时残留**：`设定/changes/` 与 `正文/` 下的 `*.tmp` / `*.partial` 一律清（原子写中断的中间态）。
+- **本地备份**：`backup.local_path` 下 `YYYY-MM-DD_HH-mm-ss-SSS-chNNN` 目录只留最新 N 个（默认 20）。
+- **孤儿报告只点名不删**：`chNNN-gate-report.json` 找不到对应账本时打 `⚠️`，提示先跑 `publish-status` 看清楚——那多半是绕过闸门手动放进正文的章节。
+
+退出码 0=清理完或无需清理、1=有删除失败、2=用法或配置错；`--json` 给脚本读。重跑幂等，第二次会说「无需清理」。
+
 ## 测试
 
 零依赖，用 Node 内置 test runner：
@@ -204,7 +221,7 @@ node scripts/next-chapter.js configs/天龙传说.json        # 加 --json 给�
 node --test        # 或 npm test
 ```
 
-覆盖全部门禁/工具脚本的输入输出（CHANGES 解析四态、一致性/引用/伏笔/蓝图/描写、冲突检测、配置校验正负例、配置回写、文本健康、AI 味扫描、段首缩进、上传预处理、本地备份快照）+ 发布闸门（内容指纹口径、AI 声明审批、报告 integrity 自校验、幂等重发、修订保护、强制通道留痕）+ 仓库元数据自检（链接、表格、版本、命名、换行、schema 枚举 ↔ 文档词表）+ Release 通知脚本（--print 不联网）。CI（`.github/workflows/test.yml`）在 push / PR 时自动跑。
+覆盖全部门禁/工具脚本的输入输出（CHANGES 解析四态、一致性/引用/伏笔/蓝图/描写、冲突检测、配置校验正负例、配置回写、文本健康、AI 味扫描、段首缩进、上传预处理、本地备份快照）+ 发布闸门（内容指纹口径、AI 声明审批、报告 integrity 自校验、幂等重发、修订保护、强制通道留痕）+ 仓库元数据自检（链接、表格、版本、命名、换行、schema 枚举 ↔ 文档词表）+ Release 通知脚本（--print 不联网）+ 收尾清理（草稿报告按章轮转、dry-run 不落盘、备份轮转、孤儿报告只点名、参数负例）。CI（`.github/workflows/test.yml`）在 push / PR 时自动跑。
 
 集成回归（5 章全生命周期：埋设→推进→回收、新角色建档、终态回退、重复埋设）：
 
@@ -224,7 +241,7 @@ bash tools/simulate-backup.sh
 bash tools/simulate-longform.sh
 ```
 
-发布链路回归（11 个场景 / 34 条断言：首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计 → 断点续跑 → `--apply-changes` 自动回写快照后下一章直接放行）：
+发布链路回归（12 个场景 / 43 条断言：首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计 → 断点续跑 → `--apply-changes` 自动回写快照后下一章直接放行 → 收尾清理只删草稿报告、验收记录与账本一个不动）：
 
 ```bash
 bash tools/simulate-publish.sh
