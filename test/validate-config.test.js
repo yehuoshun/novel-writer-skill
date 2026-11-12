@@ -3,6 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'validate-config.js');
 const ROOT = path.join(__dirname, '..');
@@ -192,7 +193,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 
 const mkNovelDir = (withOutline) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-outline-'));
+  const dir = tmpDir('nw-outline-');
   const sp = path.join(dir, '设定');
   fs.mkdirSync(sp, { recursive: true });  // 目录必须存在（=已初始化），内容决定拦/放行
   if (withOutline) {
@@ -214,7 +215,7 @@ test('大纲先行：已写章节 + 设定目录存在但无大纲 → 失败', 
 });
 
 test('大纲先行：大纲在但细纲缺失 → 失败', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-outline-'));
+  const dir = tmpDir('nw-outline-');
   const sp = path.join(dir, '设定');
   fs.mkdirSync(path.join(sp, '大纲'), { recursive: true });
   fs.writeFileSync(path.join(sp, '大纲', '全书大纲.md'), '# 大纲');

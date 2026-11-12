@@ -3,6 +3,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 const { spawnSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'housekeeping.js');
@@ -11,7 +12,7 @@ const run = (args, cwd) => spawnSync(process.execPath, [SCRIPT, ...args], { enco
 const FP = ['aaaaaaaa', 'bbbbbbbb', 'cccccccc', 'dddddddd'];
 
 function setup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-hk-'));
+  const dir = tmpDir('nw-hk-');
   const ledgerDir = path.join(dir, '设定', 'changes');
   const contentDir = path.join(dir, '正文');
   const backupDir = path.join(dir, '备份');

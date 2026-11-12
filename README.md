@@ -121,7 +121,8 @@ node scripts/publish-chapter.js configs/天龙传说.json 草稿/第010章.md --
 四条不变量：
 
 1. **候选稿与正文分离**：草稿路径随便放，正文目录只在闸门通过后写。
-2. **审批绑内容指纹**：AI 侧门禁声明带 `contentFingerprint`（正文 sha256；CHANGES 块与换行风格不参与计算），正文改一个字指纹就变，旧声明自动失效。
+2. **审批绑内容指纹**：
+AI 侧门禁声明带 `contentFingerprint`（正文 sha256；CHANGES 块与换行风格不参与计算），正文改一个字指纹就变，旧声明自动失效。
 3. **幂等 + 留痕**：每章一份账本 `设定/changes/chNNN-publish.json`（时间、指纹、报告路径、结论汇总），同内容重跑不重复记账；报告 `chNNN-gate-report.json` 带 integrity 自校验，手改结论会被 `verifyReport` 抓出来。
 4. **状态回写才算完**：发布时把当时的快照指纹记进账本；发下一章若快照一个字没改，闸门拒绝（exit 4）——不拦的话一致性 6 门禁会拿旧事实比对，而且会「全过」。确认无需回写时加 `--allow-stale-snapshot`（账本记 `staleSnapshot: true`）；`--no-gate` 的补救发布不受此拦。
 
@@ -132,7 +133,16 @@ node scripts/apply-changes.js configs/天龙传说.json 正文/第010章.md     
 node scripts/apply-changes.js configs/天龙传说.json 正文/第010章.md --write    # 再写
 ```
 
-它只负责快照里的结构化栏目（表格 + 交接包 + 时间线）。伏笔档案的状态字段、爽点/钩子/情绪/等级等追踪文档仍按流程手工补——那些是自由文本，脚本不猜。
+它只负责快照里的结构化栏目（表格 + 交接包 + 时间线）。伏笔档案的状态字段、爽点/钩子/情绪/等级等追踪文档仍按流程手工补——那些是自由文本，脚本不猜（伏笔档案的 `- 状态：` 与快照伏笔表有双写比对，改的时候两处一起改，不一致会被门禁打回）。
+
+**新角色/新地点第一次上场，档案得先有**：门禁 1 只认 `设定/` 下的档案文件名，伏笔闭环只认 `伏笔追踪/<vID>-*.md`。CHANGES 里声明了却没有档案，这名字下一章一出现就是「未登记实体」。加 `--scaffold`，闸门在门禁之前按 CHANGES 把缺的骨架补上（已有档案一个字节不动）：
+
+```bash
+node scripts/scaffold-entity.js configs/天龙传说.json 草稿/第010章.md           # 先看会建哪几份
+node scripts/scaffold-entity.js configs/天龙传说.json 草稿/第010章.md --write   # 再建
+```
+
+骨架只是把字段摆齐——`身份：待补`、外貌段只留一句提醒——内容还得自己填（外貌颜色写错，下一章反而会被描写一致性门禁打回）。**推进/回收一个从没建过档的伏笔时它不补建，直接报错**：补建会把「前面漏建档」洗成「刚埋设」。
 
 AI 侧门禁声明（Gate 2–6 是语义判断，规则扫描替代不了，必须逐项交代）。骨架用脚本生成，指纹由脚本算，省得手抄：
 
@@ -221,7 +231,7 @@ node scripts/housekeeping.js configs/天龙传说.json --write --keep-drafts 1 -
 node --test        # 或 npm test
 ```
 
-覆盖全部门禁/工具脚本的输入输出（CHANGES 解析四态、一致性/引用/伏笔/蓝图/描写、冲突检测、配置校验正负例、配置回写、文本健康、AI 味扫描、段首缩进、上传预处理、本地备份快照）+ 发布闸门（内容指纹口径、AI 声明审批、报告 integrity 自校验、幂等重发、修订保护、强制通道留痕）+ 仓库元数据自检（链接、表格、版本、命名、换行、schema 枚举 ↔ 文档词表）+ Release 通知脚本（--print 不联网）+ 收尾清理（草稿报告按章轮转、dry-run 不落盘、备份轮转、孤儿报告只点名、参数负例）。CI（`.github/workflows/test.yml`）在 push / PR 时自动跑。
+覆盖全部门禁/工具脚本的输入输出（CHANGES 解析四态、一致性/引用/伏笔/蓝图/描写、冲突检测、配置校验正负例、配置回写、文本健康、AI 味扫描、段首缩进、上传预处理、本地备份快照）+ 发布闸门（内容指纹口径、AI 声明审批、报告 integrity 自校验、幂等重发、修订保护、强制通道留痕）+ 仓库元数据自检（链接、表格、版本、命名、换行、schema 枚举 ↔ 文档词表）+ Release 通知脚本（--print 不联网）+ 收尾清理（草稿报告按章轮转、dry-run 不落盘、备份轮转、孤儿报告只点名、参数负例）+ 建档联动（按 CHANGES 补角色、地点、物品、势力档案与伏笔档案骨架、前缀命名约定、已有档案一个字节不动、推进未建档伏笔只报不建）+ 伏笔双写（档案里的 `- 状态：` 与快照伏笔表逐条比对，不一致打回；只登记没档案、有档案没登记只提醒）。CI（`.github/workflows/test.yml`）在 push / PR 时自动跑两个作业：ubuntu 跑单测 + 四个集成脚本，windows 只跑单测——集成脚本是 bash，Windows 作业专门盯路径分隔符、控制台编码、CRLF 这些只在真机暴露的问题。
 
 集成回归（5 章全生命周期：埋设→推进→回收、新角色建档、终态回退、重复埋设）：
 
@@ -247,7 +257,7 @@ bash tools/simulate-longform.sh
 bash tools/simulate-publish.sh
 ```
 
-四个集成脚本都跑在 CI 上（`.github/workflows/test.yml` 的「集成回归」一步）。
+四个集成脚本都跑在 CI 的 ubuntu 作业上（`.github/workflows/test.yml` 的「集成回归」一步）。脚本本身是 `bash + node`，不再依赖 python；Windows 的 Git-bash 里可以直接跑。
 
 ## 发版（半自动）
 

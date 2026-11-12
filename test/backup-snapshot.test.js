@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'backup-snapshot.js');
 const run = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8' });
@@ -13,7 +14,7 @@ const runCwd = (args, cwd) => spawnSync(process.execPath, [SCRIPT, ...args], { e
 const WRITING = { pov: 'third-person', perspective: 'single', style: 'modern', narrative_style: 'fast-paced', chapter_words: { min: 2500, max: 4000 } };
 
 function setup(overrides = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bk-'));
+  const dir = tmpDir('bk-');
   const book = path.join(dir, '书');
   fs.mkdirSync(path.join(book, '正文'), { recursive: true });
   fs.mkdirSync(path.join(book, '设定', 'changes'), { recursive: true });

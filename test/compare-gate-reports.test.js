@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'compare-gate-reports.js');
 const run = (a) => spawnSync(process.execPath, [SCRIPT, ...a], { encoding: 'utf-8' });
@@ -15,7 +16,7 @@ const six = (v = '✅ 通过') => ['引用校验', '一致性校验', '描写一
 const report = (gate = '✅', detail = '通过', extra = '') =>
   HEAD + `  ${gate} Gate 1-6 写作质量：${detail}\n` + six(`${gate} ${detail}`) + extra;
 const tmp = (name, content) => {
-  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'cmp-'));
+  const d = tmpDir('cmp-');
   const p = path.join(d, name); fs.writeFileSync(p, content); return p;
 };
 

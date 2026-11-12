@@ -5,12 +5,13 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-indentation.js');
 const run = (p) => spawnSync(process.execPath, [SCRIPT, p], { encoding: 'utf-8' });
 
 const tmp = (name, content) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'indent-'));
+  const dir = tmpDir('indent-');
   const p = path.join(dir, name);
   fs.writeFileSync(p, content);
   return p;

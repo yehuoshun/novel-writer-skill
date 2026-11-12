@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    name: ubuntu-latest（单测 + 集成回归）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,3 +23,16 @@ jobs:
           bash tools/simulate-backup.sh
           bash tools/simulate-longform.sh
           bash tools/simulate-publish.sh
+
+  # 用户真机是 Windows：路径分隔符、控制台编码、CRLF、大小写不敏感都只在真机上暴露。
+  # 集成回归脚本是 bash，这里只跑单测（脚本本身有本机 Windows 排障记录，见 README）。
+  test-windows:
+    name: windows-latest（单测）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 运行测试
+        run: node --test

@@ -5,12 +5,13 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-conflicts.js');
 const run = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8' });
 
 function setup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-'));
+  const dir = tmpDir('cf-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '已故'), { recursive: true });
   fs.writeFileSync(path.join(set, '角色设定', '已故', '赵六.md'), '# 赵六\n');

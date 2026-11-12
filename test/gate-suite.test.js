@@ -3,6 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const gate = require('../scripts/lib/gate-suite');
+const { tmpDir } = require('./helpers/tmp');
 
 const BODY = '　　青云山的雾还没散，林山站在石阶上。\n';
 const DRAFT = BODY + '---CHANGES---\n<!-- 交接包 -->\n- 剧情当前位置：后山\n---END CHANGES---\n';
@@ -218,7 +219,7 @@ test('writeJsonAtomic / readJsonIfExists：往返一致且不留临时文件', (
   const fs = require('node:fs');
   const os = require('node:os');
   const path = require('node:path');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-gate-'));
+  const dir = tmpDir('nw-gate-');
   const target = path.join(dir, 'sub', 'x.json');
   gate.writeJsonAtomic(target, { a: 1 });
   assert.deepStrictEqual(gate.readJsonIfExists(target), { a: 1 });
@@ -242,7 +243,7 @@ test('loadPublishLedgers / previousPublish：按章号升序、只看 publish �
   const fs = require('node:fs');
   const os = require('node:os');
   const path = require('node:path');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-ledger-'));
+  const dir = tmpDir('nw-ledger-');
   const cd = path.join(dir, 'changes');
   fs.mkdirSync(cd, { recursive: true });
   gate.writeJsonAtomic(path.join(cd, 'ch003-publish.json'), { chapter: 3, publishes: [{ snapshotFingerprint: 'sha256:s3' }] });

@@ -5,12 +5,13 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-consistency.js');
 const run = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8' });
 
 function setup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '地点设定'), { recursive: true });
@@ -213,7 +214,7 @@ test('文件不存在 → exit 2', () => {
 
 // ---- 门禁 13 归属/命名回归（v3.3.30）----
 function colorSetup(profiles) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -231,7 +232,7 @@ function colorSetup(profiles) {
 const CH = (states) => '正文。\n---CHANGES---\n' + states + '\n<!-- 交接包 -->\n- 剧情当前位置：X\n---END CHANGES---\n';
 
 test('描写一致性：地点前缀档案名（龙城_张三）也能命中', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -302,7 +303,7 @@ test('一致性：快照位置未知「—」时不误判移动矛盾', () => {
 
 // ---- 描写一致性取数源回归（v3.3.32）：快照「角色外貌」表 ----
 test('描写一致性：从快照「角色外貌」表取数（档案只有自由文本）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -322,7 +323,7 @@ test('描写一致性：从快照「角色外貌」表取数（档案只有自�
 });
 
 test('描写一致性：快照外貌表优先于档案标签', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -391,7 +392,7 @@ test('伏笔快照已登记但目录无文档 → 报未登记 + 建档自纠提
 
 // ---- 描写一致性：自由文本外貌描述回退（v3.3.39，老书/无快照外貌表场景）----
 test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ 正文金发被拦', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -409,7 +410,7 @@ test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ �
 });
 
 test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ 正文黑发不误报', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -426,7 +427,7 @@ test('描写一致性：快照无外貌表 + 档案自由文本（黑发）→ �
 
 // ---- 描写一致性「色+的+发」漏检修复（v3.3.40，实弹测试暴露）----
 test('描写一致性：「银色的头发」也能命中（设定黑发 → 拦）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -443,7 +444,7 @@ test('描写一致性：「银色的头发」也能命中（设定黑发 → 拦
 });
 
 test('描写一致性：「银白的长发」双色词命中，档案同色不误报', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -459,7 +460,7 @@ test('描写一致性：「银白的长发」双色词命中，档案同色不�
 });
 
 test('描写一致性：双色词归一化（档案银白 vs 正文银发 → 一致不误报）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -475,7 +476,7 @@ test('描写一致性：双色词归一化（档案银白 vs 正文银发 → �
 });
 
 test('描写一致性：「银白的长发」双色词命中，换金发被拦', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-cc-'));
+  const dir = tmpDir('nw-cc-');
   const set = path.join(dir, '设定');
   fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
@@ -863,4 +864,67 @@ test('描写一致性：档案自由文本真·瞳色矛盾仍拦（蓝色瞳孔
   const r = run([snap, chap, set]);
   assert.strictEqual(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stderr, /描写一致性.*苏瑶.*红瞳/);
+});
+
+// ---- 伏笔双写（档案 `- 状态：` × 快照「## 伏笔状态」表）----
+const FS_ROW = '| v1 | 断锋来历 | 长线 | 揭示真相 | 已推进 | 1 | 2 | 待定 |';
+
+function fsSetup(docBody, snapshotRow = FS_ROW) {
+  const dir = tmpDir('nw-fw-');
+  const set = path.join(dir, '设定');
+  fs.mkdirSync(path.join(set, '角色设定', '主角'), { recursive: true });
+  fs.mkdirSync(path.join(set, '地点设定'), { recursive: true });
+  fs.mkdirSync(path.join(set, '伏笔追踪'), { recursive: true });
+  fs.writeFileSync(path.join(set, '角色设定', '主角', '林山.md'), '# 林山\n');
+  fs.writeFileSync(path.join(set, '地点设定', '青云山.md'), '# 青云山\n');
+  if (docBody) fs.writeFileSync(path.join(set, '伏笔追踪', 'v1-断锋来历.md'), docBody);
+  const head = '# 状态快照（截止第2章）\n## 角色状态\n'
+    + '| 角色 | 等级 | 当前位置 | 状态 | 背包 | 最后出场章 |\n'
+    + '|------|------|----------|------|------|-----------|\n'
+    + '| 林山 | 炼气三层 | 青云山后山 | 健康 | 剑 | 2 |\n';
+  const fsTable = snapshotRow
+    ? '## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n'
+      + '|--------|--------|------|--------------|------|--------|--------|--------|\n' + snapshotRow + '\n'
+    : '';
+  const snap = path.join(dir, '状态快照.md');
+  fs.writeFileSync(snap, head + fsTable);
+  const chap = path.join(dir, '第003章.md');
+  fs.writeFileSync(chap, '正文。\n---CHANGES---\n<!-- 角色状态变化 -->\n- **[林山]**：健康→健康\n'
+    + '<!-- 交接包 -->\n- 剧情当前位置：后山\n---END CHANGES---\n');
+  return { dir, set, snap, chap };
+}
+
+test('伏笔双写：档案「已埋设」vs 快照「已推进」→ 拦（exit 1）', () => {
+  const { snap, chap, set } = fsSetup('# v1 断锋来历\n- 类型：长线\n- 状态：已埋设\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /\[伏笔双写\] v1 档案状态「已埋设」与快照「已推进」不一致/);
+});
+
+test('伏笔双写：档案状态一致 → 通过（exit 0）', () => {
+  const { snap, chap, set } = fsSetup('# v1 断锋来历\n- 类型：长线\n- 状态：已推进（第2章）\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stderr, /伏笔双写/);
+});
+
+test('伏笔双写：档案没写 `- 状态：` → 不瞎比（exit 0）', () => {
+  const { snap, chap, set } = fsSetup('# v1 断锋来历\n- 类型：长线\n- 预期读者效果：揭示真相\n');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stderr, /伏笔双写/);
+});
+
+test('伏笔双写：快照登记但没有档案 → 只提醒（exit 0）', () => {
+  const { snap, chap, set } = fsSetup(null);
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /\[伏笔双写\] v1 在快照伏笔状态表登记，但 伏笔追踪 目录没有 v1-\*\.md 档案/);
+});
+
+test('伏笔双写：有档案但快照没这一行 → 只提醒（exit 0）', () => {
+  const { snap, chap, set } = fsSetup('# v1 断锋来历\n- 类型：长线\n- 状态：已埋设\n', '');
+  const r = run([snap, chap, set]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /\[伏笔双写\] v1 有档案.*快照伏笔状态表没有这一行/);
 });

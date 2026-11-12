@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const APPLY = path.join(__dirname, '..', 'scripts', 'apply-changes.js');
 const run = (args) => spawnSync(process.execPath, [APPLY, ...args], { encoding: 'utf-8' });
@@ -38,7 +39,7 @@ const FULL_DRAFT = [
 ].join('\n');
 
 function makeBook({ snapshot = SNAPSHOT, draft = FULL_DRAFT, draftName = '第003章.md' } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-apply-'));
+  const dir = tmpDir('nw-apply-');
   const settingsDir = path.join(dir, '设定');
   const contentDir = path.join(dir, '正文');
   fs.mkdirSync(settingsDir, { recursive: true });

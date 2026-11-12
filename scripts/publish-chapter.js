@@ -38,7 +38,7 @@ const path = require('path');
 const gate = require('./lib/gate-suite');
 const { spawnSync } = require('node:child_process');
 
-const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json', '--apply-changes']);
+const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json', '--apply-changes', '--scaffold']);
 const VALUED = new Set(['--chapter', '--outline', '--ai-gates']);
 
 function die(msg) {
@@ -159,6 +159,21 @@ const draftReportPath = (fp) => path.join(
 );
 const blockedReportPath = (last && last.contentFingerprint !== curFp) ? draftReportPath(curFp) : reportPath;
 
+// ---- 0.9 可选：先把本章 CHANGES 里的新实体补成档案骨架（--scaffold）----
+// 必须在门禁之前：门禁 1（引用校验）只认 设定/ 下的档案文件名，新角色上场前不建档就是「未登记实体」；
+// 伏笔闭环也只认 伏笔追踪/<vID>-*.md。建档只补骨架、不碰已有文件，失败不阻断——门禁会照实拦。
+let scaffolded = null;
+if (opts.scaffold) {
+  // 用草稿（还没落盘到正文），不是 targetPath——闸门之前正文目录还是空的
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'scaffold-entity.js'), configPath, draftPath, '--write', '--quiet'], { encoding: 'utf-8' });
+  const text = `${(r.stdout || '').trim()}\n${(r.stderr || '').trim()}`.trim();
+  scaffolded = r.status === 0;
+  if (!opts.json) {
+    if (r.status === 0) console.log(`   ${text || '档案齐了'}`);
+    else console.warn(`   ⚠️ 建档没做全（门禁按现状判定）：\n${text.replace(/^/gm, '     ')}`);
+  }
+}
+
 // ---- 1. 门禁 ----
 let report;
 if (opts.noGate) {
@@ -237,6 +252,9 @@ const out = {
   noop: false,
   dryRun: !!opts.dryRun,
 };
+// --scaffold 的结果要能出现在 --json 输出里（账本里也有，见 record.scaffolded）
+if (opts.scaffold) out.scaffolded = !!scaffolded;
+if (opts.scaffold) out.scaffolded = !!scaffolded;
 
 function printResult(lines) {
   if (opts.json) {
@@ -366,6 +384,8 @@ const record = {
   staleSnapshot: freshness.verdict === 'fail',
   // --apply-changes 是否成功把本章 CHANGES 机械回写进快照（未用该选项时不写这个字段）
   snapshotApplied: opts.applyChanges ? !!snapshotApplied : undefined,
+  // --scaffold 是否把 CHANGES 里缺的实体档案都补上了（未用该选项时不写这个字段）
+  scaffolded: opts.scaffold ? !!scaffolded : undefined,
   revised: !!opts.revise && !!publishedFileExists,
   revisedFrom: opts.revise && publishedFileExists ? existingFp : null,
 };

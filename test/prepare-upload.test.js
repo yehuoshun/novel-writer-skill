@@ -5,12 +5,13 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'prepare-upload.js');
 const run = (args, opts = {}) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8', ...opts });
 
 const tmp = (content) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prep-'));
+  const dir = tmpDir('prep-');
   const p = path.join(dir, 'ch.md');
   fs.writeFileSync(p, content);
   return { dir, p };

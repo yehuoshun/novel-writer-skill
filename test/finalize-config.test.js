@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'finalize-config.js');
 const run = (args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf-8' });
@@ -17,7 +18,7 @@ function body(n, head = '正文') {
 }
 
 function setup({ chapters = [1, 2], info, extra = {} } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fin-'));
+  const dir = tmpDir('fin-');
   const book = path.join(dir, '书');
   fs.mkdirSync(book, { recursive: true });
   const chapterFiles = chapters.map((n) => `第${String(n).padStart(3, '0')}章 测试.md`);
@@ -156,7 +157,7 @@ test('配置缺 info 块 → 退出码 1', () => {
 });
 
 test('目录里没有 第NNN章*.md 正文 → 退出码 1', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fin-'));
+  const dir = tmpDir('fin-');
   const book = path.join(dir, '空书');
   fs.mkdirSync(book, { recursive: true });
   const cfgPath = path.join(dir, 'cfg.json');

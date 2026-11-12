@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 const gate = require('../scripts/lib/gate-suite');
 
 const REPORT = path.join(__dirname, '..', 'scripts', 'gate-report.js');
@@ -64,7 +65,7 @@ function writeConfig(dir, chapterWords) {
 }
 
 function setup(draftText) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-pub-'));
+  const dir = tmpDir('nw-pub-');
   const settingsDir = path.join(dir, '设定');
   fs.mkdirSync(path.join(settingsDir, '角色设定', '主角'), { recursive: true });
   fs.mkdirSync(path.join(settingsDir, '地点设定'), { recursive: true });
@@ -408,6 +409,47 @@ test('publish：没用 --apply-changes 时账本不写 snapshotApplied 字段', 
   const f = setup();
   assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
   assert.strictEqual('snapshotApplied' in readLedger(f).publishes[0], false);
+});
+
+// 新角色登场：CHANGES 里有名字、设定里没档案 → 门禁 1 按「未登记实体」拦；--scaffold 先建档就放行
+const CHANGES_NEW_CAST = [
+  '---CHANGES---',
+  '<!-- 角色状态变化 -->',
+  '- **[林山]**：健康→健康',
+  '- **[苏瑶]**：健康',
+  '<!-- 角色移动 -->',
+  '- **[林山]**：青云山后山→青云山前殿',
+  '<!-- 交接包 -->',
+  '- 剧情当前位置：青云山前殿',
+  '---END CHANGES---',
+  '',
+].join('\n');
+
+test('publish：--scaffold → 新角色先建档再过门禁', () => {
+  const f = setup(BODY + CHANGES_NEW_CAST);
+  writeAiGates(f.aiGates, BODY + CHANGES_NEW_CAST);
+  const noDossier = path.join(f.settingsDir, '角色设定', '苏瑶.md');
+  assert.strictEqual(fs.existsSync(noDossier), false);
+
+  // 不建档：门禁 1 拦下，正文不落盘
+  const blocked = runPublish([f.config, f.draft, '--ai-gates', f.aiGates]);
+  assert.strictEqual(blocked.status, 1, blocked.stdout + blocked.stderr);
+  assert.match(blocked.stdout + blocked.stderr, /苏瑶/);
+  assert.strictEqual(fs.existsSync(f.target), false);
+
+  // --scaffold：先补档案骨架，再走门禁 → 发布成功
+  const ok = runPublish([f.config, f.draft, '--ai-gates', f.aiGates, '--scaffold']);
+  assert.strictEqual(ok.status, 0, ok.stdout + ok.stderr);
+  assert.match(ok.stdout, /建档/);
+  assert.ok(fs.existsSync(noDossier), '应建出 设定/角色设定/苏瑶.md');
+  assert.match(fs.readFileSync(noDossier, 'utf-8'), /^# 苏瑶$/m);
+  assert.strictEqual(readLedger(f).publishes[0].scaffolded, true);
+});
+
+test('publish：没用 --scaffold 时账本不写 scaffolded 字段', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  assert.strictEqual('scaffolded' in readLedger(f).publishes[0], false);
 });
 
 // ---------------- publish-status（账本审计）----------------

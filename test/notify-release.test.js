@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'tools', 'notify-release.py');
 
@@ -22,7 +23,7 @@ function resolvePython() {
 const PY = resolvePython();
 
 test('notify-release 生成含 changelog 的 markdown（--print 不联网）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-nr-'));
+  const dir = tmpDir('nw-nr-');
   const body = path.join(dir, 'body.md');
   fs.writeFileSync(body, '## 📦 test v9\n\n### 更新内容\n- fix: 修了个 bug\n');
   const r = spawnSync(PY, [SCRIPT, '--print', body], {
@@ -38,7 +39,7 @@ test('notify-release 生成含 changelog 的 markdown（--print 不联网）', (
 });
 
 test('未配置 DINGTALK_WEBHOOK → 不阻断 CI（退出码 0）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-nr-'));
+  const dir = tmpDir('nw-nr-');
   const body = path.join(dir, 'body.md');
   fs.writeFileSync(body, '## 📦 test\n');
   const env = { ...process.env, TAG: 'v9.9.9', REPO: 'yehuoshun/x' };

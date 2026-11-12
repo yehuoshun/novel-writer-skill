@@ -184,6 +184,37 @@ for (const f of changes.foreshadowing || []) {
   }
 }
 
+// ---- 门禁 3 增强：伏笔档案 × 快照伏笔表「双写」一致性（v3.5.34）----
+// 同一件事实有两份记录：伏笔追踪/vID-*.md 里的 `- 状态：` 与快照「## 伏笔状态」表的状态列。
+// 两份各自能改、没有东西比对过，就会出现「档案写着已回收、快照还停在已埋设」——门禁按快照判，
+// 于是终态伏笔还能被 ➡️推进。这里只比对档案里真写了 `- 状态：` 的（骨架没填就跳过）。
+const fsDocFile = (id) => {
+  if (!fs.existsSync(fsDir)) return null;
+  return fs.readdirSync(fsDir).find(f => f.startsWith(id + '-') && f.endsWith('.md')) || null;
+};
+const fsDocState = (id) => {
+  const file = fsDocFile(id);
+  if (!file) return null;
+  const text = fs.readFileSync(path.join(fsDir, file), 'utf8');
+  const m = /^-\s*状态[：:]\s*(.+)$/m.exec(text);
+  return m ? { file, state: m[1].trim().replace(/[（(][^）)]*[）)]$/, '') } : null;
+};
+for (const id of [...new Set([...registered, ...Object.keys(stateOf)])]) {
+  const file = fsDocFile(id);
+  if (!file) {
+    warnings.push(`[伏笔双写] ${id} 在快照伏笔状态表登记，但 伏笔追踪 目录没有 ${id}-*.md 档案——档案是给人看的，快照是门禁依据，两边都得有`);
+    continue;
+  }
+  if (!stateOf[id]) {
+    warnings.push(`[伏笔双写] ${id} 有档案（${path.join('伏笔追踪', file)}）但快照伏笔状态表没有这一行——状态机只认快照，先补表`);
+    continue;
+  }
+  const doc = fsDocState(id);
+  if (doc && doc.state !== stateOf[id]) {
+    problems.push(`[伏笔双写] ${id} 档案状态「${doc.state}」与快照「${stateOf[id]}」不一致（${path.join('伏笔追踪', doc.file)}）——同一事实两处记录打架，先统一再发`);
+  }
+}
+
 // ---- 门禁 12 增强：地点状态一致性（CHANGES 地点状态变化 出发态 vs 快照地点状态表）----
 // SKILL.md 门禁 13 承诺「正文中地点描写与地点特征档案矛盾 → 打回」——自由文本特征无法规则判定，
 // 可枚举的「地点状态」矛盾由这里兜底（与角色移动出发地同构）：

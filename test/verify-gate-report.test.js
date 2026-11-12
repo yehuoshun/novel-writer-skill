@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'verify-gate-report.js');
 const gate = require(path.join(__dirname, '..', 'scripts', 'lib', 'gate-suite'));
@@ -73,7 +74,7 @@ function writeData(dir, overrides) {
 }
 
 function runWithData(reportText, dataPath) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const rp = path.join(dir, 'report.md');
   fs.writeFileSync(rp, reportText);
   return spawnSync(process.execPath, [SCRIPT, rp, '--data', dataPath], { encoding: 'utf-8' });
@@ -82,14 +83,14 @@ function runWithData(reportText, dataPath) {
 const allPassReport = HEAD + '  ✅ Gate 1-6 写作质量：通过\n' + okLines();
 
 test('--data：文本与数据全 pass → exit 0', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const r = runWithData(allPassReport, writeData(dir));
   assert.strictEqual(r.status, 0, r.stderr);
   assert.match(r.stdout, /与数据报告一致/);
 });
 
 test('--data：数据是 warn 而文本写 ✅ → exit 1 并点名该项', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const data = writeData(dir, { gate3_psych_external: 'warn' });
   const text = HEAD + '  ✅ Gate 1 文本健康：通过\n  ✅ Gate 2 AI句式：通过\n  ✅ Gate 3 心理外化：通过\n'
     + ['Gate 4 节奏', 'Gate 5 对话', 'Gate 6 结尾'].map(g => `  ✅ ${g}：通过\n`).join('')
@@ -100,7 +101,7 @@ test('--data：数据是 warn 而文本写 ✅ → exit 1 并点名该项', () =
 });
 
 test('--data：合并写的 Gate 1-6 按最差一档比（数据有 fail → 文本写通过算不一致）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const data = writeData(dir, { gate6_ending: 'fail' });
   const r = runWithData(allPassReport, data);
   assert.strictEqual(r.status, 1);
@@ -108,7 +109,7 @@ test('--data：合并写的 Gate 1-6 按最差一档比（数据有 fail → 文
 });
 
 test('--data：数据报告 skip 与文本「跳过（不适用）」一致 → exit 0', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const data = writeData(dir, { gate5_dialogue: 'skip' });
   const text = HEAD + '  ✅ Gate 1 文本健康：通过\n  ✅ Gate 2 AI句式：通过\n  ✅ Gate 3 心理外化：通过\n'
     + '  ✅ Gate 4 节奏：通过\n  ⏭️ Gate 5 对话：跳过（不适用，本章无对话）\n  ✅ Gate 6 结尾：通过\n'
@@ -118,7 +119,7 @@ test('--data：数据报告 skip 与文本「跳过（不适用）」一致 → 
 });
 
 test('--data：数据报告被手改（integrity 坏）→ exit 1', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-vgr-'));
+  const dir = tmpDir('nw-vgr-');
   const data = writeData(dir, { gate2_ai_syntax: 'warn' });
   const broken = JSON.parse(fs.readFileSync(data, 'utf-8'));
   broken.gates.find(g => g.key === 'gate2_ai_syntax').verdict = 'pass';

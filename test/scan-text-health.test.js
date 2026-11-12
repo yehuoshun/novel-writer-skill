@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'scan-text-health.js');
 const run = (input) => spawnSync(process.execPath, [SCRIPT], { input, encoding: 'utf-8' });
@@ -166,7 +167,7 @@ test('真·正文半角感叹号仍硬伤（注释豁免不误伤）', () => {
 });
 
 test('字数 < config.chapter_words.min → 硬伤 exit 1（约束不再失效）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const dir = tmpDir('nw-health-');
   const cfg = path.join(dir, 'cfg.json');
   const body = path.join(dir, '正文.md');
   fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 2500, max: 4000 } } }));
@@ -177,7 +178,7 @@ test('字数 < config.chapter_words.min → 硬伤 exit 1（约束不再失效�
 });
 
 test('字数 > config.chapter_words.max → 提示不硬伤（上限是提醒）', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const dir = tmpDir('nw-health-');
   const cfg = path.join(dir, 'cfg.json');
   const body = path.join(dir, '正文.md');
   fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 100, max: 300 } } }));
@@ -188,7 +189,7 @@ test('字数 > config.chapter_words.max → 提示不硬伤（上限是提醒）
 });
 
 test('字数达标 + config → exit 0 无字数提示', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const dir = tmpDir('nw-health-');
   const cfg = path.join(dir, 'cfg.json');
   const body = path.join(dir, '正文.md');
   fs.writeFileSync(cfg, JSON.stringify({ writing: { chapter_words: { min: 1000, max: 5000 } } }));
@@ -199,7 +200,7 @@ test('字数达标 + config → exit 0 无字数提示', () => {
 });
 
 test('config 文件不存在 → exit 2', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-health-'));
+  const dir = tmpDir('nw-health-');
   const body = path.join(dir, '正文.md');
   fs.writeFileSync(body, RU_LONG);
   const r = runArgs([body, '/no/such/cfg.json']);

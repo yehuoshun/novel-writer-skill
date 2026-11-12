@@ -3,11 +3,7 @@
 # 用法: bash tools/simulate-backup.sh（在仓库根目录或任意位置）
 # 覆盖：单章快照 / --full 全量 / 非 local 跳过 / 空路径 / 无文件不残留 / 真实回滚恢复
 set +e
-# python 解析：CI（ubuntu）是 python3；Windows 的 Git-bash 里往往只有 python —— 两者都认
-PY="$(command -v python3 || command -v python || true)"
-if [ -z "$PY" ]; then echo "需要 python3 或 python"; exit 2; fi
-export PYTHONUTF8=1          # 文件读写/stdio 一律 UTF-8：Windows 默认 locale=GBK，读中文快照会 UnicodeDecodeError
-export PYTHONIOENCODING=utf-8 # 控制台打 emoji 不崩（notify-release 同款坑）
+# 纯 node：不依赖 python（Windows 的 Git-bash 往往没有 python3）
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BS="node $ROOT/scripts/backup-snapshot.js"
 WORK="$(mktemp -d /tmp/nw-backup.XXXXXX)"
@@ -46,7 +42,7 @@ ORIG="$WORK/_orig_snap.md"
 cp "$D1/状态快照.md" "$ORIG"
 printf 'BROKEN\n' > "$BOOK/设定/状态快照.md"
 cp "$D1/状态快照.md" "$BOOK/设定/状态快照.md"
-if "$PY" -c "import sys;sys.exit(0 if open('$ORIG').read()==open('$BOOK/设定/状态快照.md').read() else 1)"; then
+if node -e "const f=require('node:fs');process.exit(f.readFileSync('$ORIG','utf8')===f.readFileSync('$BOOK/设定/状态快照.md','utf8')?0:1)"; then
   PASS=$((PASS+1)); echo "✅ [回滚恢复] 内容一致"
 else
   FAIL=$((FAIL+1)); echo "❌ [回滚恢复] 内容不一致"
@@ -59,28 +55,34 @@ DF=$(ls -dt "$BOOK/backup"/*-ch001 2>/dev/null | head -1)
 [ -f "$DF/正文/第001章.md" ] && [ -f "$DF/设定/状态快照.md" ] && { PASS=$((PASS+1)); echo "✅ [--full 含 正文/+设定/]"; } || { FAIL=$((FAIL+1)); echo "❌ [--full 缺料]"; }
 
 echo "===== 4) 非 local 模式跳过 ====="
-"$PY" - <<'PY'
-import json
-d=json.load(open('cfg.json')); d['backup']['mode']='yuque_history'; json.dump(d,open('cfg2.json','w'))
-PY
+node - <<'JS'
+const fs = require('node:fs');
+const d = JSON.parse(fs.readFileSync("cfg.json", 'utf8'));
+d.backup.mode = 'yuque_history';
+fs.writeFileSync("cfg2.json", JSON.stringify(d), 'utf8');
+JS
 OUT=$($BS cfg2.json 2>&1); CODE=$?
 check "yuque_history 跳过" 0 $CODE
 grep -q "跳过" <<<"$OUT" && echo "  → 提示正确" || { echo "  ✗ 无跳过提示"; FAIL=$((FAIL+1)); }
 
 echo "===== 5) local_path 为空 ====="
-"$PY" - <<'PY'
-import json
-d=json.load(open('cfg.json')); d['backup']['local_path']=''; json.dump(d,open('cfg3.json','w'))
-PY
+node - <<'JS'
+const fs = require('node:fs');
+const d = JSON.parse(fs.readFileSync("cfg.json", 'utf8'));
+d.backup.local_path = '';
+fs.writeFileSync("cfg3.json", JSON.stringify(d), 'utf8');
+JS
 OUT=$($BS cfg3.json 2>&1); CODE=$?
 check "空 local_path" 1 $CODE
 
 echo "===== 6) 无文件可备份 → 退 1 且不残留空目录 ====="
 BEFORE=$(ls "$BOOK/backup" | wc -l)
-"$PY" - <<'PY'
-import json
-d=json.load(open('cfg.json')); d['local']={'content_path':'/no/such/正文','settings_path':'/no/such/设定'}; json.dump(d,open('cfg4.json','w'))
-PY
+node - <<'JS'
+const fs = require('node:fs');
+const d = JSON.parse(fs.readFileSync("cfg.json", 'utf8'));
+d.local = {'content_path':'/no/such/正文','settings_path':'/no/such/设定'};
+fs.writeFileSync("cfg4.json", JSON.stringify(d), 'utf8');
+JS
 OUT=$($BS cfg4.json 1 2>&1); CODE=$?
 check "无文件" 1 $CODE
 AFTER=$(ls "$BOOK/backup" | wc -l)

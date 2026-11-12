@@ -5,6 +5,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 const { execFileSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'tools', 'bump-version.sh');
@@ -32,7 +33,7 @@ function resolveBash() {
 const BASH = resolveBash();
 
 function setupTmp() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bump-test-'));
+  const dir = tmpDir('bump-test-');
   fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(dir, 'package.json'));
   fs.copyFileSync(path.join(ROOT, 'SKILL.md'), path.join(dir, 'SKILL.md'));
   return dir;

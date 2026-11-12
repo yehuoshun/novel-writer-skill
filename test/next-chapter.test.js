@@ -6,6 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { tmpDir } = require('./helpers/tmp');
 const gate = require('../scripts/lib/gate-suite');
 
 const NEXT = path.join(__dirname, '..', 'scripts', 'next-chapter.js');
@@ -43,7 +44,7 @@ function writeLedger(settingsDir, chapter, snapshotFp, extra) {
 
 /** 造一本书：chapters = 正文目录里有哪些章；snapshot = 快照文本（null 表示没有快照） */
 function makeBook({ chapters = [], snapshot = null, ledgerChapters = [], ledgerSnapshotFp = 'current', chaptersText = null } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nw-next-'));
+  const dir = tmpDir('nw-next-');
   const settingsDir = path.join(dir, '设定');
   const contentDir = path.join(dir, '正文');
   fs.mkdirSync(settingsDir, { recursive: true });
