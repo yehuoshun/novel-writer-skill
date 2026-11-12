@@ -24,9 +24,11 @@ const { execFileSync } = require('child_process');
 
 const SCHEMA_VERSION = 1;
 // 规则版本：门禁口径变更时递增，报告带上它才能判断「这份报告是按哪版规则出的」
-const RULE_VERSION = '2026-11-12.1';
+const RULE_VERSION = '2026-11-12.2';
 // AI 侧结论的证据最短字数（「通过了」四个字不算证据）
 const MIN_EVIDENCE = 6;
+// 证据里必须出现的一段可复核引文的最短字数：AI 说得再像，也得到正文里找得到原文
+const MIN_QUOTE = 8;
 
 const VERDICTS = ['pass', 'warn', 'fail', 'skip'];
 const SOURCES = ['rule', 'ai', 'mixed'];
@@ -102,6 +104,65 @@ function contentFingerprint(text) {
 /** 全稿指纹：含 CHANGES 块，仅供审计（幂等判据用 contentFingerprint） */
 function draftFingerprint(text) {
   return 'sha256:' + sha256(normalizeNewlines(text).replace(/[ \t]+$/gm, '').replace(/\s+$/, ''));
+}
+
+/** 去空白（含全角空格）：引文比对时只认字，不认排版 */
+function stripSpace(s) {
+  return String(s).replace(/[\s\u3000]+/g, '');
+}
+
+/** 抽出证据里的引文片段（「…」『…』“…”"…" 四种写法都认） */
+function quotedSpans(evidence) {
+  const spans = [];
+  const re = /「([^」]+)」|『([^』]+)』|“([^”]+)”|"([^"]+)"/g;
+  let m;
+  while ((m = re.exec(String(evidence || ''))) !== null) {
+    const span = m[1] || m[2] || m[3] || m[4] || '';
+    if (span) spans.push(span);
+  }
+  return spans;
+}
+
+/**
+ * 证据是否「有出处」：至少一段引文（去空白后 ≥ MIN_QUOTE 字）能在正文里原样找到。
+ * 这是防「AI 没读正文就写一句很像的话」的唯一机械手段——长引文可以搜，空话搜不到。
+ * @returns {string|null} 命中的引文，未命中返回 null
+ */
+function groundedQuote(evidence, bodyText) {
+  const body = stripSpace(bodyOf(String(bodyText || '')));
+  if (!body) return null;
+  for (const span of quotedSpans(evidence)) {
+    const needle = stripSpace(span);
+    if (needle.length >= MIN_QUOTE && body.includes(needle)) return span;
+  }
+  return null;
+}
+
+// AI 声明骨架里每项该看什么（写给驱动 skill 的 agent 看，不参与校验）
+const AI_HINTS = {
+  gate2_ai_syntax: '找序数枚举（首先/其次/最后）、总结腔（总之/可见/由此可见）、时代套话（尘埃落定/波澜壮阔）',
+  gate3_psych_external: '看情绪是「直接命名」（他感到害怕）还是「动作外化」（手抖了一下，捏紧了袖口）',
+  gate4_rhythm: '看段落长度：段段等厚、超长段、一味短促，都记 warn 并指出段落序号',
+  gate5_dialogue: '看对话密度、有无连续四轮纯对话、对话之间有没有动作与停顿',
+  gate6_ending: '看章尾落在「钩子 / 悬念 / 动作」还是「总结 / 抒情 / 宣言」',
+};
+
+/**
+ * 生成 AI 侧声明骨架：本稿指纹 + 5 个语义门禁空槽（指纹由脚本算，省得手抄出错）。
+ * @param {object} o { chapter, draftText }
+ * @returns {object} 可直接落盘的声明模板
+ */
+function aiDeclarationTemplate(o) {
+  const opts = o || {};
+  const gates = {};
+  for (const def of GATES.filter((g) => g.aiRequired)) {
+    gates[def.key] = { verdict: '', evidence: '', hint: AI_HINTS[def.key] || '' };
+  }
+  return {
+    chapter: opts.chapter === undefined || opts.chapter === null ? null : opts.chapter,
+    contentFingerprint: contentFingerprint(opts.draftText || ''),
+    gates,
+  };
 }
 
 /** 稳定序列化（对象键排序），用于 integrity 计算与比对 */
@@ -381,6 +442,12 @@ function mergeAiDeclarations(gates, aiDecl, opts) {
     );
   }
 
+  // 证据出处要靠正文来复核；没正文这道检查就成了摆设，宁可当场报错
+  const bodyText = typeof o.bodyText === 'string' ? o.bodyText : '';
+  if (!bodyText) {
+    blockReasons.push('内部错误：合并 AI 声明时未传入正文，无法复核证据出处（调用方须传 opts.bodyText）');
+  }
+
   for (const [key, decl] of Object.entries(declared)) {
     const g = byKey.get(key);
     if (!g) {
@@ -393,8 +460,19 @@ function mergeAiDeclarations(gates, aiDecl, opts) {
       continue;
     }
     const evidence = typeof decl.evidence === 'string' ? decl.evidence.trim() : '';
-    if (verdict !== 'skip' && evidence.length < MIN_EVIDENCE) {
-      blockReasons.push(`「${g.label}」AI 结论无证据（${JSON.stringify(evidence)}）：自报「${verdict}」必须给出正文依据（≥${MIN_EVIDENCE} 字）`);
+    if (evidence.length < MIN_EVIDENCE) {
+      const what = verdict === 'skip' ? '理由' : '证据';
+      blockReasons.push(`「${g.label}」AI 结论无${what}（${JSON.stringify(evidence)}）：必须给出依据（≥${MIN_EVIDENCE} 字）`);
+      continue;
+    }
+    // 证据必须有出处：pass/warn/fail 要引一段正文原文，skip 只解释为什么不适用（本章无对话这类）
+    if (verdict !== 'skip' && bodyText && !groundedQuote(evidence, bodyText)) {
+      const quotes = quotedSpans(evidence).map((s) => `「${s}」`);
+      blockReasons.push(
+        quotes.length
+          ? `「${g.label}」AI 证据的引文在正文里找不到（${quotes.join('、')}）：引文必须原样来自本稿正文，去空白后每段 ≥${MIN_QUOTE} 字`
+          : `「${g.label}」AI 证据没有引文（${JSON.stringify(evidence)}）：自报「${verdict}」必须用「」引一段 ≥${MIN_QUOTE} 字的正文原文，空话不算证据`
+      );
       continue;
     }
     g.verdict = g.verdict === 'skip' ? worst('pass', verdict) : worst(g.verdict, verdict);
@@ -531,6 +609,7 @@ module.exports = {
   SCHEMA_VERSION,
   RULE_VERSION,
   MIN_EVIDENCE,
+  MIN_QUOTE,
   VERDICTS,
   SOURCES,
   GATES,
@@ -541,6 +620,11 @@ module.exports = {
   bodyOf,
   contentFingerprint,
   draftFingerprint,
+  stripSpace,
+  quotedSpans,
+  groundedQuote,
+  AI_HINTS,
+  aiDeclarationTemplate,
   stableStringify,
   reportIntegrity,
   readJsonIfExists,

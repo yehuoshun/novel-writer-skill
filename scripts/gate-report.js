@@ -10,7 +10,8 @@
  *   --settings <设定目录>       设定目录（默认取 config.local.settings_path）
  *   --snapshot <快照.md>        状态快照（默认 <设定目录>/状态快照.md）
  *   --outline <细纲.md>         细纲（给了才做蓝图出场合规）
- *   --ai-gates <声明.json>      AI 侧门禁声明（Gate 2–6 语义结论 + 证据）
+ *   --ai-gates <声明.json>      AI 侧门禁声明（Gate 2–6 语义结论 + 证据，证据须引正文原文）
+ *   --emit-ai-template <file>  只生成声明骨架（本稿指纹 + 5 个待填槽），不跑门禁，填完再回来跑
  *   --allow-missing-ai         缺 AI 声明时不阻断（报告与账本会记 aiOmitted=true）
  *   --chapter <N>              章号（默认从草稿文件名「第N章」解析）
  *   --out <报告.json>           报告落盘路径（默认不落盘，仅打印结论）
@@ -29,7 +30,7 @@ const path = require('path');
 const gate = require('./lib/gate-suite');
 
 const FLAGS = new Set(['--allow-missing-ai', '--json']);
-const VALUED = new Set(['--config', '--settings', '--snapshot', '--outline', '--ai-gates', '--chapter', '--out']);
+const VALUED = new Set(['--config', '--settings', '--snapshot', '--outline', '--ai-gates', '--chapter', '--out', '--emit-ai-template']);
 
 function die(msg) {
   console.error(`❌ ${msg}`);
@@ -80,6 +81,20 @@ const chapterFromName = (path.basename(draftPath).match(/第\s*(\d+)\s*章/) || 
 const chapter = opts.chapter ? Number(opts.chapter) : (chapterFromName ? Number(chapterFromName) : null);
 if (opts.chapter && !Number.isInteger(chapter)) die(`--chapter 不是整数: ${opts.chapter}`);
 
+// ---- 声明脚手架（不跑门禁，纯生成待填骨架）----
+if (opts.emitAiTemplate) {
+  const tpl = gate.aiDeclarationTemplate({
+    chapter: Number.isInteger(chapter) ? chapter : null,
+    draftText,
+  });
+  gate.writeJsonAtomic(opts.emitAiTemplate, tpl);
+  console.log(`🧩 已生成 AI 侧声明骨架: ${opts.emitAiTemplate}`);
+  console.log(`   本稿指纹 ${tpl.contentFingerprint}（改稿后要重新生成，旧骨架会因指纹不符被拦）`);
+  console.log(`   待填 ${Object.keys(tpl.gates).length} 项: ${Object.keys(tpl.gates).join(', ')}`);
+  console.log('   规则: pass/warn/fail 的 evidence 必须用「」原样引一段 ≥8 字正文；skip 只写不适用的理由。');
+  process.exit(0);
+}
+
 // ---- 规则侧 ----
 let ruleResult;
 try {
@@ -108,6 +123,7 @@ if (opts.aiGates) {
 const contentFp = gate.contentFingerprint(draftText);
 const merged = gate.mergeAiDeclarations(ruleResult.gates, aiDecl, {
   contentFp,
+  bodyText: draftText,
   allowMissingAi: !!opts.allowMissingAi,
 });
 

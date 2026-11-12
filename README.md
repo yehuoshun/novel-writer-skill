@@ -123,18 +123,24 @@ node scripts/publish-chapter.js configs/天龙传说.json 草稿/第010章.md --
 2. **审批绑内容指纹**：AI 侧门禁声明带 `contentFingerprint`（正文 sha256；CHANGES 块与换行风格不参与计算），正文改一个字指纹就变，旧声明自动失效。
 3. **幂等 + 留痕**：每章一份账本 `设定/changes/chNNN-publish.json`（时间、指纹、报告路径、结论汇总），同内容重跑不重复记账；报告 `chNNN-gate-report.json` 带 integrity 自校验，手改结论会被 `verifyReport` 抓出来。
 
-AI 侧门禁声明（Gate 2–6 是语义判断，规则扫描替代不了，所以必须逐项给证据，≥6 字）：
+AI 侧门禁声明（Gate 2–6 是语义判断，规则扫描替代不了，必须逐项交代）。骨架用脚本生成，指纹由脚本算，省得手抄：
+
+```bash
+node scripts/gate-report.js 草稿/第010章.md --emit-ai-template 声明.json
+```
+
+**证据必须有出处**：`pass` / `warn` / `fail` 的 `evidence` 里必须用「」原样引一段 ≥8 字的本稿正文（去空白后能在正文里搜到）。引文找不到就阻断——「整体质量达标，无问题」这类空话过不去，没读稿就给结论这条路被堵死。`skip` 只写不适用的理由（本章无对话之类），不必引文。
 
 ```json
 {
   "chapter": 10,
   "contentFingerprint": "sha256:...",
   "gates": {
-    "gate2_ai_syntax": { "verdict": "pass", "evidence": "第 3、7 段无「首先/其次」序数套话" },
-    "gate3_psych_external": { "verdict": "warn", "evidence": "第 5 段「他感到害怕」仍属直接命名情绪" },
-    "gate4_rhythm": { "verdict": "pass", "evidence": "五段字数 120–260 不等，无等厚段落" },
-    "gate5_dialogue": { "verdict": "pass", "evidence": "三处对话后均接动作，无连续四轮纯对话" },
-    "gate6_ending": { "verdict": "pass", "evidence": "章尾以敲门声收束，未下结论" }
+    "gate2_ai_syntax": { "verdict": "pass", "evidence": "「他把剑从鞘里抽出一寸，又推了回去」是动作句，全章没有序数套话与总结腔" },
+    "gate3_psych_external": { "verdict": "warn", "evidence": "「他忽然感到一阵没来由的害怕」直接命名了情绪，建议改成手上的动作" },
+    "gate4_rhythm": { "verdict": "pass", "evidence": "「数到第七下才停手」一段偏短，与前后长段交错，没有等厚段落" },
+    "gate5_dialogue": { "verdict": "skip", "evidence": "本章为纯叙述段落，没有对白，对话密度不适用" },
+    "gate6_ending": { "verdict": "pass", "evidence": "「有些事想不明白，就只能先往前走」收在动作上，没有总结腔" }
   }
 }
 ```

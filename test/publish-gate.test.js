@@ -82,10 +82,13 @@ function setup(draftText) {
   return { dir, settingsDir, contentDir, draft, config, aiGates, target: path.join(contentDir, '第001章.md'), ledger: path.join(settingsDir, 'changes', 'ch001-publish.json') };
 }
 
+// 正文里原样存在的一段 ≥8 字原文：证据必须能引到它，否则视为没读正文
+const QUOTE = '他把剑从鞘里抽出一寸';
+
 function writeAiGates(file, draftText) {
   const gates = {};
   for (const g of gate.GATES.filter((x) => x.aiRequired)) {
-    gates[g.key] = { verdict: 'pass', evidence: `${g.label}：正文长短句混排，无套话，情绪靠动作外化` };
+    gates[g.key] = { verdict: 'pass', evidence: `${g.label}：以「${QUOTE}」这类动作为证，长短句混排无套话` };
   }
   fs.writeFileSync(file, JSON.stringify({ chapter: 1, contentFingerprint: gate.contentFingerprint(draftText), gates }, null, 2) + '\n');
 }
@@ -136,6 +139,47 @@ test('gate-report：AI 声明指纹属于旧稿 → exit 1（不许拿旧结论�
   const r = runReport([f.draft, '--config', f.config, '--ai-gates', stale]);
   assert.strictEqual(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stderr, /旧稿/);
+});
+
+test('gate-report：证据没引正文原文（空话）→ exit 1（防「没读稿就给结论」）', () => {
+  const f = setup();
+  const fake = path.join(f.dir, 'ai-fake.json');
+  const decl = JSON.parse(fs.readFileSync(f.aiGates, 'utf-8'));
+  decl.gates.gate3_psych_external = { verdict: 'pass', evidence: '整体质量达标，心理描写处理得当，没有问题' };
+  fs.writeFileSync(fake, JSON.stringify(decl, null, 2));
+  const r = runReport([f.draft, '--config', f.config, '--ai-gates', fake]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /没有引文/);
+});
+
+test('gate-report：证据引文是编造的（正文里没有）→ exit 1', () => {
+  const f = setup();
+  const fake = path.join(f.dir, 'ai-fabricated.json');
+  const decl = JSON.parse(fs.readFileSync(f.aiGates, 'utf-8'));
+  decl.gates.gate2_ai_syntax = { verdict: 'pass', evidence: '「他把剑收回鞘中，转身走向前殿的钟楼」这句没有任何套话' };
+  fs.writeFileSync(fake, JSON.stringify(decl, null, 2));
+  const r = runReport([f.draft, '--config', f.config, '--ai-gates', fake]);
+  assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /找不到/);
+});
+
+test('gate-report：--emit-ai-template 产出骨架（指纹+5 槽），填完即可发布', () => {
+  const f = setup();
+  const tplPath = path.join(f.dir, 'ai-template.json');
+  const g = runReport([f.draft, '--emit-ai-template', tplPath]);
+  assert.strictEqual(g.status, 0, g.stdout + g.stderr);
+  const tpl = JSON.parse(fs.readFileSync(tplPath, 'utf-8'));
+  assert.strictEqual(tpl.contentFingerprint, gate.contentFingerprint(BODY + CHANGES));
+  assert.deepStrictEqual(Object.keys(tpl.gates).length, 5);
+
+  for (const v of Object.values(tpl.gates)) {
+    v.verdict = 'pass';
+    v.evidence = `以「${QUOTE}」为准，本项无问题`;
+  }
+  fs.writeFileSync(tplPath, JSON.stringify(tpl, null, 2));
+  const r = runPublish([f.config, f.draft, '--ai-gates', tplPath]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.ok(fs.existsSync(f.target));
 });
 
 test('gate-report：用法错误 → exit 2', () => {

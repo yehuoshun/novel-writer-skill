@@ -153,6 +153,7 @@ if (opts.noGate) {
   }
   const merged = gate.mergeAiDeclarations(ruleResult.gates, aiDecl, {
     contentFp: curFp,
+    bodyText: draftText,
     allowMissingAi: !!opts.allowMissingAi,
   });
   report = gate.buildReport({

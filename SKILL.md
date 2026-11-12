@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.24
+version: 3.5.25
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -845,6 +845,8 @@ graph LR
 
 ```
 我：🛡️ 门禁自检 → 生成数据报告 + AI 侧声明
+  node scripts/gate-report.js 草稿/第010章.md --emit-ai-template 声明.json          # 先拿骨架（带本稿指纹）
+  [填 5 项：verdict + 一段「」引用的正文原文]
   node scripts/gate-report.js 草稿/第010章.md --config configs/天龙传说.json --ai-gates 声明.json --out ...gate-report.json
 ↓
 我：通过才发布（不过就一个字都不写正文目录）
@@ -855,7 +857,8 @@ graph LR
 
 - **退出码**：0 发布成功或重复发布（幂等 no-op）；1 门禁阻断（正文不写，报告仍落盘备查）；3 目标章节已存在且内容变过，须 `--revise`；2 用法错误。
 - **内容指纹**：`contentFingerprint` = 正文（`---CHANGES---` 之前）的 sha256，CHANGES 块与换行风格不参与。AI 侧声明必须带本稿指纹，正文改一个字旧声明即失效。
-- **AI 侧声明**：Gate 2–6 是语义判断，规则扫描替代不了，必须逐项给 `verdict` + ≥6 字 `evidence`（正例见 README「发布闸门」）。缺声明默认阻断，`--allow-missing-ai` 放行并记 `aiOmitted`。
+- **AI 侧声明**：Gate 2–6 是语义判断，规则扫描替代不了，必须逐项给 `verdict` + ≥6 字 `evidence`；且 `evidence` 要用「」**原样引一段 ≥8 字的本稿正文**（引文在正文里搜不到就阻断——空话过不去）；`skip` 只写不适用的理由（本章无对话这类）。骨架用 `--emit-ai-template` 生成，指纹别手抄。缺声明默认阻断，`--allow-missing-ai` 放行并记 `aiOmitted`。
+- **先自检再发布**：`node scripts/gate-report.js 草稿.md --config cfg.json --ai-gates 声明.json` 看到「✅ 门禁不阻断」再去 publish，别拿 publish 当试错工具（阻断虽不落盘，但会留一份失败报告）。
 - **强制通道**：`--no-gate` 全 skip 落盘，报告记 `gatesSkipped`、账本记 `forced: true`，仅用于人工补救。
 - **自检**：报告落盘前会过 `verifyReport`（12 项齐全、枚举合法、summary 自洽、integrity 可重算），不过即 exit 2——宁可不发布，也不发布一份假报告。
 - `scripts/verify-gate-report.js` 校验的是**文本**报告，与本脚本产出的**数据**报告互补不替代。
@@ -1116,4 +1119,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.24_
+_版本：v3.5.25_
