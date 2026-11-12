@@ -149,7 +149,7 @@ node scripts/gate-report.js 草稿/第010章.md --emit-ai-template 声明.json
 
 缺声明默认阻断（`--allow-missing-ai` 可放行并在报告记 `aiOmitted`）；`--no-gate` 是人工补救通道，报告记 `gatesSkipped`、账本记 `forced: true`。
 
-> `scripts/verify-gate-report.js` 校验的是**文本**报告（写给读者看的那份），`gate-report.js` 产出的是**数据**报告（给机器读），两者互补不替代。
+> `scripts/verify-gate-report.js` 校验的是**文本**报告（写给读者看的那份），`gate-report.js` 产出的是**数据**报告（给机器读），两者互补不替代。给了 `--data <数据报告.json>` 时它还会逐项比对结论口径：文本写 ✅ 而数据报告是 warn/fail 直接打回——文本报告只能抄数据报告，不能重新判一遍。
 
 ### 发布之后：账本审计
 

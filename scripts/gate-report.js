@@ -202,6 +202,10 @@ if (opts.json) {
     report.blockReasons.forEach((r) => console.error(`  - ${r}`));
   } else {
     console.log('\n✅ 门禁不阻断（规则侧 + AI 侧结论齐全）——注意：只保证「逐项有结论」，不保证判断本身正确');
+    if (opts.out) {
+      console.log(`   写文本报告时照抄上面 12 项（别重判），写完跑：`);
+      console.log(`   node scripts/verify-gate-report.js <门禁报告.md> --data ${opts.out}`);
+    }
   }
 }
 
