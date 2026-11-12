@@ -3,6 +3,11 @@
 # 用法: bash tools/simulate-lifecycle.sh（在仓库根目录或任意位置）
 # 设计要点：模拟阶段四「门禁通过后回写时才建档」，验证门禁在累积状态下的真实行为
 set +e
+# python 解析：CI（ubuntu）是 python3；Windows 的 Git-bash 里往往只有 python —— 两者都认
+PY="$(command -v python3 || command -v python || true)"
+if [ -z "$PY" ]; then echo "需要 python3 或 python"; exit 2; fi
+export PYTHONUTF8=1          # 文件读写/stdio 一律 UTF-8：Windows 默认 locale=GBK，读中文快照会 UnicodeDecodeError
+export PYTHONIOENCODING=utf-8 # 控制台打 emoji 不崩（notify-release 同款坑）
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CC="node $ROOT/scripts/check-consistency.js"
 WORK="$(mktemp -d /tmp/nw-lifecycle.XXXXXX)"
@@ -56,7 +61,7 @@ cat > 设定/伏笔追踪/v1-断锋来历.md <<'EOF'
 - 类型：长线
 - 预期读者效果：揭晓时震惊于铺垫
 EOF
-python3 - <<'PY'
+"$PY" - <<'PY'
 s = open('状态快照.md').read()
 s = s.replace('# 状态快照（截止第1章）', '# 状态快照（截止第1章）\n\n## 伏笔状态\n| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |\n|--------|--------|------|--------------|------|--------|--------|--------|\n| v1 | 断锋来历 | 长线 | 揭晓时震惊于铺垫 | 已埋设 | 1 | — | 待定 |')
 open('状态快照.md','w').write(s)
@@ -93,7 +98,7 @@ cat > 设定/地点设定/青云山.md <<'EOF'
 EOF
 OUT=$($CC 状态快照.md 第002章.md 设定 2>&1); CODE=$?
 check "第2章（建档后通过）" 0 $CODE "$OUT"
-python3 - <<'PY'
+"$PY" - <<'PY'
 s = open('状态快照.md').read()
 s = s.replace('| 林山 | 炼气三层 | ？ | 健康 | 断锋剑 | 1 |', '| 林山 | 炼气三层 | 青云山 | 健康 | 断锋剑 | 2 |')
 s = s.replace('| v1 | 断锋来历 | 长线 | 揭晓时震惊于铺垫 | 已埋设 | 1 | — | 待定 |', '| v1 | 断锋来历 | 长线 | 揭晓时震惊于铺垫 | 已推进 | 1 | 2 | 待定 |')
@@ -131,7 +136,7 @@ mkdir -p 设定/地点设定 && cat > 设定/地点设定/古庙.md <<'EOF'
 EOF
 OUT=$($CC 状态快照.md 第003章.md 设定 2>&1); CODE=$?
 check "第3章（修正后通过，v2 未建档不误拦）" 0 $CODE "$OUT"
-python3 - <<'PY'
+"$PY" - <<'PY'
 s = open('状态快照.md').read()
 s = s.replace('# 状态快照（截止第2章）', '# 状态快照（截止第3章）')
 s = s.replace('| 林山 | 炼气三层 | 青云山 | 健康 | 断锋剑 | 2 |', '| 林山 | 炼气三层 | 古庙 | 健康 | 断锋剑 | 3 |')
@@ -166,7 +171,7 @@ grep -q "已是终态「已回收」" <<<"$OUT" && echo "  → 拦截原因正�
 sed -i '/➡️推进 \*\*v1/d' 第004章.md
 OUT=$($CC 状态快照.md 第004章.md 设定 2>&1); CODE=$?
 check "第4章（修正后通过）" 0 $CODE "$OUT"
-python3 - <<'PY'
+"$PY" - <<'PY'
 s = open('状态快照.md').read()
 s = s.replace('# 状态快照（截止第3章）', '# 状态快照（截止第4章）')
 s = s.replace('| 林山 | 炼气三层 | 古庙 | 健康 | 断锋剑 | 3 |', '| 林山 | 炼气三层 | 天剑宗 | 健康 | 断锋剑 | 4 |')

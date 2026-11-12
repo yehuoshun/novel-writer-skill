@@ -3,9 +3,14 @@
 # 用法: bash tools/simulate-longform.sh
 # 设计：机械化生成 50 章（每章正文+CHANGES），逐章跑门禁；不手写正文，专测机器在长跨度下的行为
 set +e
+# python 解析：CI（ubuntu）是 python3；Windows 的 Git-bash 里往往只有 python —— 两者都认
+PY="$(command -v python3 || command -v python || true)"
+if [ -z "$PY" ]; then echo "需要 python3 或 python"; exit 2; fi
+export PYTHONUTF8=1          # 文件读写/stdio 一律 UTF-8：Windows 默认 locale=GBK，读中文快照会 UnicodeDecodeError
+export PYTHONIOENCODING=utf-8 # 控制台打 emoji 不崩（notify-release 同款坑）
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export ROOT
-python3 - <<'PY'
+"$PY" - <<'PY'
 import os, subprocess, tempfile, time, shutil
 ROOT = os.environ['ROOT']
 CC = ['node', os.path.join(ROOT, 'scripts', 'check-consistency.js')]
