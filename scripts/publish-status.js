@@ -9,7 +9,10 @@
  *   1. 报告还在不在、能不能过自检、integrity 与账本记的是不是同一份（防「发布后改报告」）；
  *   2. 报告指纹与账本、正文指纹与账本是否一致（防「报告/正文被换掉」）；
  *   3. 正文在发布后有没有被改动（改了却没走 publish-chapter → 账本失效）；
- *   4. 最新一章发布后 状态快照.md 有没有回写（CHANGES 欠账会让下一章的一致性门禁比对旧事实）。
+ *   4. 最新一章发布后 状态快照.md 有没有回写（CHANGES 欠账会让下一章的一致性门禁比对旧事实）；
+ *   5. 伏笔档案（伏笔追踪/vID-*.md）的 `- 状态：` 与快照「## 伏笔状态」表是否还一致
+ *      （双写门禁只在过门禁那一刻查，发布之后谁手改了档案没人盯）；
+ *   6. 正文目录里有、账本里没有的章节（没走闸门就落进正文的稿子）。
  *
  * 为什么要有它：
  *   gate-report / publish-chapter 只管「发布那一刻」。发布之后文件会不会被手改、快照会不会没回写，
@@ -21,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
+const { auditForeshadow } = require('./lib/foreshadow-audit');
 
 const FLAGS = new Set(['--json']);
 const VALUED = new Set(['--chapter']);
@@ -174,6 +178,29 @@ if (audited.length) {
   }
 }
 
+// 伏笔双写（全书）：档案状态 × 快照伏笔表
+let snapshotText = '';
+try {
+  if (fs.existsSync(snapshotPath)) snapshotText = fs.readFileSync(snapshotPath, 'utf-8');
+} catch (e) {
+  snapshotText = '';
+}
+const foreshadow = auditForeshadow({ settingsDir, snapshotText });
+
+// 账本 × 正文目录：正文里有、账本没有 → 这章没走闸门（草稿可能直接写进了正文目录）
+const unledgered = [];
+try {
+  const published = new Set(ledgers.filter((l) => l.chapter !== null).map((l) => l.chapter));
+  if (fs.existsSync(contentDir)) {
+    for (const f of fs.readdirSync(contentDir)) {
+      const m = f.match(/^第\s*0*(\d+)\s*章\.md$/);
+      if (m && !published.has(Number(m[1]))) unledgered.push(f);
+    }
+  }
+} catch (e) {
+  // 目录读不了就跳过：正文缺失已按章报过
+}
+
 const summary = {
   chapters: chapters.length,
   forced: chapters.filter((c) => c.forced).length,
@@ -182,13 +209,17 @@ const summary = {
   withIssues: chapters.filter((c) => c.issues.length).length,
   withWarns: chapters.filter((c) => c.warns.length).length,
   snapshotDebt: snapshot && snapshot.verdict === 'pending' ? 1 : 0,
+  foreshadowMismatch: foreshadow.mismatches.length,
+  foreshadowOneSided: foreshadow.oneSided.length,
+  unledgered: unledgered.length,
 };
 // 快照待回写不算「账本出错」：真正的闸门在下一章发布时（exit 4），这里只提醒
-const ok = summary.withIssues === 0;
+// 双写打架是「同一事实两处记录冲突」，算问题；单边缺一/正文未入账只是提醒（可能正在进行中）
+const ok = summary.withIssues === 0 && summary.foreshadowMismatch === 0;
 const novel = (config.info && config.info.name) || '';
 
 if (opts.json) {
-  console.log(JSON.stringify({ novel, ok, summary, snapshot, chapters }, null, 2));
+  console.log(JSON.stringify({ novel, ok, summary, snapshot, foreshadow, unledgered, chapters }, null, 2));
   process.exit(ok ? 0 : 1);
 }
 
@@ -212,9 +243,20 @@ if (snapshot && snapshot.verdict !== 'pass') {
   const icon = snapshot.verdict === 'pending' ? '⚠️' : '⏭️';
   console.log(`  ${icon} 状态快照回写：${snapshot.reason}`);
 }
+if (foreshadow.mismatches.length) {
+  console.log(`  ❌ 伏笔双写不一致（${foreshadow.mismatches.length} 条）：`);
+  for (const m of foreshadow.mismatches) console.log(`        ✗ ${m.message}`);
+} else if (foreshadow.checked) {
+  console.log(`  ✅ 伏笔双写一致（${foreshadow.checked} 个 ID）`);
+}
+for (const w of foreshadow.oneSided) console.log(`  ⚠️ 伏笔单边缺一：${w.message}`);
+for (const f of unledgered) console.log(`  ⚠️ 正文有 ${f} 但账本没有它的发布记录（没走闸门？）`);
 console.log(`\n汇总: ${summary.chapters} 章｜forced ${summary.forced}｜revise ${summary.revised}｜` +
   `staleSnapshot ${summary.staleSnapshot}｜报告问题 ${summary.withIssues}｜待确认 ${summary.withWarns}｜` +
   `快照待回写 ${summary.snapshotDebt}`);
+if (summary.foreshadowMismatch || summary.unledgered) {
+  console.log(`      伏笔打架 ${summary.foreshadowMismatch}｜正文未入账 ${summary.unledgered}`);
+}
 if (ok) {
   console.log('✅ 账本与报告一致');
 } else {

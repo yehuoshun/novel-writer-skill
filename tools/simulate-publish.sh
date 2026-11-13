@@ -3,7 +3,8 @@
 # 用法: bash tools/simulate-publish.sh
 # 覆盖: 首发布落盘与记账 / 幂等重发不重复记账 / 快照欠账 exit 4 / --allow-stale-snapshot 放行并记账 /
 #       改稿默认拒绝 exit 3 / --revise 覆盖并留旧指纹 / 门禁阻断 exit 1 且正文一个字节不动 / 账本审计 exit 0 /
-#       --apply-changes 自动回写快照 / housekeeping 清理草稿报告且不碰验收记录与账本
+#       --apply-changes 自动回写快照 / housekeeping 清理草稿报告且不碰验收记录与账本 /
+#       publish-status 伏笔双写体检（档案状态 × 快照伏笔表，打架 exit 1，正文未入账只提醒）
 # 为什么放 CI：node --test 跑的是进程内逻辑；发布链路的真实入口是 shell 里的 CLI，退出码与账本落盘
 # 只有在这里跑一遍才算验过（v3.5.26 的 exit 4 与 v3.5.28 的 --data 比对都靠它兜底）。
 set +e
@@ -278,6 +279,34 @@ check "housekeeping 重跑幂等" 0 $CODE "$OUT"
 ok "第二次说无需清理" "$(printf '%s' "$OUT" | grep -q '无需清理' && echo 1 || echo 0)" "$OUT"
 OUT=$($STATUS config.json 2>&1); CODE=$?
 check "清理后账本审计照样通过" 0 $CODE "$OUT"
+
+echo ""
+echo "===== 场景 13：伏笔双写体检（publish-status 抓档案与快照打架）====="
+mkdir -p 设定/伏笔追踪
+cat >> 设定/状态快照.md <<'EOF3'
+
+## 伏笔状态
+| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |
+|--------|--------|------|--------------|------|--------|--------|--------|
+| v1 | 断锋来历 | 长线 | 揭晓时震惊 | 已埋设 | 1 | — | 待定 |
+EOF3
+cat > 设定/伏笔追踪/v1-断锋来历.md <<'EOF3'
+# v1 断锋来历
+- 类型：长线
+- 埋设章节：第1章
+- 状态：已推进
+EOF3
+OUT=$($STATUS config.json 2>&1); CODE=$?
+check "档案与快照打架 → 体检 exit 1" 1 $CODE "$OUT"
+ok "点名伏笔双写不一致" "$(printf '%s' "$OUT" | grep -q '伏笔双写不一致' && echo 1 || echo 0)" "$OUT"
+ok "指出 v1 两边各是什么状态" "$(printf '%s' "$OUT" | grep -q 'v1 档案「已推进」≠ 快照「已埋设」' && echo 1 || echo 0)" "$OUT"
+sed -i 's/^- 状态：已推进$/- 状态：已埋设/' 设定/伏笔追踪/v1-断锋来历.md
+printf '　　没人认得的刻字。\n' > 正文/第009章.md
+OUT=$($STATUS config.json 2>&1); CODE=$?
+check "改回一致 + 正文多一章没入账 → 只提醒、exit 0" 0 $CODE "$OUT"
+ok "报告双写一致" "$(printf '%s' "$OUT" | grep -q '伏笔双写一致' && echo 1 || echo 0)" "$OUT"
+ok "正文未入账只提醒" "$(printf '%s' "$OUT" | grep -q '正文有 第009章.md 但账本没有它的发布记录' && echo 1 || echo 0)" "$OUT"
+
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
 cd / && rm -rf "$WORK"
 exit $FAIL

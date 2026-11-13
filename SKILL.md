@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.35
+version: 3.5.36
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -869,7 +869,7 @@ graph LR
 - **AI 侧声明**：Gate 2–6 是语义判断，规则扫描替代不了，必须逐项给 `verdict` + ≥6 字 `evidence`；且 `evidence` 要用「」**原样引一段 ≥8 字的本稿正文**（引文在正文里搜不到就阻断——空话过不去）；`skip` 只写不适用的理由（本章无对话这类）。骨架用 `--emit-ai-template` 生成，指纹别手抄。缺声明默认阻断，`--allow-missing-ai` 放行并记 `aiOmitted`。
 - **先自检再发布**：`node scripts/gate-report.js 草稿.md --config cfg.json --ai-gates 声明.json` 看到「✅ 门禁不阻断」再去 publish，别拿 publish 当试错工具（阻断虽不落盘，但会留一份失败报告；该章已发布过时，失败报告另存 `chNNN-gate-report-draft-<指纹前8位>.json`，不覆盖发布当时的验收记录）。
 - **状态欠账**：发布时账本记下当时的快照指纹；发下一章时若 `状态快照.md` 一个字没改，说明上一章的 CHANGES 没回写——一致性 6 门禁会拿旧事实比对且「全过」，所以闸门 exit 4 拦下。回写完再发（可 `node scripts/apply-changes.js <config> <本章.md> --write`，或发布时 `--apply-changes` 让闸门自己回写）；确认无需回写用 `--allow-stale-snapshot`（账本记 `staleSnapshot: true`）。`--no-gate` 的补救发布不受此拦。
-- **发布后复核**：`node scripts/publish-status.js configs/天龙传说.json` 逐章核对账本——报告还在不在、integrity 与账本是否同一份、正文指纹有没有被动过、最新一章的快照回没回写。最新一章快照还没回写只算 `⚠️` 待办（拦截留给下一章的 exit 4），账本与报告真的对不上才 exit 1。发布之外的漂移只有这个脚本抓得到，交付/续写前跑一次。
+- **发布后复核**：`node scripts/publish-status.js configs/天龙传说.json` 逐章核对账本——报告还在不在、integrity 与账本是否同一份、正文指纹有没有被动过、最新一章的快照回没回写。最新一章快照还没回写只算 `⚠️` 待办（拦截留给下一章的 exit 4），账本与报告真的对不上才 exit 1。发布之外的漂移只有这个脚本抓得到，交付/续写前跑一次。v3.5.36 起还查两样：**伏笔双写**（`伏笔追踪/vID-*.md` 的 `- 状态：` vs 快照伏笔表，打架 exit 1）与**正文未入账**（正文目录有 `第NNN章.md`、账本没记录，只 `⚠️`）。
 - **收尾清理（v3.5.33）**：`node scripts/housekeeping.js <config.json>` 默认 dry-run 只报不删，`--write` 才动手——草稿报告 `chNNN-gate-report-draft-*.json` 每章只留最新 3 份（`--keep-drafts N`）、`*.tmp`/`*.partial` 一律清、本地备份目录只留最新 20 个（`--keep-backups N`）。发布当时的验收记录 `chNNN-gate-report.json` 与分章账本**永不在删除范围**；找不到账本的孤儿报告只打 `⚠️`，让你先跑 publish-status 看清楚。`设定/changes/` 攒乱、备份垒成摞时跑一次。
 - **强制通道**：`--no-gate` 全 skip 落盘，报告记 `gatesSkipped`、账本记 `forced: true`，仅用于人工补救。
 - **自检**：报告落盘前会过 `verifyReport`（12 项齐全、枚举合法、summary 自洽、integrity 可重算），不过即 exit 2——宁可不发布，也不发布一份假报告。
@@ -1131,4 +1131,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.35_
+_版本：v3.5.36_
