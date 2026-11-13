@@ -451,6 +451,71 @@ test('--novel-config + --group-key 省掉手填 book 与 uuid', async () => {
     assert.strictEqual(r.code, 0, r.stderr);
     const doc = [...srv.state.docs.values()][0];
     assert.strictEqual(lib.findDocNode(srv.state.toc, doc.id).parent_uuid, 't-content');
+    // 报的是分组标题，不是配置里的英文键名
+    assert.match(r.stdout, /已挂进分组「正文」/);
+    assert.ok(!r.stdout.includes('「content」'), r.stdout);
+  });
+});
+
+test('--group-key 指向的分组 uuid 已失效：建文档之前就报明白，什么都没写', async () => {
+  await withServer({}, async srv => {
+    // 语雀那头重建过分组，uuid 已经换了
+    srv.state.toc.push({ uuid: 't-content-new', type: 'TITLE', title: '正文', parent_uuid: '' });
+    const dir = tmpDir('nw-yq-');
+    const novel = path.join(dir, 'config.json');
+    fs.writeFileSync(novel, JSON.stringify({
+      yuque: { book: { book_id: Number(BOOK) }, groups: { content: 't-content-old' } },
+    }), 'utf-8');
+    const file = path.join(dir, '第002章 转折.md');
+    fs.writeFileSync(file, '正文。', 'utf-8');
+
+    const r = await runCli([
+      'create-mount', '--novel-config', novel, '--group-key', 'content',
+      '--api-base', srv.base, '--token', TOKEN,
+      '--title', '第002章 转折', '--file', file,
+    ]);
+    assert.strictEqual(r.code, 1);
+    assert.match(r.stderr, /yuque\.groups\.content/);
+    assert.match(r.stderr, /t-content-old/);
+    assert.match(r.stderr, /t-content-new/, '要把现有分组列出来，方便改配置');
+    assert.match(r.stderr, /--group/);
+    assert.strictEqual(srv.state.docs.size, 0, '失败要在建文档之前，不留孤儿');
+  });
+});
+
+test('--group 和 --group-key 指的不是同一个分组：直接报冲突，别猜', async () => {
+  await withServer({}, async srv => {
+    srv.state.toc.push({ uuid: 't-content', type: 'TITLE', title: '正文', parent_uuid: '' });
+    srv.state.toc.push({ uuid: 't-char', type: 'TITLE', title: '角色', parent_uuid: '' });
+    const dir = tmpDir('nw-yq-');
+    const novel = path.join(dir, 'config.json');
+    fs.writeFileSync(novel, JSON.stringify({
+      yuque: { book: { book_id: Number(BOOK) }, groups: { content: 't-content' } },
+    }), 'utf-8');
+    const file = path.join(dir, 'x.md');
+    fs.writeFileSync(file, '内容', 'utf-8');
+
+    const r = await runCli([
+      'create-mount', '--novel-config', novel, '--group-key', 'content', '--group', '角色',
+      '--api-base', srv.base, '--token', TOKEN, '--title', 'x', '--file', file,
+    ]);
+    assert.strictEqual(r.code, 1);
+    assert.match(r.stderr, /不是同一个分组/);
+    assert.strictEqual(srv.state.docs.size, 0);
+  });
+});
+
+test('--group-uuid 直接指定时，报的是分组标题而不是 uuid', async () => {
+  await withServer({}, async srv => {
+    srv.state.toc.push({ uuid: 't-setting', type: 'TITLE', title: '设定', parent_uuid: '' });
+    const dir = tmpDir('nw-yq-');
+    const file = path.join(dir, '角色.md');
+    fs.writeFileSync(file, '角色设定。', 'utf-8');
+
+    const r = await runCli(apiArgs(srv, ['create-mount', '--title', '角色', '--file', file, '--group-uuid', 't-setting']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.match(r.stdout, /已挂进分组「设定」/);
+    assert.ok(!r.stdout.includes('「t-setting」'), r.stdout);
   });
 });
 

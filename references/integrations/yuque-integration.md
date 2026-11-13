@@ -239,7 +239,7 @@ GET /repos/{book_id}/toc
 - **先定分组再建文档**：分组不存在时在建文档之前就失败，不会留下「建好了没挂上」的孤儿
 - **挂载走 node_uuid 直移**：先 `appendNode + doc_ids` 挂根拿到节点 uuid，再 `{"action":"appendNode","action_mode":"child","node_uuid":"…","target_uuid":"…"}` 移进分组——对 DOC 用 `doc_ids + target_uuid` 语雀会挂根或漏挂
 - **挂完回读校验**：TOC 写路径高频写会静默积压（响应是乐观回显），脚本挂完重读 TOC 比对 `parent_uuid`，对不上就 exit 1 并给出 `move` 修复命令
-- `--group-key <键> --novel-config <小说配置>`：从配置的 `yuque.groups` 直接取分组 uuid、从 `yuque.book` 取知识库，省得手抄 uuid
+- `--group-key <键> --novel-config <小说配置>`：从配置的 `yuque.groups` 直接取分组 uuid、从 `yuque.book` 取知识库，省得手抄 uuid；**用之前会先核对 uuid 还在不在知识库里**（语雀重建分组会换 uuid），不在就列出当前分组让你改配置，不会白等一轮挂载校验；成功时提示里报的是分组标题，不是配置里的键名
 - 退出码：0=成功、1=业务失败（含挂载校验不过）、2=用法错误
 
 ---

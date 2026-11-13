@@ -273,29 +273,38 @@ async function attachDoc(cfg, book, docId, targetUuid) {
   if (!node) {
     const t = await putToc(cfg, book, { action: 'appendNode', action_mode: 'child', type: 'DOC', doc_ids: [docId] });
     node = findDocNode(t, docId) || findDocNode(await getToc(cfg, book), docId);
-    if (!node) return { ok: false, nodeUuid: null, parentUuid: '', why: '挂到 TOC 根之后仍然找不到节点' };
+    if (!node) return { ok: false, nodeUuid: null, parentUuid: '', parentTitle: '', why: '挂到 TOC 根之后仍然找不到节点' };
   }
-  if (!targetUuid) return { ok: true, nodeUuid: node.uuid, parentUuid: node.parent_uuid || '' };
-  if ((node.parent_uuid || '') === targetUuid) return { ok: true, nodeUuid: node.uuid, parentUuid: targetUuid };
+  if (!targetUuid) return { ok: true, nodeUuid: node.uuid, parentUuid: node.parent_uuid || '', parentTitle: '' };
+  if ((node.parent_uuid || '') === targetUuid) {
+    const toc = await getToc(cfg, book);
+    const group = toc.find(n => n.uuid === targetUuid && n.type === 'TITLE');
+    return { ok: true, nodeUuid: node.uuid, parentUuid: targetUuid, parentTitle: (group && group.title) || '' };
+  }
 
   // 2. node_uuid 直移：语雀 v2 对 DOC 用 doc_ids + target_uuid 会挂根或漏挂
   await putToc(cfg, book, { action: 'appendNode', action_mode: 'child', node_uuid: node.uuid, target_uuid: targetUuid });
 
   // 3. 回读校验：响应是乐观回显，高频写 TOC 时会静默失败
   const seen = await verifyMount(cfg, book, docId, targetUuid);
-  return { ok: seen.ok, nodeUuid: seen.nodeUuid, parentUuid: seen.parentUuid };
+  return { ok: seen.ok, nodeUuid: seen.nodeUuid, parentUuid: seen.parentUuid, parentTitle: seen.parentTitle || '' };
 }
 
 async function verifyMount(cfg, book, docId, targetUuid) {
   let node = null;
+  let parentTitle = '';
   for (let i = 0; i < 4; i++) {
     if (i > 0) await sleep(MOUNT_POLL_MS);
-    node = findDocNode(await getToc(cfg, book), docId);
+    const toc = await getToc(cfg, book);
+    node = findDocNode(toc, docId);
     if (!node) continue;
     const parent = node.parent_uuid || '';
-    if (targetUuid ? parent === targetUuid : !parent) return { ok: true, nodeUuid: node.uuid, parentUuid: parent };
+    // 顺手把父节点标题带回去：调用方要报「挂进哪个分组」，光有 uuid 没用
+    const group = parent ? toc.find(n => n.uuid === parent && n.type === 'TITLE') : null;
+    parentTitle = (group && group.title) || '';
+    if (targetUuid ? parent === targetUuid : !parent) return { ok: true, nodeUuid: node.uuid, parentUuid: parent, parentTitle };
   }
-  return { ok: false, nodeUuid: node && node.uuid, parentUuid: (node && node.parent_uuid) || '' };
+  return { ok: false, nodeUuid: node && node.uuid, parentUuid: (node && node.parent_uuid) || '', parentTitle };
 }
 
 async function ensureGroup(cfg, book, title) {
@@ -311,7 +320,21 @@ async function ensureGroup(cfg, book, title) {
 /** 目标分组：--group-uuid / --group-key > --group > --local 自动推；都给不出就回 TOC 根 */
 async function resolveTarget(cfg, book, opts, novel) {
   const byKey = groupUuidFromKey(opts, novel);
-  if (byKey) return { uuid: byKey, name: strOpt(opts, 'group') || strOpt(opts, 'group-key') };
+  if (byKey) {
+    // 配置里的 uuid 会过期：语雀那头重建分组就换 uuid，直接拿去挪只会得到一句「回读校验没过」，白等 4 轮
+    const key = strOpt(opts, 'group-key');
+    const toc = await getToc(cfg, book);
+    const node = toc.find(n => n.uuid === byKey && n.type === 'TITLE');
+    if (!node) {
+      const list = toc.filter(n => n.type === 'TITLE').map(n => `  ${n.title}  →  ${n.uuid}`).join('\n');
+      die(`小说配置里 yuque.groups.${key} 指向的分组（uuid=${byKey}）已经不在这个知识库里——语雀重建分组会换 uuid。\n现有分组：\n${list || '  （这个知识库还没有分组）'}\n用 --group <分组标题> 重新定位，或把配置里的 uuid 改成上面的新值。什么都没写。`, 1);
+    }
+    const byName = strOpt(opts, 'group');
+    if (byName && normTitle(byName) !== normTitle(node.title)) {
+      die(`--group「${byName}」和 --group-key ${key}（现在指向「${node.title}」）说的不是同一个分组，二选一。什么都没写。`, 1);
+    }
+    return { uuid: byKey, name: node.title };
+  }
   const byUuid = strOpt(opts, 'group-uuid');
   if (byUuid) return { uuid: byUuid, name: strOpt(opts, 'group') || byUuid };
 
@@ -481,13 +504,13 @@ async function cmdCreateMount(cfg, book, opts, novel) {
   // 3. 挂进分组并回读校验
   const res = await attachDoc(cfg, book, docId, target ? target.uuid : '');
   if (!res.ok) {
-    console.error(`❌ 文档建好了，但挂载回读校验没过（现在在「${res.parentUuid || 'TOC 根'}」，目标「${target.name}」）。`);
+    console.error(`❌ 文档建好了，但挂载回读校验没过（现在在「${res.parentTitle || res.parentUuid || 'TOC 根'}」，目标「${target.name}」）。`);
     console.error('   语雀 TOC 写路径高频写时会静默积压（要静置 ~10 分钟）。等一会儿再修：');
     console.error(`   node scripts/yuque-doc.js move --book ${book} --doc ${docId} --group-uuid ${target.uuid}`);
     return 1;
   }
-  if (target) console.log(`✅ 已挂进分组「${target.name}」（node=${res.nodeUuid}）`);
-  if (isOn(opts.json)) console.log(JSON.stringify({ docId, nodeUuid: res.nodeUuid, group: target ? target.name : null }, null, 2));
+  if (target) console.log(`✅ 已挂进分组「${res.parentTitle || target.name}」（node=${res.nodeUuid}）`);
+  if (isOn(opts.json)) console.log(JSON.stringify({ docId, nodeUuid: res.nodeUuid, group: res.parentTitle || (target ? target.name : null) }, null, 2));
   return 0;
 }
 
@@ -503,10 +526,10 @@ async function cmdMove(cfg, book, opts, novel) {
   if (!target) die('缺少目标分组（--group / --group-uuid / --group-key）');
   const res = await attachDoc(cfg, book, docId, target.uuid);
   if (!res.ok) {
-    console.error(`❌ 还是没挂上（现在在「${res.parentUuid || 'TOC 根'}」）。TOC 写路径可能积压了，静置 10 分钟重跑同一条命令。`);
+    console.error(`❌ 还是没挂上（现在在「${res.parentTitle || res.parentUuid || 'TOC 根'}」）。TOC 写路径可能积压了，静置 10 分钟重跑同一条命令。`);
     return 1;
   }
-  console.log(`✅ ${node ? node.title : 'doc=' + docId} → 分组「${target.name}」（node=${res.nodeUuid}）`);
+  console.log(`✅ ${node ? node.title : 'doc=' + docId} → 分组「${res.parentTitle || target.name}」（node=${res.nodeUuid}）`);
   return 0;
 }
 
