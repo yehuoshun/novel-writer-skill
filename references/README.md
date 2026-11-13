@@ -5,7 +5,7 @@
 | 子目录 | 主题 | 文件数 |
 |--------|------|--------|
 | [core/](core/) | 核心协议与模板 | 5 |
-| [core/commands/](core/commands/) | 命令详解（SKILL 只留速查表，执行前按需加载） | 5 |
+| [core/commands/](core/commands/) | 命令详解（SKILL 只留速查表，执行前按需加载） | 7 |
 | [outline/](outline/) | 大纲与剧情设计 | 8 |
 | [structure/](structure/) | 故事结构理论 | 5 |
 | [hook/](hook/) | 钩子与期待感 | 3 |
@@ -36,7 +36,9 @@
 |------|----------|------|
 | [init.md](core/commands/init.md) | 新建小说 / 切换小说 / 状态 | 8 问顺序、配置确认、目录创建、书名查重、简介生成 |
 | [outline.md](core/commands/outline.md) | 写大纲 / 查大纲 | 三步大纲（全书→卷→细纲）、蓝图出场清单、细纲表列 |
-| [writing.md](core/commands/writing.md) | 写章节 / 续写 / 回溯 | 动笔前的读取清单、自检五项、发布顺序、回写 7 个追踪档 |
+| [writing.md](core/commands/writing.md) | 写章节 / 续写 / 回溯 | 阶段骨架（准备、写作与 CHANGES）、门禁清单、阶段三/四指针 |
+| [writing-gates.md](core/commands/writing-gates.md) | 阶段三（写章节流程内） | 12 门禁逐条判据、顺序铁律、收尾与交付前检查、报告格式、验收分级 |
+| [writing-publish.md](core/commands/writing-publish.md) | 阶段四（写章节流程内） | 落地、双写对账、全书体检、CHANGES 回写、冲突检测、摘要更新 |
 | [settings.md](core/commands/settings.md) | 更新设定 / 补充设定 / 查设定 / 查冲突 | 改哪几份档案、冲突怎么判 |
 | [other.md](core/commands/other.md) | 更新图 | Mermaid 关系图类型与生成规则 |
 

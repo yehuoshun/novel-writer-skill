@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.49
+version: 3.5.50
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -598,7 +598,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 |------|----------|
 | [references/core/commands/init.md](references/core/commands/init.md) | 新建小说 / 切换小说 / 状态：8 问顺序、配置确认、目录创建、书名查重 |
 | [references/core/commands/outline.md](references/core/commands/outline.md) | 写大纲 / 查大纲：三步大纲、蓝图出场清单、细纲表列 |
-| [references/core/commands/writing.md](references/core/commands/writing.md) | 写章节 / 续写 / 回溯：动笔前的读取清单、自检五项、发布顺序、回写 7 个追踪档 |
+| [references/core/commands/writing.md](references/core/commands/writing.md) | 写章节 / 续写 / 回溯：阶段骨架（准备、写作与 CHANGES）＋门禁清单＋进入后两个文件的指针 |
+| [references/core/commands/writing-gates.md](references/core/commands/writing-gates.md) | 阶段三：12 门禁逐条判据、顺序铁律、阶段三收尾与交付前检查、门禁报告格式、验收分级 |
+| [references/core/commands/writing-publish.md](references/core/commands/writing-publish.md) | 阶段四：落地（本地/语雀/双写）、双写对账、全书体检、CHANGES 回写、冲突检测与摘要更新 |
 | [references/core/commands/settings.md](references/core/commands/settings.md) | 更新设定 / 补充设定 / 查设定 / 查冲突：改哪几份档案、冲突怎么判 |
 | [references/core/commands/other.md](references/core/commands/other.md) | 更新图：Mermaid 关系图类型与生成规则 |
 
@@ -694,4 +696,4 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.49_
+_版本：v3.5.50_
