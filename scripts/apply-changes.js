@@ -294,6 +294,7 @@ for (const m of changes.characterMoves || []) {
 
 // 3) 伏笔状态（四态）
 const FSTATE = { plant: '已埋设', progress: '已推进', harvest: '已回收', abandon: '已废弃' };
+const fsActions = [];   // 真正落到快照的伏笔动作，3b 用来同步 伏笔追踪/vID-*.md（双写）
 for (const f of changes.foreshadowing || []) {
   if (!f.id) continue; // 旧格式无 vX：门禁只警告，这里不动快照
   const next = FSTATE[f.type];
@@ -321,6 +322,7 @@ for (const f of changes.foreshadowing || []) {
       setCell(lines, rowIdx, header, ['类型'], (type || DASH).trim());
       setCell(lines, rowIdx, header, ['预期读者效果'], effect.replace(/^预期读者效果[：:]?\s*/, '') || DASH);
       notes.push(`+ 伏笔状态 ${f.id} ${f.name || ''}：已埋设（第${chapter}章）`);
+      fsActions.push({ id: f.id, type: f.type, state: next, chapter });
     }
   } else if (!existed) {
     problems.push(`伏笔 ${f.id} 未在快照伏笔状态表登记——先补登记（v1 行）再回写，状态机不能凭空推进`);
@@ -328,6 +330,7 @@ for (const f of changes.foreshadowing || []) {
     const prev = getCell(lines, rowIdx, header, ['状态']);
     const prevProg = getCell(lines, rowIdx, header, ['推进章']);
     setCell(lines, rowIdx, header, ['状态'], next);
+    fsActions.push({ id: f.id, type: f.type, state: next, chapter });
     if (f.type === 'progress') {
       setCell(lines, rowIdx, header, ['推进章'], appendChapter(prevProg, chapter));
       const nowProg = getCell(lines, rowIdx, header, ['推进章']);
@@ -340,6 +343,43 @@ for (const f of changes.foreshadowing || []) {
     } else if (prev !== next) {
       notes.push(`~ 伏笔状态 ${f.id}：${prev} → 已废弃`);
     }
+  }
+}
+
+// ---- 3b) 伏笔档案同步：档案 `- 状态：` 与快照伏笔表必须一致（check-consistency 逐条比对）----
+// 只改档案里已有的字段行；没有就补一行，绝不新建档案（建档是 scaffold-entity.js 的活）。
+function setDocField(text, label, value) {
+  const re = new RegExp('^([-*]\\s*)' + label + '[：:]\\s*.*$', 'm');
+  if (re.test(text)) return text.replace(re, `$1${label}：${value}`);
+  const lines = text.replace(/\n+$/, '').split('\n');
+  let at = -1;
+  for (let i = lines.length - 1; i >= 0; i--) if (/^-\s/.test(lines[i])) { at = i + 1; break; }
+  if (at < 0) at = Math.min(1, lines.length);
+  lines.splice(at, 0, `- ${label}：${value}`);
+  return lines.join('\n') + '\n';
+}
+const docWrites = [];
+for (const a of fsActions) {
+  const dir = path.join(settingsDir, '伏笔追踪');
+  const file = fs.existsSync(dir) ? fs.readdirSync(dir).find((x) => x.startsWith(a.id + '-') && x.endsWith('.md')) : null;
+  if (!file) {
+    notes.push(`⚠️ 伏笔 ${a.id} 没有 伏笔追踪/${a.id}-*.md 档案，跳过档案状态同步（要建档先跑 scaffold-entity.js）`);
+    continue;
+  }
+  const docPath = path.join(dir, file);
+  const beforeDoc = fs.readFileSync(docPath, 'utf8');
+  let afterDoc = setDocField(beforeDoc, '状态', a.state);
+  if (a.type === 'plant') afterDoc = setDocField(afterDoc, '埋设章节', `第${a.chapter}章`);
+  if (a.type === 'progress') {
+    const raw = (beforeDoc.match(/^-\s*推进章节[：:]\s*(.*)$/m) || [])[1] || '';
+    const nums = raw.replace(/[第章\s]/g, '').split(/[,，、]+/).filter(Boolean);
+    if (!nums.includes(String(a.chapter))) nums.push(String(a.chapter));
+    afterDoc = setDocField(afterDoc, '推进章节', `第${nums.join('、')}章`);
+  }
+  if (a.type === 'harvest') afterDoc = setDocField(afterDoc, '揭晓章', `第${a.chapter}章`);
+  if (afterDoc !== beforeDoc) {
+    docWrites.push([docPath, afterDoc]);
+    notes.push(`~ 伏笔档案 ${a.id}：状态 → ${a.state}`);
   }
 }
 
@@ -469,12 +509,14 @@ if (problems.length) {
   fail(`状态快照未写回（${problems.length} 处对不上）`, 1);
 }
 
-if (write && changed) {
-  fs.writeFileSync(snapshotPath, lines.join('\n'), 'utf8');
-  console.log(`✅ 已写回 ${path.basename(snapshotPath)}（第${chapter}章，${notes.length} 处变更）`);
+const docsChanged = docWrites.length > 0;
+if (write && (changed || docsChanged)) {
+  if (changed) fs.writeFileSync(snapshotPath, lines.join('\n'), 'utf8');
+  for (const [docPath, text] of docWrites) fs.writeFileSync(docPath, text, 'utf8');
+  console.log(`✅ 已写回 ${path.basename(snapshotPath)}（第${chapter}章，${notes.length} 处变更${docsChanged ? `；同步 ${docWrites.length} 份伏笔档案` : ''}）`);
 } else if (write) {
   console.log('✅ 无需回写（快照已是本章状态）');
-} else if (changed) {
+} else if (changed || docsChanged) {
   console.log('\n（dry-run：未写入。确认无误后加 --write 落盘）');
 } else {
   console.log('✅ 无需回写（快照已是本章状态）');

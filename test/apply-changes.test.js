@@ -38,7 +38,7 @@ const FULL_DRAFT = [
   '---END CHANGES---', '',
 ].join('\n');
 
-function makeBook({ snapshot = SNAPSHOT, draft = FULL_DRAFT, draftName = '第003章.md' } = {}) {
+function makeBook({ snapshot = SNAPSHOT, draft = FULL_DRAFT, draftName = '第003章.md', foreshadowDoc = null } = {}) {
   const dir = tmpDir('nw-apply-');
   const settingsDir = path.join(dir, '设定');
   const contentDir = path.join(dir, '正文');
@@ -49,6 +49,10 @@ function makeBook({ snapshot = SNAPSHOT, draft = FULL_DRAFT, draftName = '第003
     local: { content_path: './正文', settings_path: './设定' },
   }, null, 2));
   if (snapshot !== null) fs.writeFileSync(path.join(settingsDir, '状态快照.md'), snapshot, 'utf8');
+  if (foreshadowDoc) {
+    fs.mkdirSync(path.join(settingsDir, '伏笔追踪'), { recursive: true });
+    fs.writeFileSync(path.join(settingsDir, '伏笔追踪', 'v1-断锋来历.md'), foreshadowDoc, 'utf8');
+  }
   const draftPath = path.join(contentDir, draftName);
   fs.writeFileSync(draftPath, draft, 'utf8');
   return {
@@ -57,6 +61,7 @@ function makeBook({ snapshot = SNAPSHOT, draft = FULL_DRAFT, draftName = '第003
     draft: draftPath,
     config: path.join(dir, 'config.json'),
     snap: () => fs.readFileSync(path.join(settingsDir, '状态快照.md'), 'utf8'),
+    doc: () => fs.readFileSync(path.join(settingsDir, '伏笔追踪', 'v1-断锋来历.md'), 'utf8'),
   };
 }
 
@@ -181,4 +186,56 @@ test('缺 CHANGES 块 → exit 1；缺快照 → exit 1', () => {
   const r2 = run([noSnap.config, noSnap.draft]);
   assert.strictEqual(r2.status, 1);
   assert.match(r2.stderr, /找不到状态快照/);
+});
+
+// ---- 伏笔档案双写（apply-changes 回写快照时把档案的「- 状态：」一起改，否则下一章被双写门禁打回）----
+const FS_DOC = '# v1 断锋来历\n- 类型：长线\n- 埋设章节：第1章\n- 状态：已埋设\n- 预期读者效果：揭晓时震惊\n';
+const HARVEST_DRAFT = [
+  '　　林山揭开断剑的来历。', '---CHANGES---',
+  '<!-- 伏笔动作（四态，必须引用伏笔ID） -->', '- ✅回收 **v1 断锋来历** | 回收方式：断剑现世',
+  '<!-- 交接包 -->', '- 剧情当前位置：后山',
+  '---END CHANGES---', '',
+].join('\n');
+
+test('伏笔档案双写：推进 → 档案状态与推进章节一起改，快照不会孤零零地变', () => {
+  const book = makeBook({ foreshadowDoc: FS_DOC });
+  const r = run([book.config, book.draft, '--write']);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /伏笔档案 v1：状态 → 已推进/);
+  assert.match(book.doc(), /^- 状态：已推进$/m);
+  assert.match(book.doc(), /^- 推进章节：第3章$/m);
+});
+
+test('伏笔档案双写：回收 → 状态已回收 + 揭晓章', () => {
+  const book = makeBook({ foreshadowDoc: FS_DOC, draft: HARVEST_DRAFT, draftName: '第004章.md' });
+  const r = run([book.config, book.draft, '--write']);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(book.doc(), /^- 状态：已回收$/m);
+  assert.match(book.doc(), /^- 揭晓章：第4章$/m);
+});
+
+test('伏笔档案双写：重复跑不重复插字段（幂等）', () => {
+  const book = makeBook({ foreshadowDoc: FS_DOC });
+  run([book.config, book.draft, '--write']);
+  const first = book.doc();
+  run([book.config, book.draft, '--write']);
+  assert.strictEqual(book.doc(), first);
+  assert.strictEqual((first.match(/^- 状态：/gm) || []).length, 1);
+});
+
+test('伏笔档案双写：档案原本没写状态行 → 补在字段区末尾', () => {
+  const book = makeBook({ foreshadowDoc: '# v1 断锋来历\n- 类型：长线\n- 预期读者效果：揭晓时震惊\n' });
+  const r = run([book.config, book.draft, '--write']);
+  assert.strictEqual(r.status, 0, r.stderr);
+  const doc = book.doc();
+  assert.match(doc, /^- 状态：已推进$/m);
+  assert.match(doc, /^- 预期读者效果：揭晓时震惊\n/m);
+});
+
+test('伏笔档案双写：没有档案 → 只提醒，快照照常回写', () => {
+  const book = makeBook();
+  const r = run([book.config, book.draft, '--write']);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.match(r.stdout, /伏笔 v1 没有 伏笔追踪\/v1-\*\.md 档案/);
+  assert.match(book.snap(), /\| v1 \| 断锋来历 \| 长线 \| 揭晓时震惊 \| 已推进 \|/);
 });
