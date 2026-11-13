@@ -5,6 +5,7 @@
 | 子目录 | 主题 | 文件数 |
 |--------|------|--------|
 | [core/](core/) | 核心协议与模板 | 5 |
+| [core/commands/](core/commands/) | 命令详解（SKILL 只留速查表，执行前按需加载） | 5 |
 | [outline/](outline/) | 大纲与剧情设计 | 8 |
 | [structure/](structure/) | 故事结构理论 | 5 |
 | [hook/](hook/) | 钩子与期待感 | 3 |
@@ -26,6 +27,18 @@
 |------|----------|------|
 | [changes-protocol.md](core/changes-protocol.md) | 写/续写章节时 | CHANGES 格式、**初版质量门（写前锚定+写后五查）**、写作技巧速查、字数节奏、开头结尾类型 |
 | [anti-ai-gates.md](quality/anti-ai-gates.md) | 写/续写章节后门禁阶段 | 6 Gate 门禁细则、质量维度、7 种 AI 模式检测、高压区 1-7（含揭晓体/结构性重写）、结构指纹·讲解章（对话驱动章的高危结构与章法改造）、快速自检口诀（含跨文本证伪，谨慎采信）、旧「禁用词」概念说明 |
+
+### core/commands/
+
+**执行这几条命令之前**才读，不是写章节时的必读项。SKILL.md「命令列表」只剩一行速查表，完整流程、参数、产物与判据都在这里。
+
+| 文件 | 何时加载 | 内容 |
+|------|----------|------|
+| [init.md](core/commands/init.md) | 新建小说 / 切换小说 / 状态 | 8 问顺序、配置确认、目录创建、书名查重、简介生成 |
+| [outline.md](core/commands/outline.md) | 写大纲 / 查大纲 | 三步大纲（全书→卷→细纲）、蓝图出场清单、细纲表列 |
+| [writing.md](core/commands/writing.md) | 写章节 / 续写 / 回溯 | 动笔前的读取清单、自检五项、发布顺序、回写 7 个追踪档 |
+| [settings.md](core/commands/settings.md) | 更新设定 / 补充设定 / 查设定 / 查冲突 | 改哪几份档案、冲突怎么判 |
+| [other.md](core/commands/other.md) | 更新图 | Mermaid 关系图类型与生成规则 |
 
 ## P1 — 大纲相关
 

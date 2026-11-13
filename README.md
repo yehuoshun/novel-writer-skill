@@ -82,9 +82,11 @@ novel-writer-skill/
 ├── scripts/              # 校验/工具脚本（零依赖）
 ├── tools/               # 发版/回归模拟脚本
 ├── test/                 # 单测（node --test）
+├── examples/             # 工作流模板（GitHub Actions 体检等，给人抄的）
 └── references/           # 参考手册（按主题分子目录，按需加载）
     ├── README.md         # 加载优先级索引
     ├── core/             # 核心协议与模板
+    │   └── commands/     # 命令详解（新建/大纲/写作/设定/其他，SKILL 只留速查表）
     ├── outline/          # 大纲与剧情设计
     ├── structure/        # 故事结构理论
     ├── hook/             # 钩子与期待感
@@ -222,6 +224,8 @@ node scripts/book-report.js configs/天龙传说.json --brief         # 一行�
 node scripts/book-report.js configs/天龙传说.json --digest        # 再往 设定/体检日报.md 追加一行
 node scripts/book-report.js configs/天龙传说.json --fail-on warn  # 黄条也 exit 1（默认只有红线算失败）
 ```
+
+不想每次手动跑，就把 [examples/github-actions/book-report.yml](examples/github-actions/book-report.yml) 复制到小说仓库的 `.github/workflows/`：push 正文或追踪档时自动体检，一行简报写进 Actions Summary，完整报告作为 artifact 下载，红线直接让 job 失败。改两个 TODO 即可（技能仓库地址、配置文件路径），说明见 [examples/README.md](examples/README.md)。
 
 ### 断点续跑：我从哪继续
 

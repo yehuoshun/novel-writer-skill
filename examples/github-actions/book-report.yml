@@ -1,0 +1,58 @@
+# 全书体检：每写完几章，让 CI 把「单章看不出、全书才看得出」的问题点出来
+#
+# 用法：把本文件复制到【小说正文仓库】的 .github/workflows/book-report.yml，
+# 然后改两处 TODO：
+#   1. TODO_OWNER/novel-writer-skill → 本技能仓库的 owner/repo
+#      （技能仓库是私有的，取消注释 token 那一行，并在小说仓库配 secrets.SKILL_REPO_TOKEN）
+#   2. CONFIG                       → 小说配置文件，如 configs/天龙传说.json
+#
+# 跑完看 Actions 页面右上角 Summary 的一行简报；完整报告（设定/全书体检.md）
+# 在 Artifacts 里下载。有红线（爽点断档、伏笔逾期、章尾无钩…）时 job 直接失败。
+name: 全书体检
+
+on:
+  push:
+    paths:
+      - '正文/**'
+      - '设定/爽点追踪*'
+      - '设定/钩子追踪*'
+      - '设定/情绪曲线*'
+      - '设定/章节热度.md'
+      - '设定/大纲/**'
+  workflow_dispatch:
+
+jobs:
+  book-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出小说仓库
+        uses: actions/checkout@v4
+
+      - name: 检出技能仓库（只要脚本，不装依赖）
+        uses: actions/checkout@v4
+        with:
+          repository: TODO_OWNER/novel-writer-skill
+          path: .novel-writer-skill
+          # token: ${{ secrets.SKILL_REPO_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 跑体检
+        run: |
+          set -o pipefail
+          node .novel-writer-skill/scripts/book-report.js "$CONFIG" --write --brief | tee report.txt
+          cat report.txt >> "$GITHUB_STEP_SUMMARY"
+        env:
+          CONFIG: configs/TODO.json
+
+      - name: 上传完整报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: book-report
+          path: |
+            report.txt
+            设定/全书体检.md
+          if-no-files-found: warn
