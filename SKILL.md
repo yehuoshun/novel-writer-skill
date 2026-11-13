@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.50
+version: 3.5.51
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -339,9 +339,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 ## 特殊功能
 
-### 爽点追踪
+每章写完后要更新三份追踪档（爽点 / 钩子 / 情绪），发布前要过闸门。**词表留在这里——写追踪数据时要用；细则按需加载。**
 
-每章写完后自动追踪爽点密度和类型分布。
+### 爽点追踪
 
 **爽点类型速查**：
 
@@ -359,17 +359,9 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 - 连续 2 章无爽点 → 自动提醒
 - 同一类型爽点连用 3 次 → 提醒换类型
 
-**爽点间隔追踪示例**：
-```
-第1章：装逼打脸（铺放比3:1）
-第2章：无爽点 ← ⚠️ 连续无爽点
-第3章：获得机缘（铺放比1.5:1）
-...
-```
+间隔示例与判定口径见 [references/core/features/tracking.md](references/core/features/tracking.md)（钩子、情绪、冲突、群像、伏笔、等级提醒也在那里）。
 
 ### 钩子追踪
-
-每章写完后自动检查钩子质量。
 
 **钩子类型速查**：
 
@@ -392,63 +384,18 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 
 > 记录 `last_hook_start/last_hook_end.type` 时**统一使用上表 11 项词汇**（章首 5 + 章尾 6；悬念钩章首/章尾共用，去重后 10 个唯一类）；具体技法（章尾 13 式 / 章首 7 式）与追踪类的映射见 [references/hook/hook-techniques.md](references/hook/hook-techniques.md) 顶部「钩子式 ↔ 追踪类映射」。
 
-**自动检查**：
-- 章首无钩子（前 500 字内）→ 提醒
-- 章尾无钩子 → 提醒「读者不会翻下一页」
-- 连续 3 章钩子强度评为「弱」→ 提醒
+自动检查（章首前 500 字无钩、章尾无钩、连续 3 章强度「弱」）见 [tracking.md](references/core/features/tracking.md)。
 
-### 群像角色分工
+### 其余追踪与检查
 
-多主角/群像作品时，加载 [references/character/character-design.md](references/character/character-design.md) 检查角色分工。
-
-**检查维度**：
-
-| 角色 | 功能定位 | 爽点来源 | 避免重叠 |
-|------|----------|----------|----------|
-| A | 武力担当 | 装逼打脸 | — |
-| B | 智力担当 | 信息差碾压 | 与A差异化 |
-| C | 情感担当 | 情感满足 | 主线感情线 |
-
-**自动检查**：
-- 两个角色爽点来源相同 → 提醒「角色X和角色Y爽点重叠，建议差异化功能定位」
-- 群像作品角色≥4时自动触发检查
-
-### 情绪追踪
-
-每章写完后更新情绪数据，加载 [references/outline/emotional-arc-design.md](references/outline/emotional-arc-design.md) 和 [references/outline/reversal-toolkit.md](references/outline/reversal-toolkit.md)。
-
-**单章情绪**：章节摘要的情绪基调改为强度链格式，如 `紧张(7) → 释放(3) → 悬疑(8)`。
-
-**跨章节情绪曲线**：每章自动录入情绪曲线文档，三种警报：
-- 连续 3 章情绪极值 ≤ 5 → 提醒「情绪太平，读者会睡着」
-- 反转情绪差（前后强度差）≤ 2 → 提醒「反转力度不足」
-- 情绪极值密度过高（连续 5 章都≥8）→ 提醒「读者情绪疲劳，需要缓口气」
-
-**反转检查**：章节有反转时跑四步检查：
-1. 铺垫线索够不够（至少 3 个？）
-2. 误导方向有没有（读者能被骗到吗？）
-3. 反转后回看合不合理（不能为了反转而反转）
-4. 情绪冲击够不够（前后的情绪强度差）
-
-### 冲突检测
-
-自动检测以下冲突：
-
-1. **位置冲突**
-   - 角色同一时间在不同地点
-   - 提示：「角色A第10章在X城，第12章在Y城，缺少移动过程」
-
-2. **时间线冲突**
-   - 时间跳跃不合理
-   - 提示：「第10章是第5天，第12章是第3天，时间倒流」
-
-3. **角色状态冲突**
-   - 已死角色出现
-   - 提示：「角色B第10章已死亡，第15章又出现」
-
-4. **物品冲突**
-   - 物品归属不一致
-   - 提示：「物品「剑」第10章被B获得，第12章还在A背包里」
+| 功能 | 什么时候用 | 细则 |
+|---|---|---|
+| 情绪追踪 | 每章写完后更新摘要情绪链 | [tracking.md](references/core/features/tracking.md) |
+| 冲突检测 | 回写追踪档、执行「查冲突」时 | [tracking.md](references/core/features/tracking.md) |
+| 群像角色分工 | 多主角 / 群像作品 | [tracking.md](references/core/features/tracking.md) |
+| 伏笔提醒 | 每章写完后列出未了结伏笔 | [tracking.md](references/core/features/tracking.md) |
+| 角色等级提醒 | 角色等级变化后 | [tracking.md](references/core/features/tracking.md) |
+| 完本总结 | 小说完结时 | [complete-summary-template.md](references/core/complete-summary-template.md) |
 
 ### 发布闸门
 
@@ -468,41 +415,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 我：按本章 CHANGES 回写 状态快照.md（发布时加 --apply-changes 就自动做；没加就手抄或单独跑 apply-changes.js。不回写，下一章会被闸门拦在 exit 4）
 ```
 
-- **退出码**：0 发布成功或重复发布（幂等 no-op）；1 门禁阻断（正文不写，报告仍落盘备查）；3 目标章节已存在且内容变过，须 `--revise`；4 上一章的状态变化没回写快照（正文不写，见下条）；2 用法错误。
-- **内容指纹**：`contentFingerprint` = 正文（`---CHANGES---` 之前）的 sha256，CHANGES 块与换行风格不参与。AI 侧声明必须带本稿指纹，正文改一个字旧声明即失效。
-- **AI 侧声明**：Gate 2–6 是语义判断，规则扫描替代不了，必须逐项给 `verdict` + ≥6 字 `evidence`；且 `evidence` 要用「」**原样引一段 ≥8 字的本稿正文**（引文在正文里搜不到就阻断——空话过不去）；`skip` 只写不适用的理由（本章无对话这类）。骨架用 `--emit-ai-template` 生成，指纹别手抄。缺声明默认阻断，`--allow-missing-ai` 放行并记 `aiOmitted`。
-- **先自检再发布**：`node scripts/gate-report.js 草稿.md --config cfg.json --ai-gates 声明.json` 看到「✅ 门禁不阻断」再去 publish，别拿 publish 当试错工具（阻断虽不落盘，但会留一份失败报告；该章已发布过时，失败报告另存 `chNNN-gate-report-draft-<指纹前8位>.json`，不覆盖发布当时的验收记录）。
-- **状态欠账**：发布时账本记下当时的快照指纹；发下一章时若 `状态快照.md` 一个字没改，说明上一章的 CHANGES 没回写——一致性 6 门禁会拿旧事实比对且「全过」，所以闸门 exit 4 拦下。回写完再发（可 `node scripts/apply-changes.js <config> <本章.md> --write`，或发布时 `--apply-changes` 让闸门自己回写）；确认无需回写用 `--allow-stale-snapshot`（账本记 `staleSnapshot: true`）。`--no-gate` 的补救发布不受此拦。
-- **发布后复核**：`node scripts/publish-status.js configs/天龙传说.json` 逐章核对账本——报告还在不在、integrity 与账本是否同一份、正文指纹有没有被动过、最新一章的快照回没回写。最新一章快照还没回写只算 `⚠️` 待办（拦截留给下一章的 exit 4），账本与报告真的对不上才 exit 1。账本存着发布时的字数与段数（`metrics`），所以「正文发布后被改动」会连「发布时 N 字，现在 M 字（±X%）」一起报——字数掉了两位数，八成不是精修。发布之外的漂移只有这个脚本抓得到，交付/续写前跑一次。v3.5.36 起还查两样：**伏笔双写**（`伏笔追踪/vID-*.md` 的 `- 状态：` vs 快照伏笔表，打架 exit 1）与**正文未入账**（正文目录有 `第NNN章.md`、账本没记录，只 `⚠️`）。
-- **收尾清理（v3.5.33）**：`node scripts/housekeeping.js <config.json>` 默认 dry-run 只报不删，`--write` 才动手——草稿报告 `chNNN-gate-report-draft-*.json` 每章只留最新 3 份（`--keep-drafts N`）、`*.tmp`/`*.partial` 一律清、本地备份目录只留最新 20 个（`--keep-backups N`）。发布当时的验收记录 `chNNN-gate-report.json` 与分章账本**永不在删除范围**；找不到账本的孤儿报告只打 `⚠️`，让你先跑 publish-status 看清楚。`设定/changes/` 攒乱、备份垒成摞时跑一次。
-- **连着发几章（v3.5.37）**：`node scripts/publish-batch.js <config.json> --chapters N [--ai-gates 声明目录] --write` 从账本断点起连发 N 章，每章自动带 `--apply-changes --scaffold`——连发最常见的翻车就是漏这两样（下一章 exit 4、新角色撞未登记实体）。默认 dry-run 只列计划；AI 声明按 `chNNN-ai-gates.json` 从目录逐章取，既没目录又没 `--allow-missing-ai` 就一章都不发（声明不能凭空造）。任何一章被打回（exit 1/3/4）立刻停在该章、后面的一个字节不动，改完重跑即从该章续。要「发到第 N 章为止」用 `--to N`（与 `--chapters` 二选一；指向已发过的章直接 exit 2，重发单章用 `publish-chapter.js --revise`）；加 `--stop-on-warn` 则某章出现 warn 也停在该章（exit 0，并点名哪几道门禁）。
-
-- **发完自动体检**：`publish-batch --write` 收尾会跑一遍 `publish-status`，用一行 `📋 账本体检：✅/❌` 告诉你刚发的这批账本还站不站得住（体检结论不改退出码；`--no-status` 关掉）。- **强制通道**：`--no-gate` 全 skip 落盘，报告记 `gatesSkipped`、账本记 `forced: true`，仅用于人工补救。
-- **自检**：报告落盘前会过 `verifyReport`（12 项齐全、枚举合法、summary 自洽、integrity 可重算），不过即 exit 2——宁可不发布，也不发布一份假报告。
-- `scripts/verify-gate-report.js` 校验的是**文本**报告，与本脚本产出的**数据**报告互补不替代。
-
-### 伏笔提醒
-
-每次写章节后，提醒未揭晓的伏笔：
-```
-你：写章节 20
-我：[写完章节后]
-当前有待揭晓伏笔：
-- v1-神秘人身份（长线，第5章埋设，预期第30章回收）
-- v2-古老咒语（短线，第8章埋设）
-- v3-隐藏彩蛋（彩蛋，第15章埋设，可选回收）
-```
-
-### 角色等级提醒
-
-角色等级变化后：
-```
-我：角色A等级变化：筑基期→金丹期（第20章突破）
-```
-
-### 完本总结
-
-小说完结时按 [complete-summary-template.md](references/core/complete-summary-template.md) 交总结：基本信息 / 角色 / 伏笔 / 时间线 / 势力 / 地点 / 物品 / 爽点 / 钩子 / 情绪十节。**数字从脚本取，别手估**：爽点与钩子统计跑 `node scripts/book-report.js <config.json> --json`，伏笔与角色跑 `状态快照.md`，章数与总字数以发布账本为准。
+> 退出码、内容指纹、AI 侧声明、状态欠账、发布后复核、收尾清理、批量连发、强制通道 → [references/core/features/publish-gate.md](references/core/features/publish-gate.md)。
 
 ---
 
@@ -604,6 +517,13 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | [references/core/commands/settings.md](references/core/commands/settings.md) | 更新设定 / 补充设定 / 查设定 / 查冲突：改哪几份档案、冲突怎么判 |
 | [references/core/commands/other.md](references/core/commands/other.md) | 更新图：Mermaid 关系图类型与生成规则 |
 
+### core/features/ — 追踪与发布闸门细则
+
+| 文件 | 何时加载 |
+|------|----------|
+| [references/core/features/tracking.md](references/core/features/tracking.md) | 写章节后更新爽点/钩子/情绪追踪档、查冲突、群像分工、伏笔提醒、等级变化、完本总结 |
+| [references/core/features/publish-gate.md](references/core/features/publish-gate.md) | 准备落盘时：闸门退出码、内容指纹、AI 侧声明、状态欠账、发布后复核、收尾清理、批量连发 |
+
 ### outline/ — 大纲与剧情设计
 
 | 文件 | 何时加载 |
@@ -696,4 +616,4 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.50_
+_版本：v3.5.51_

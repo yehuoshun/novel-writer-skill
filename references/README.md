@@ -6,6 +6,7 @@
 |--------|------|--------|
 | [core/](core/) | 核心协议与模板 | 5 |
 | [core/commands/](core/commands/) | 命令详解（SKILL 只留速查表，执行前按需加载） | 7 |
+| [core/features/](core/features/) | 追踪档与发布闸门细则（SKILL 只留词表与命令主干） | 2 |
 | [outline/](outline/) | 大纲与剧情设计 | 8 |
 | [structure/](structure/) | 故事结构理论 | 5 |
 | [hook/](hook/) | 钩子与期待感 | 3 |
@@ -44,6 +45,13 @@
 
 ## P1 — 大纲相关
 
+
+### core/features/
+
+| 文件 | 覆盖的命令 / 阶段 | 内容 |
+|------|------------------|------|
+| [tracking.md](core/features/tracking.md) | 写章节后 | 爽点/钩子/情绪/冲突/群像/伏笔/等级/完本八节细则 |
+| [publish-gate.md](core/features/publish-gate.md) | 发布闸门 | 退出码、指纹、AI 声明、状态欠账、批量连发、收尾清理 |
 ### outline/
 
 | 文件 | 加载时机 | 内容 |
