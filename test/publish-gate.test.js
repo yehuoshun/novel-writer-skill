@@ -209,6 +209,7 @@ test('publish：首次发布 → 正文落盘、账本一条、报告与指纹�
   assert.strictEqual(rec.revised, false);
   assert.match(rec.reportIntegrity, /^sha256:/);
   assert.strictEqual(rec.ruleVersion, gate.RULE_VERSION);
+  assert.match(r.stdout, /本章指标 \d+ 字 \/ \d+ 段 \/ 对话 \d+%/, '发布成功要当场把指标打出来');
   // 发布那一刻的正文指标落进账本：之后正文被手改，「当时多少字」还查得到
   assert.deepStrictEqual(Object.keys(rec.metrics).sort(), ['chars', 'dialogueRatio', 'paragraphs', 'words']);
   assert.strictEqual(rec.metrics.words, (BODY.match(/[\u4e00-\u9fff]/g) || []).length);
@@ -501,6 +502,8 @@ test('publish-status：正文发布后被改 → exit 0 但给待确认提示', 
   const r = runStatus([f.config]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /正文在发布后被改动/);
+  // 只换了个词、字数没变：那行不该硬凑一个 0%
+  assert.match(r.stdout, /正文在发布后被改动（发布时 \d+ 字，现在 \d+ 字）/);
 });
 
 test('publish-status：没有账本 → exit 0，明说尚无记录', () => {
@@ -508,4 +511,17 @@ test('publish-status：没有账本 → exit 0，明说尚无记录', () => {
   const r = runStatus([f.config]);
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /尚无发布记录|没有发布记录/);
+});
+
+test('publish-status：发布后砍掉半章 → 提示带字数差百分比', () => {
+  const f = setup();
+  assert.strictEqual(runPublish([f.config, f.draft, '--ai-gates', f.aiGates]).status, 0);
+  const published = fs.readFileSync(f.target, 'utf-8');
+  const cutAt = published.indexOf('---CHANGES---');
+  const body = published.slice(0, cutAt);
+  const changes = published.slice(cutAt);
+  fs.writeFileSync(f.target, body.slice(0, Math.floor(body.length / 2)) + changes);
+  const r = runStatus([f.config]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /正文在发布后被改动（发布时 \d+ 字，现在 \d+ 字，-\d+%/);
 });

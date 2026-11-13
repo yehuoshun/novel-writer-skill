@@ -8,7 +8,7 @@
  * 查什么（都是机械可比对的东西）：
  *   1. 报告还在不在、能不能过自检、integrity 与账本记的是不是同一份（防「发布后改报告」）；
  *   2. 报告指纹与账本、正文指纹与账本是否一致（防「报告/正文被换掉」）；
- *   3. 正文在发布后有没有被改动（改了却没走 publish-chapter → 账本失效）；
+ *   3. 正文在发布后有没有被改动（改了却没走 publish-chapter → 账本失效）；有账本里的字数指标时连「变了多少字」一起报；
  *   4. 最新一章发布后 状态快照.md 有没有回写（CHANGES 欠账会让下一章的一致性门禁比对旧事实）；
  *   5. 伏笔档案（伏笔追踪/vID-*.md）的 `- 状态：` 与快照「## 伏笔状态」表是否还一致
  *      （双写门禁只在过门禁那一刻查，发布之后谁手改了档案没人盯）；
@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
+const chapterMetrics = require('./lib/chapter-metrics');
 const { auditForeshadow } = require('./lib/foreshadow-audit');
 
 const FLAGS = new Set(['--json']);
@@ -126,9 +127,18 @@ for (const l of ledgers) {
   if (!bodyPath || !fs.existsSync(bodyPath)) {
     issues.push(`正文缺失：${rec.fileName || '（账本没记文件名）'}`);
   } else {
-    const bodyFp = gate.contentFingerprint(fs.readFileSync(bodyPath, 'utf-8'));
+    const bodyText = fs.readFileSync(bodyPath, 'utf-8');
+    const bodyFp = gate.contentFingerprint(bodyText);
     if (rec.contentFingerprint && bodyFp !== rec.contentFingerprint) {
-      warns.push('正文在发布后被改动（改了正文却没重新发布，账本记录的已不是当前定稿）');
+      // 有指标就说清「变了多少」：只报「改过」时，没人知道是修了个错字还是砍了半章
+      let drift = '';
+      const was = rec.metrics && Number(rec.metrics.words);
+      if (was > 0) {
+        const now = chapterMetrics.measureChapter(bodyText).words;
+        const pct = Math.round(((now - was) / was) * 100);
+        drift = `（发布时 ${was} 字，现在 ${now} 字${pct === 0 ? '' : `，${pct > 0 ? '+' : ''}${pct}%`}）`;
+      }
+      warns.push(`正文在发布后被改动${drift}（改了正文却没重新发布，账本记录的已不是当前定稿）`);
     }
   }
 

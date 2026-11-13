@@ -414,6 +414,8 @@ if (opts.json) {
     .filter(Boolean).join(' ');
   console.log(`✅ 已发布 第${chapter}章 → ${show(targetPath)}${flags ? ` [${flags}]` : ''}`);
   console.log(`   正文指纹 ${curFp}`);
+  // 当场看到节奏：字数不是唯一标准，但「越写越短」是最早能看出来的信号
+  console.log(`   本章指标 ${chapterMetrics.describeMetrics(metrics)}`);
   console.log(`   门禁 pass ${report.summary.pass} / warn ${report.summary.warn} / fail 0 / skip ${report.summary.skip}｜规则版本 ${report.ruleVersion}`);
   console.log(`   报告 ${show(reportPath)}`);
   console.log(`   账本 ${show(ledgerPath)}（本章第 ${publishes.length} 次发布）`);
