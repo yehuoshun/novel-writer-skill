@@ -215,14 +215,18 @@ node scripts/next-chapter.js configs/天龙传说.json        # 加 --json 给�
 ```bash
 node scripts/publish-batch.js configs/天龙传说.json --chapters 3                          # 先看要发哪几章（默认 dry-run）
 node scripts/publish-batch.js configs/天龙传说.json --chapters 3 --ai-gates 声明 --write   # 真发
+node scripts/publish-batch.js configs/天龙传说.json --to 12 --ai-gates 声明 --write      # 从断点一路发到第 12 章为止
+node scripts/publish-batch.js configs/天龙传说.json --to 12 --ai-gates 声明 --stop-on-warn --write  # 哪章出 warn 就停在哪儿
 ```
 
 - **从账本断点起算**：账本已发到第 7 章，就自动从第 8 章起发 3 章，不用手比章号；重跑同一条命令天然从断点继续。
 - **AI 声明要么给目录、要么明说没有**：`--ai-gates 声明/` 里按 `chNNN-ai-gates.json`（也认 `第NNN章-ai-gates.json`）逐章取；既没目录、又没 `--allow-missing-ai` → exit 2，一章都不发（AI 侧结论不能凭空造）。
 - **一章被打回就停在该章**：门禁 exit 1、指纹冲突 exit 3、快照欠账 exit 4，任何一章非零立刻停，后面的章节一个字节都不动，子进程的原始报错照贴；改完重跑即从该章继续。
+- **发到第 N 章为止（`--to`）**：`--to 12` 是从断点一路发到第 12 章（区间上限写死），适合「先把这一卷发完」；`--chapters` 与 `--to` 只能给一个，都缺就 exit 2。`--to` 指向已经发过的章 → exit 2——重发某一章请用 `publish-chapter.js --revise`，批量脚本只往前走。
+- **`--stop-on-warn`**：默认只在被打回时停；加上它，某章出现 warn 也停在该章（exit 0），并在 stderr 里点名是哪几道门禁 warn。warn 不阻断发布，但连发时值得先停下来看一眼。
 - 每章实际执行 `<config> <草稿> --apply-changes --scaffold`，与单章命令等价，账本里照样有 `snapshotApplied` / `scaffolded` / `aiOmitted`。
 
-退出码：0 = 请求的 N 章都发完；1 = 中途停（缺草稿 / 缺声明 / 被打回）；2 = 用法错误或配置读不出来。
+退出码：0 = 请求的 N 章都发完（`--stop-on-warn` 主动停下也算 0，stderr 写明 `停在第X章`）；1 = 中途停（缺草稿 / 缺声明 / 被打回）；2 = 用法错误或配置读不出来。
 
 
 ### 收尾清理：删掉该删的
@@ -270,7 +274,7 @@ bash tools/simulate-backup.sh
 bash tools/simulate-longform.sh
 ```
 
-发布链路回归（15 个场景 / 66 条断言：首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计 → 断点续跑 → `--apply-changes` 自动回写快照后下一章直接放行 → 收尾清理只删草稿报告、验收记录与账本一个不动 → 伏笔双写体检打架 exit 1、正文未入账只提醒 → `publish-batch` 连发两章并从断点续跑、第 7 章半角标点被打回就停在第 7 章、第 8 章一个字节不动）：
+发布链路回归（16 个场景 / 77 条断言：首发布落盘+记账 → 幂等重发不重复记 → 快照欠账 exit 4 → `--allow-stale-snapshot` 放行并留痕 → 改稿默认 exit 3 → `--revise` 覆盖留旧指纹 → 门禁阻断正文一个字节不动 → 账本审计 → 断点续跑 → `--apply-changes` 自动回写快照后下一章直接放行 → 收尾清理只删草稿报告、验收记录与账本一个不动 → 伏笔双写体检打架 exit 1、正文未入账只提醒 → `publish-batch` 连发两章并从断点续跑、第 7 章半角标点被打回就停在第 7 章、第 8 章一个字节不动 → `--to` 一路发到第 N 章、指向已发过的章 exit 2、`--stop-on-warn` 出 warn 停在该章并点名门禁）：
 
 ```bash
 bash tools/simulate-publish.sh

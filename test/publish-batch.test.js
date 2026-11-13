@@ -223,3 +223,80 @@ test('publish-batch：没有 --ai-gates 时用 --allow-missing-ai 也能跑（�
   const rec = ledgerOf(b.dir, 1).publishes[0];
   assert.strictEqual(rec.aiOmitted, true, JSON.stringify(rec));
 });
+
+// ---------------- --to / --stop-on-warn ----------------
+
+test('publish-batch：--to M 发到第 M 章为止，再跑一次接着往后', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2, 3: CHANGES_2 });
+  const r1 = runBatch(['config.json', '--to', '2', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r1.status, 0, r1.stdout + r1.stderr);
+  assert.ok(fs.existsSync(bodyOf(b.dir, 1)) && fs.existsSync(bodyOf(b.dir, 2)), '第 1、2 章该发出去');
+  assert.ok(!fs.existsSync(bodyOf(b.dir, 3)), '第 3 章超出了 --to 2，不该发');
+  assert.match(r1.stdout, /已发布 2 章/);
+
+  const r2 = runBatch(['config.json', '--to', '3', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r2.status, 0, r2.stdout + r2.stderr);
+  assert.ok(fs.existsSync(bodyOf(b.dir, 3)), '第二次 --to 3 只补第 3 章');
+});
+
+test('publish-batch：--to 指向已发过的章 → exit 2', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2 });
+  const r1 = runBatch(['config.json', '--to', '2', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r1.status, 0, r1.stdout + r1.stderr);
+  const r2 = runBatch(['config.json', '--to', '2'], b.dir);
+  assert.strictEqual(r2.status, 2, r2.stdout + r2.stderr);
+  assert.match(r2.stderr, /已经发过了/);
+});
+
+test('publish-batch：--chapters 与 --to 同时给 / --to 非法 → exit 2', () => {
+  const b = makeBook({ 1: CHANGES_1 });
+  const a = runBatch(['config.json', '--chapters', '1', '--to', '5'], b.dir);
+  assert.strictEqual(a.status, 2, a.stdout + a.stderr);
+  assert.match(a.stderr, /只能给一个/);
+  const c = runBatch(['config.json', '--to', 'abc'], b.dir);
+  assert.strictEqual(c.status, 2, c.stdout + c.stderr);
+});
+
+test('publish-batch：--json 里带上 until', () => {
+  const b = makeBook({ 1: CHANGES_1 });
+  const r = runBatch(['config.json', '--to', '3', '--json'], b.dir);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.start, 1);
+  assert.strictEqual(j.until, 3);
+  assert.strictEqual(j.requested, 3);
+});
+
+test('publish-batch：--stop-on-warn 遇到 warn 就停，后面的不发', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2 });
+  // 把第 1 章声明里的一项改成 warn（warn 不阻断发布，但开了 --stop-on-warn 就该停）
+  const declPath = path.join(b.declDir, declFile(1));
+  const d = JSON.parse(fs.readFileSync(declPath, 'utf-8'));
+  const key = Object.keys(d.gates)[0];
+  d.gates[key].verdict = 'warn';
+  d.gates[key].evidence = `建议改：正文「${QUOTE}」这里可以再具体一点`;
+  fs.writeFileSync(declPath, JSON.stringify(d, null, 2) + '\n');
+
+  const r = runBatch(['config.json', '--chapters', '2', '--ai-gates', '声明', '--stop-on-warn', '--write'], b.dir);
+  assert.strictEqual(r.status, 0, '停下来看不是失败，退出码该是 0：' + r.stdout + r.stderr);
+  assert.match(r.stderr, /停在第1章/);
+  assert.match(r.stderr, /warn/);
+  assert.match(r.stderr, /Gate \d/); // 停下来的理由要点名是哪几道门禁 warn
+  assert.ok(fs.existsSync(bodyOf(b.dir, 1)), '第 1 章本身是发布成功的，只是停在这儿');
+  assert.ok(!fs.existsSync(bodyOf(b.dir, 2)), '第 2 章不该发');
+  assert.strictEqual(ledgerOf(b.dir, 2), null);
+});
+
+test('publish-batch：不开 --stop-on-warn 时 warn 不拦（默认只在被打回时停）', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2 });
+  const declPath = path.join(b.declDir, declFile(1));
+  const d = JSON.parse(fs.readFileSync(declPath, 'utf-8'));
+  const key = Object.keys(d.gates)[0];
+  d.gates[key].verdict = 'warn';
+  d.gates[key].evidence = `建议改：正文「${QUOTE}」这里可以再具体一点`;
+  fs.writeFileSync(declPath, JSON.stringify(d, null, 2) + '\n');
+
+  const r = runBatch(['config.json', '--chapters', '2', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.ok(fs.existsSync(bodyOf(b.dir, 2)), 'warn 不阻断，第 2 章该发出去');
+});

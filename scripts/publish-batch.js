@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /**
- * 批量续跑：从账本断点起，连发 N 章
+ * 批量续跑：从账本断点起，连发 N 章（或连发到第 M 章）
  *
  * 用法:
- *   node publish-batch.js <config.json> --chapters N [选项]
+ *   node publish-batch.js <config.json> (--chapters N | --to M) [选项]
  *
  * 选项:
- *   --chapters N        连发 N 章（必填，1–200）
+ *   --chapters N        连发 N 章（1–200）
+ *   --to M              从断点一路发到第 M 章（含 M；已发过 M 章则直接报错）
  *   --drafts <目录>     草稿目录（默认 ./草稿，文件名 第NNN章.md / 第N章.md）
  *   --ai-gates <目录>   AI 门禁声明目录（每章 chNNN-ai-gates.json 或 第NNN章-ai-gates.json）
  *   --allow-missing-ai  允许本章没有 AI 声明（账本会记 aiOmitted，慎用）
+ *   --stop-on-warn      某章结论里出现 warn 也停（默认只在被打回时停）
  *   --write             真发；默认 dry-run 只打印计划
  *   --json              机器可读输出
  *
@@ -22,8 +24,9 @@
  *
  * 断点语义：任何一章被打回（门禁 exit 1 / 指纹冲突 exit 3 / 快照欠账 exit 4）立刻停在该章，
  * 后面的章节一个字节都不动；改完重跑同一条命令，从「账本最后一章 + 1」自动继续。
+ * 加 --stop-on-warn 时，warn 也算停：判了「建议改」就先别往后堆，免得问题连成一串。
  *
- * 退出码: 0=请求的 N 章都发完；1=中途停（缺草稿 / 缺声明 / 被打回）；2=用法或 IO 错误
+ * 退出码: 0=请求的章节都发完（含 --stop-on-warn 主动停在某章：那是「停下来看」，不是失败）；1=中途停（缺草稿 / 缺声明 / 被打回）；2=用法或 IO 错误
  */
 'use strict';
 const fs = require('fs');
@@ -31,14 +34,15 @@ const path = require('path');
 const { spawnSync } = require('node:child_process');
 const gate = require('./lib/gate-suite');
 
-const USAGE = `用法: node publish-batch.js <config.json> --chapters N [--drafts 目录] [--ai-gates 目录]
-                              [--allow-missing-ai] [--write] [--json]
+const USAGE = `用法: node publish-batch.js <config.json> (--chapters N | --to M) [--drafts 目录] [--ai-gates 目录]
+                              [--allow-missing-ai] [--stop-on-warn] [--write] [--json]
 
   默认 dry-run（只打印要发哪几章），--write 才真发
-  每章等价于 publish-chapter … --apply-changes --scaffold（门禁 → 建档 → 落盘 → 记账 → 回写快照）`;
+  每章等价于 publish-chapter … --apply-changes --scaffold（门禁 → 建档 → 落盘 → 记账 → 回写快照）
+  --to M 是「发到第 M 章为止」，章数由断点算出来；--stop-on-warn 让 warn 也当停点`;
 
-const FLAGS = { '--write': 'write', '--json': 'json', '--allow-missing-ai': 'allowMissingAi' };
-const VALUED = { '--chapters': 'chapters', '--drafts': 'drafts', '--ai-gates': 'aiGates' };
+const FLAGS = { '--write': 'write', '--json': 'json', '--allow-missing-ai': 'allowMissingAi', '--stop-on-warn': 'stopOnWarn' };
+const VALUED = { '--chapters': 'chapters', '--to': 'to', '--drafts': 'drafts', '--ai-gates': 'aiGates' };
 
 function die(msg) {
   console.error(`❌ ${msg}`);
@@ -71,10 +75,14 @@ const opts = parseArgs(process.argv.slice(2));
 if (opts.positional.length !== 1) die(`需要且只需要一个 <config.json>\n\n${USAGE}`);
 const configPath = opts.positional[0];
 if (!fs.existsSync(configPath)) die(`配置不存在: ${configPath}`);
-if (opts.chapters === undefined) die(`必须给 --chapters N\n\n${USAGE}`);
-if (!/^\d+$/.test(opts.chapters)) die(`--chapters 需要正整数（收到 ${JSON.stringify(opts.chapters)}）`);
-const wanted = Number(opts.chapters);
-if (wanted < 1 || wanted > 200) die(`--chapters 需在 1–200 之间（收到 ${wanted}）`);
+if (opts.chapters !== undefined && opts.to !== undefined) die(`--chapters 与 --to 只能给一个\n\n${USAGE}`);
+if (opts.chapters === undefined && opts.to === undefined) die(`必须给 --chapters N 或 --to M\n\n${USAGE}`);
+if (opts.chapters !== undefined) {
+  if (!/^\d+$/.test(opts.chapters)) die(`--chapters 需要正整数（收到 ${JSON.stringify(opts.chapters)}）`);
+  const n = Number(opts.chapters);
+  if (n < 1 || n > 200) die(`--chapters 需在 1–200 之间（收到 ${n}）`);
+}
+if (opts.to !== undefined && !/^\d+$/.test(opts.to)) die(`--to 需要正整数（收到 ${JSON.stringify(opts.to)}）`);
 
 let config;
 try {
@@ -88,17 +96,30 @@ const base = path.dirname(path.resolve(configPath));
 const local = config.local || {};
 if (!local.content_path) die('配置缺 local.content_path（正文目录）');
 if (!local.settings_path) die('配置缺 local.settings_path（设定目录）');
-const ledgerDir = path.join(path.resolve(base, local.settings_path), 'changes');
+const settingsDir = path.resolve(base, local.settings_path);
+const ledgerDir = path.join(settingsDir, 'changes');
 const draftsDir = path.resolve(base, opts.drafts || './草稿');
 const aiGatesDir = opts.aiGates ? path.resolve(base, opts.aiGates) : null;
 
 if (!fs.existsSync(draftsDir)) die(`草稿目录不存在: ${draftsDir}`);
 if (aiGatesDir && !fs.existsSync(aiGatesDir)) die(`AI 声明目录不存在: ${aiGatesDir}`);
 
+const ledgerPathOf = (ch) => path.join(ledgerDir, `ch${String(ch).padStart(3, '0')}-publish.json`);
+
 // 断点：账本里发过的最新一章 + 1
 const ledgers = gate.loadPublishLedgers(ledgerDir);
 const publishedChapters = ledgers.filter((l) => !l.error && l.publishes.length).map((l) => l.chapter);
 const start = publishedChapters.length ? Math.max(...publishedChapters) + 1 : 1;
+
+let wanted;
+if (opts.to !== undefined) {
+  const to = Number(opts.to);
+  if (to < start) die(`第${to}章已经发过了（账本最后一章：第${start - 1}章）。--to 只能往后续，想重发请用 publish-chapter --revise`);
+  wanted = to - start + 1;
+  if (wanted > 200) die(`--to 一次最多发 200 章（这次要发 ${wanted} 章）`);
+} else {
+  wanted = Number(opts.chapters);
+}
 
 // 草稿目录里按章号索引（第001章.md / 第1章.md 都认）
 const drafts = new Map();
@@ -131,6 +152,7 @@ if (opts.write && !aiGatesDir && !opts.allowMissingAi) {
 }
 
 const novel = (config.info && config.info.name) || '';
+const span = opts.to !== undefined ? `从第${start}章发到第${start + wanted - 1}章（共 ${wanted} 章）` : `从第${start}章起连发 ${wanted} 章`;
 const show = (p) => {
   const rel = path.relative(process.cwd(), p).split(path.sep).join('/');
   return rel && !rel.startsWith('..') ? rel : p;
@@ -138,15 +160,16 @@ const show = (p) => {
 
 if (!opts.write) {
   if (opts.json) {
-    console.log(JSON.stringify({ novel, dryRun: true, start, requested: wanted, plan: plan.map((p) => ({ chapter: p.chapter, draft: p.draft ? show(p.draft) : null, decl: p.decl ? show(p.decl) : null })) }, null, 2));
+    console.log(JSON.stringify({ novel, dryRun: true, start, requested: wanted, until: opts.to !== undefined ? start + wanted - 1 : null, stopOnWarn: !!opts.stopOnWarn, plan: plan.map((p) => ({ chapter: p.chapter, draft: p.draft ? show(p.draft) : null, decl: p.decl ? show(p.decl) : null })) }, null, 2));
     process.exit(0);
   }
-  console.log(`📚 批量发布计划｜${novel || '本书'}｜从第${start}章起连发 ${wanted} 章（当前账本最后一章：${start - 1 || '无'}）`);
+  console.log(`📚 批量发布计划｜${novel || '本书'}｜${span}（当前账本最后一章：${start - 1 || '无'}）`);
   for (const p of plan) {
     const draft = p.draft ? show(p.draft) : '（缺草稿）';
     const decl = p.decl ? '✓ 声明' : (opts.allowMissingAi ? '无声明（--allow-missing-ai）' : aiGatesDir ? '（缺声明）' : '无声明目录');
     console.log(`  第${String(p.chapter).padStart(3, '0')}章  ${draft}  ${decl}`);
   }
+  if (opts.stopOnWarn) console.log('（--stop-on-warn：某章出现 warn 就停在该章）');
   console.log('\n（dry-run：未发布。确认无误后加 --write 落盘）');
   process.exit(0);
 }
@@ -178,20 +201,47 @@ for (const p of plan) {
     stopped = { chapter: p.chapter, exit: r.status, reason: '发布被打回（见上方 ❌）' };
     break;
   }
+  // --stop-on-warn：warn 不阻断发布，但连发时先把「建议改」的地方停下来看一眼
+  if (opts.stopOnWarn) {
+    const w = lastWarnInfo(p.chapter);
+    if (w.count > 0) {
+      const which = w.labels.length ? `：${w.labels.join('、')}` : '';
+      stopped = { chapter: p.chapter, exit: 0, reason: `第${p.chapter}章有 ${w.count} 项 warn（--stop-on-warn）${which}`, warnLabels: w.labels };
+      break;
+    }
+  }
+}
+
+/** 账本最后一笔里的 warn 数与该章报告里 warn 的门禁名（读不到就当没有） */
+function lastWarnInfo(ch) {
+  try {
+    const j = JSON.parse(fs.readFileSync(ledgerPathOf(ch), 'utf-8'));
+    const rec = j.publishes[j.publishes.length - 1];
+    const count = Number((rec && rec.summary && rec.summary.warn) || 0);
+    if (!count) return { count: 0, labels: [] };
+    let labels = [];
+    try {
+      const rep = JSON.parse(fs.readFileSync(path.resolve(ledgerDir, rec.reportPath), 'utf-8'));
+      labels = (rep.gates || []).filter((g) => g.verdict === 'warn').map((g) => g.label).filter(Boolean);
+    } catch (e) { /* 报告读不到就只说条数 */ }
+    return { count, labels };
+  } catch (e) {
+    return { count: 0, labels: [] };
+  }
 }
 
 const published = results.filter((r) => r.ok).map((r) => r.chapter);
 const ok = !stopped && published.length === wanted;
 
 if (opts.json) {
-  console.log(JSON.stringify({ novel, dryRun: false, start, requested: wanted, published, stopped, results }, null, 2));
-  process.exit(ok ? 0 : 1);
+  console.log(JSON.stringify({ novel, dryRun: false, start, requested: wanted, until: opts.to !== undefined ? start + wanted - 1 : null, stopOnWarn: !!opts.stopOnWarn, published, stopped, results }, null, 2));
+  process.exit(ok ? 0 : (stopped && stopped.exit === 0 ? 0 : 1));
 }
 
 if (published.length) console.log(`\n📬 已发布 ${published.length} 章：第${published.join('、')}章`);
 if (stopped) {
   console.error(`\n⛔ 停在第${stopped.chapter}章：${stopped.reason}`);
   console.error('   后面的章节一个字节都没动；改完重跑同一条命令，从该章自动继续。');
-  process.exit(1);
+  process.exit(stopped.exit === 0 ? 0 : 1);
 }
 console.log(`✅ 批量发布完成（${wanted} 章）`);

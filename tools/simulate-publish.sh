@@ -389,6 +389,62 @@ ok "第8章一个字节都没动" "$([ -f 正文/第008章.md ] && echo 0 || ech
 ok "第8章账本没写" "$([ "$(ledger_count 8)" = "0" ] && echo 1 || echo 0)" "实际 $(ledger_count 8) 笔"
 OUT=$($STATUS config.json 2>&1); CODE=$?
 check "被打回后账本仍然干净" 0 $CODE "$OUT"
+echo ""
+echo "===== 场景 16：--to 发到第 N 章为止 / --stop-on-warn 出 warn 就停 ===="
+# 把第 7 章的半角标点改成全角，重发；--to 8 = 从断点一路发到第 8 章
+# 第 7 章改成全角标点并补足字数（上一版只有 95 字，撞 writing.chapter_words.min=100）
+cat > 草稿/第007章.md <<'EOF7B'
+　　前殿的门被风吹得响了一声，他回头，看见廊下站着一个人。那人不说话，只抬了抬下巴。
+　　林山握紧剑柄，又慢慢松开。他往侧廊走了两步，脚底的石砖比刚才凉，凉意顺着鞋底往上爬。
+　　檐角的水一滴一滴砸下来，落在两人中间。谁也没先开口，风把那点凉意送过来，又带走。
+　　过了很久，那人终于动了，只是把手里的东西放在石阶上，转身走进雨里。
+---CHANGES---
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+---END CHANGES---
+EOF7B
+cat > 草稿/第008章.md <<'EOF8B'
+　　那人先转身走了，脚步声在侧廊里散开，一下一下，撞在砖墙上又弹回来。林山数着那脚步，数到第七下才跟上去。
+　　转过廊角，前面的影子已经没了。尽头是扇半掩的门，门缝里透出一线灯，把地砖照出长长的一道亮。
+　　他停在门外三步远的地方，把手按在剑柄上。门里的灯忽然暗了一瞬，又亮起来，像有人在里面走动。
+　　廊下的水还在滴，滴在他后颈上。他抬手抹了一把，掌心是凉的，凉得让他想起方才那一点风。
+　　他终于伸手推门。门轴响了一声，没有别的声音应他。
+---CHANGES---
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+---END CHANGES---
+EOF8B
+make_decl 草稿/第008章.md 声明/ch008-ai-gates.json "脚步声在侧廊里散开"
+make_decl 草稿/第007章.md 声明/ch007-ai-gates.json "前殿的门被风吹得响了一声"
+OUT=$($BATCH config.json --to 8 --ai-gates 声明 --write 2>&1); CODE=$?
+check "--to 8 一路发到第 8 章" 0 $CODE "$OUT"
+ok "第7章落盘" "$([ -f 正文/第007章.md ] && echo 1 || echo 0)" "正文/第007章.md 不存在"
+ok "第8章落盘" "$([ -f 正文/第008章.md ] && echo 1 || echo 0)" "正文/第008章.md 不存在"
+OUT=$($BATCH config.json --to 8 2>&1); CODE=$?
+check "--to 指向已发过的章 → exit 2" 2 $CODE "$OUT"
+ok "说清楚已经发过了" "$(printf '%s' "$OUT" | grep -q '已经发过了' && echo 1 || echo 0)" "$OUT"
+OUT=$($BATCH config.json --chapters 1 --to 9 2>&1); CODE=$?
+check "--chapters 与 --to 同时给 → exit 2" 2 $CODE "$OUT"
+ok "说清楚只能给一个" "$(printf '%s' "$OUT" | grep -q '只能给一个' && echo 1 || echo 0)" "$OUT"
+# 第 9 章：短章天然带 warn（节奏/钩子），--stop-on-warn 该停在这一章
+cat > 草稿/第009章.md <<'EOF9'
+　　廊下的灯灭了。林山站在原地没有动，等着眼睛适应这层黑。
+　　风从门缝里挤进来，吹得他袖口发凉。他抬手把衣领拢了拢，摸到领口那道缝线，线头松了。
+　　前面的路看不清，他就干脆不看，只听着自己的呼吸，还有更远处水落进石槽的声音。
+　　他把竹牌从怀里掏出来，指腹贴着那半个字来回磨。磨到第三遍，心里忽然松了一下。
+　　门里的灯又亮起来。这次他没有等，抬脚就跨了进去。
+---CHANGES---
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+---END CHANGES---
+EOF9
+make_decl 草稿/第009章.md 声明/ch009-ai-gates.json "他抬手把衣领拢了拢"
+OUT=$($BATCH config.json --chapters 1 --ai-gates 声明 --stop-on-warn --write 2>&1); CODE=$?
+check "--stop-on-warn 出 warn 停在该章（exit 0）" 0 $CODE "$OUT"
+ok "报出停在第9章" "$(printf '%s' "$OUT" | grep -q '停在第9章' && echo 1 || echo 0)" "$OUT"
+ok "点出是哪几道门禁 warn" "$(printf '%s' "$OUT" | grep -qE 'Gate [0-9]' && echo 1 || echo 0)" "$OUT"
+ok "第9章本身已经发出去了" "$([ -f 正文/第009章.md ] && echo 1 || echo 0)" "正文/第009章.md 不存在"
+
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
 cd / && rm -rf "$WORK"
 exit $FAIL
