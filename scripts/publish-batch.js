@@ -13,6 +13,7 @@
  *   --allow-missing-ai  允许本章没有 AI 声明（账本会记 aiOmitted，慎用）
  *   --stop-on-warn      某章结论里出现 warn 也停（默认只在被打回时停）
  *   --write             真发；默认 dry-run 只打印计划
+ *   --no-status         发完不跑收尾体检（默认会跑一遍 publish-status）
  *   --json              机器可读输出
  *
  * 每章实际执行：
@@ -26,6 +27,11 @@
  * 后面的章节一个字节都不动；改完重跑同一条命令，从「账本最后一章 + 1」自动继续。
  * 加 --stop-on-warn 时，warn 也算停：判了「建议改」就先别往后堆，免得问题连成一串。
  *
+ * 收尾体检：真发过章节时，最后自动跑一遍 publish-status（同目录的账本审计）——刚写完的这一批
+ * 报告在不在、正文指纹有没有被手改、快照回写欠不欠、伏笔档案与快照对不对得上、有没有绕过闸门
+ * 落进正文的稿子。**体检结果不改本命令的退出码**（那是 publish-status 自己的判定），只用 ❌ 点名，
+ * 免得「发完了但退出码 1」两种含义混在一起；不想跑就加 --no-status。
+ *
  * 退出码: 0=请求的章节都发完（含 --stop-on-warn 主动停在某章：那是「停下来看」，不是失败）；1=中途停（缺草稿 / 缺声明 / 被打回）；2=用法或 IO 错误
  */
 'use strict';
@@ -35,13 +41,14 @@ const { spawnSync } = require('node:child_process');
 const gate = require('./lib/gate-suite');
 
 const USAGE = `用法: node publish-batch.js <config.json> (--chapters N | --to M) [--drafts 目录] [--ai-gates 目录]
-                              [--allow-missing-ai] [--stop-on-warn] [--write] [--json]
+                              [--allow-missing-ai] [--stop-on-warn] [--write] [--no-status] [--json]
 
   默认 dry-run（只打印要发哪几章），--write 才真发
   每章等价于 publish-chapter … --apply-changes --scaffold（门禁 → 建档 → 落盘 → 记账 → 回写快照）
-  --to M 是「发到第 M 章为止」，章数由断点算出来；--stop-on-warn 让 warn 也当停点`;
+  --to M 是「发到第 M 章为止」，章数由断点算出来；--stop-on-warn 让 warn 也当停点
+  发完默认跑一遍账本体检（publish-status），--no-status 关掉`;
 
-const FLAGS = { '--write': 'write', '--json': 'json', '--allow-missing-ai': 'allowMissingAi', '--stop-on-warn': 'stopOnWarn' };
+const FLAGS = { '--write': 'write', '--json': 'json', '--allow-missing-ai': 'allowMissingAi', '--stop-on-warn': 'stopOnWarn', '--no-status': 'noStatus' };
 const VALUED = { '--chapters': 'chapters', '--to': 'to', '--drafts': 'drafts', '--ai-gates': 'aiGates' };
 
 function die(msg) {
@@ -212,6 +219,49 @@ for (const p of plan) {
   }
 }
 
+/** 跑一遍 publish-status（--json），把「哪几处要处理」摘成短清单 */
+function runStatus() {
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'publish-status.js'), configPath, '--json'], { encoding: 'utf-8' });
+  if (r.error) return { ran: false, exit: null, ok: null, error: r.error.message, summary: null, problems: [] };
+  let j = null;
+  try {
+    j = JSON.parse(r.stdout);
+  } catch (e) {
+    j = null; // 输出不是 JSON（比如账本目录根本不存在）就只按退出码说话
+  }
+  const problems = [];
+  if (j) {
+    for (const c of j.chapters || []) {
+      for (const i of c.issues || []) problems.push(`第${c.chapter}章 ${i}`);
+    }
+    if (j.snapshot && j.snapshot.verdict !== 'pass') problems.push(`状态快照回写：${j.snapshot.reason}`);
+    for (const m of (j.foreshadow && j.foreshadow.mismatches) || []) problems.push(`伏笔双写：${m.message}`);
+    for (const f of j.unledgered || []) problems.push(`正文有 ${f} 但账本没有它的发布记录（绕过闸门？）`);
+  }
+  return { ran: true, exit: r.status, ok: j ? !!j.ok : r.status === 0, summary: j ? j.summary : null, problems };
+}
+
+function printStatus(st) {
+  if (!st.ran) {
+    console.log(`\n📋 账本体检：⚠️ 没跑起来（${st.error || '未知原因'}）——可手动跑 scripts/publish-status.js`);
+    return;
+  }
+  if (st.exit === 2) {
+    console.log('\n📋 账本体检：⚠️ publish-status 用法/IO 出错（exit 2），这一项没查出结论');
+    return;
+  }
+  const s = st.summary || {};
+  if (st.ok) {
+    const warn = s.withWarns ? `，${s.withWarns} 章有 warn 待确认` : '';
+    console.log(`\n📋 账本体检：✅ 账本与报告一致（${s.chapters || 0} 章有记录${warn}）`);
+    return;
+  }
+  console.log(`\n📋 账本体检：❌ ${st.problems.length ? `发现 ${st.problems.length} 处要处理` : '发现要处理的问题'}`);
+  for (const p of st.problems.slice(0, 5)) console.log(`   ✗ ${p}`);
+  if (st.problems.length > 5) console.log(`   …还有 ${st.problems.length - 5} 条，跑 scripts/publish-status.js 看全貌`);
+  console.log('   （体检不通过不改本命令的退出码；下一章之前先把账本理顺）');
+}
+
 /** 账本最后一笔里的 warn 数与该章报告里 warn 的门禁名（读不到就当没有） */
 function lastWarnInfo(ch) {
   try {
@@ -232,13 +282,15 @@ function lastWarnInfo(ch) {
 
 const published = results.filter((r) => r.ok).map((r) => r.chapter);
 const ok = !stopped && published.length === wanted;
+const status = (opts.noStatus || !published.length) ? null : runStatus();
 
 if (opts.json) {
-  console.log(JSON.stringify({ novel, dryRun: false, start, requested: wanted, until: opts.to !== undefined ? start + wanted - 1 : null, stopOnWarn: !!opts.stopOnWarn, published, stopped, results }, null, 2));
+  console.log(JSON.stringify({ novel, dryRun: false, start, requested: wanted, until: opts.to !== undefined ? start + wanted - 1 : null, stopOnWarn: !!opts.stopOnWarn, published, stopped, status, results }, null, 2));
   process.exit(ok ? 0 : (stopped && stopped.exit === 0 ? 0 : 1));
 }
 
 if (published.length) console.log(`\n📬 已发布 ${published.length} 章：第${published.join('、')}章`);
+if (status) printStatus(status);
 if (stopped) {
   console.error(`\n⛔ 停在第${stopped.chapter}章：${stopped.reason}`);
   console.error('   后面的章节一个字节都没动；改完重跑同一条命令，从该章自动继续。');

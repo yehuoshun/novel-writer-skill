@@ -300,3 +300,50 @@ test('publish-batch：不开 --stop-on-warn 时 warn 不拦（默认只在被打
   assert.strictEqual(r.status, 0, r.stdout + r.stderr);
   assert.ok(fs.existsSync(bodyOf(b.dir, 2)), 'warn 不阻断，第 2 章该发出去');
 });
+
+// ---------------- 收尾体检（发完自动跑 publish-status） ----------------
+
+test('publish-batch：--write 发完后自动出账本体检', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2 });
+  const r = runBatch(['config.json', '--chapters', '2', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /📋 账本体检：✅ 账本与报告一致（2 章有记录/);
+});
+
+test('publish-batch：--no-status 跳过体检，--json 里 status 为 null', () => {
+  const b = makeBook({ 1: CHANGES_1 });
+  const r = runBatch(['config.json', '--chapters', '1', '--ai-gates', '声明', '--write', '--no-status', '--json'], b.dir);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.status, null);
+  assert.ok(fs.existsSync(bodyOf(b.dir, 1)), '跳过体检不影响发布本身');
+  const b2 = makeBook({ 1: CHANGES_1 });
+  const t = runBatch(['config.json', '--chapters', '1', '--ai-gates', '声明', '--write', '--no-status'], b2.dir);
+  assert.strictEqual(t.status, 0, t.stdout + t.stderr);
+  assert.ok(!/账本体检/.test(t.stdout), '文本输出里也不该有体检一行');
+});
+
+test('publish-batch：--json 带上体检结论（默认开）', () => {
+  const b = makeBook({ 1: CHANGES_1 });
+  const r = runBatch(['config.json', '--chapters', '1', '--ai-gates', '声明', '--write', '--json'], b.dir);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.status.ran, true);
+  assert.strictEqual(j.status.ok, true);
+  assert.strictEqual(j.status.exit, 0);
+  assert.strictEqual(j.status.summary.chapters, 1);
+  assert.deepStrictEqual(j.status.problems, []);
+});
+
+test('publish-batch：已发布那章的报告没了 → 体检 ❌ 点名，但不改本命令退出码', () => {
+  const b = makeBook({ 1: CHANGES_1, 2: CHANGES_2 });
+  const first = runBatch(['config.json', '--chapters', '1', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(first.status, 0, first.stdout + first.stderr);
+  fs.unlinkSync(path.join(b.dir, '设定', 'changes', 'ch001-gate-report.json'));
+  const r = runBatch(['config.json', '--chapters', '1', '--ai-gates', '声明', '--write'], b.dir);
+  assert.strictEqual(r.status, 0, '体检不通过不该把批量发布的退出码改掉');
+  assert.match(r.stdout, /账本体检：❌/);
+  assert.match(r.stdout, /第1章/);
+  assert.match(r.stdout, /不改本命令的退出码/);
+  assert.ok(fs.existsSync(bodyOf(b.dir, 2)), '体检不影响这一批的正常发布');
+});

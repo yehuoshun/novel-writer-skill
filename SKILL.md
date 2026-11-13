@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.39
+version: 3.5.40
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -872,7 +872,8 @@ graph LR
 - **发布后复核**：`node scripts/publish-status.js configs/天龙传说.json` 逐章核对账本——报告还在不在、integrity 与账本是否同一份、正文指纹有没有被动过、最新一章的快照回没回写。最新一章快照还没回写只算 `⚠️` 待办（拦截留给下一章的 exit 4），账本与报告真的对不上才 exit 1。发布之外的漂移只有这个脚本抓得到，交付/续写前跑一次。v3.5.36 起还查两样：**伏笔双写**（`伏笔追踪/vID-*.md` 的 `- 状态：` vs 快照伏笔表，打架 exit 1）与**正文未入账**（正文目录有 `第NNN章.md`、账本没记录，只 `⚠️`）。
 - **收尾清理（v3.5.33）**：`node scripts/housekeeping.js <config.json>` 默认 dry-run 只报不删，`--write` 才动手——草稿报告 `chNNN-gate-report-draft-*.json` 每章只留最新 3 份（`--keep-drafts N`）、`*.tmp`/`*.partial` 一律清、本地备份目录只留最新 20 个（`--keep-backups N`）。发布当时的验收记录 `chNNN-gate-report.json` 与分章账本**永不在删除范围**；找不到账本的孤儿报告只打 `⚠️`，让你先跑 publish-status 看清楚。`设定/changes/` 攒乱、备份垒成摞时跑一次。
 - **连着发几章（v3.5.37）**：`node scripts/publish-batch.js <config.json> --chapters N [--ai-gates 声明目录] --write` 从账本断点起连发 N 章，每章自动带 `--apply-changes --scaffold`——连发最常见的翻车就是漏这两样（下一章 exit 4、新角色撞未登记实体）。默认 dry-run 只列计划；AI 声明按 `chNNN-ai-gates.json` 从目录逐章取，既没目录又没 `--allow-missing-ai` 就一章都不发（声明不能凭空造）。任何一章被打回（exit 1/3/4）立刻停在该章、后面的一个字节不动，改完重跑即从该章续。要「发到第 N 章为止」用 `--to N`（与 `--chapters` 二选一；指向已发过的章直接 exit 2，重发单章用 `publish-chapter.js --revise`）；加 `--stop-on-warn` 则某章出现 warn 也停在该章（exit 0，并点名哪几道门禁）。
-- **强制通道**：`--no-gate` 全 skip 落盘，报告记 `gatesSkipped`、账本记 `forced: true`，仅用于人工补救。
+
+- **发完自动体检**：`publish-batch --write` 收尾会跑一遍 `publish-status`，用一行 `📋 账本体检：✅/❌` 告诉你刚发的这批账本还站不站得住（体检结论不改退出码；`--no-status` 关掉）。- **强制通道**：`--no-gate` 全 skip 落盘，报告记 `gatesSkipped`、账本记 `forced: true`，仅用于人工补救。
 - **自检**：报告落盘前会过 `verifyReport`（12 项齐全、枚举合法、summary 自洽、integrity 可重算），不过即 exit 2——宁可不发布，也不发布一份假报告。
 - `scripts/verify-gate-report.js` 校验的是**文本**报告，与本脚本产出的**数据**报告互补不替代。
 
@@ -1132,4 +1133,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.39_
+_版本：v3.5.40_

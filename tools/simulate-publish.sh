@@ -353,6 +353,7 @@ ok "快照一路推进到第6章" "$(grep -q '# 状态快照（截止第6章）'
 ok "第6章位置回写生效" "$(grep -q '前殿西廊' 设定/状态快照.md && echo 1 || echo 0)" "$(tail -6 设定/状态快照.md)"
 ok "账本记 5、6 两章" "$([ "$(ledger_count 5)" = "1" ] && [ "$(ledger_count 6)" = "1" ] && echo 1 || echo 0)" "5=$(ledger_count 5) 6=$(ledger_count 6)"
 ok "结尾汇总已发两章" "$(printf '%s' "$OUT" | grep -q '已发布 2 章：第5、6章' && echo 1 || echo 0)" "$OUT"
+ok "收尾自动出账本体检" "$(printf '%s' "$OUT" | grep -q '账本体检：✅ 账本与报告一致' && echo 1 || echo 0)" "$OUT"
 
 echo ""
 echo "===== 场景 15：批量 dry-run 从断点起算 / 一章被打回就停，后面的不动 ===="
