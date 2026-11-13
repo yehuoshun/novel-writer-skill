@@ -50,11 +50,25 @@ function show(p) {
 const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes('--json');
 const WRITE = argv.includes('--write');
-const unknown = argv.filter((a) => a.startsWith('--') && a !== '--json' && a !== '--write');
-if (unknown.length) die(`未知选项 ${unknown[0]}（只认 --write / --json）`);
-const positional = argv.filter((a) => !a.startsWith('--'));
+const BRIEF = argv.includes('--brief');
+const DIGEST = argv.includes('--digest');
+let FAIL_ON = null;
+const positional = [];
+for (let i = 0; i < argv.length; i++) {
+  const a = argv[i];
+  if (a === '--fail-on') {
+    FAIL_ON = argv[++i];
+    if (FAIL_ON !== 'red' && FAIL_ON !== 'warn') die('--fail-on 只认 red（默认：有红线才 exit 1）或 warn（有黄条也 exit 1）');
+  } else if (a === '--json' || a === '--write' || a === '--brief' || a === '--digest') {
+    // 布尔开关
+  } else if (a.startsWith('--')) {
+    die(`未知选项 ${a}（认 --write / --json / --brief / --digest / --fail-on warn）`);
+  } else {
+    positional.push(a);
+  }
+}
 const [configPath] = positional;
-if (!configPath) die('用法: node book-report.js <config.json> [--write] [--json]');
+if (!configPath) die('用法: node book-report.js <config.json> [--write] [--json] [--brief] [--digest] [--fail-on warn]');
 if (!fs.existsSync(configPath)) die(`配置不存在: ${configPath}`);
 
 let config;
@@ -261,6 +275,24 @@ function parseEmotion(text) {
 
 // ---------- 细纲（计划侧） ----------
 
+/** 章节热度：章节 | 平台热度 | 留存 | 备注（chapter-heat.js 维护的人工标注，缺档就不算什么） */
+function parseHeat(text) {
+  const out = new Map();
+  if (!text) return out;
+  for (const t of mdTables(text)) {
+    const ci = colIndex(t.header, '章节', '章');
+    const hi = colIndex(t.header, '平台热度', '热度');
+    if (ci < 0 || hi < 0) continue;
+    for (const row of t.rows) {
+      const n = chapterNo(row[ci]);
+      const v = numberIn(row[hi]);
+      if (n === null || v === null) continue;
+      out.set(n, v);
+    }
+  }
+  return out;
+}
+
 function readDetailPlan(dir) {
   const plan = new Map();
   if (!dir) return { plan, source: null, files: 0 };
@@ -353,10 +385,12 @@ for (const [n, w] of ledgerWords) {
 const sweetDoc = readTrackDoc('爽点追踪');
 const hookDoc = readTrackDoc('钩子追踪');
 const emotionDoc = readTrackDoc('情绪曲线');
+const heatDoc = readTrackDoc('章节热度');
 const actual = {
   sweet: parseSweet(sweetDoc && sweetDoc.text),
   hook: parseHook(hookDoc && hookDoc.text),
   emotion: parseEmotion(emotionDoc && emotionDoc.text),
+  heat: heatDoc ? parseHeat(heatDoc.text) : new Map(),
 };
 const detail = readDetailPlan(detailDir);
 
@@ -537,6 +571,32 @@ for (const n of chapterNos) {
   if (p.sweet !== a.type) planDrift.push({ chapter: n, planned: p.sweet, actual: a.type });
 }
 
+// ---- 8. 热度（人工标注：平台后台的数，脚本只读不猜） ----
+const heatByChapter = actual.heat;
+const heatStats = { chapters: heatByChapter.size, mean: null, low: [], sweetMean: null, plainMean: null };
+if (heatByChapter.size >= 3) {
+  const vals = [...heatByChapter.values()];
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  heatStats.mean = Math.round(mean);
+  heatStats.low = [...heatByChapter.entries()].sort((a, b) => a[1] - b[1]).slice(0, 3).map(([chapter, heat]) => ({ chapter, heat }));
+  const half = mean * 0.5;
+  const heatStreaks = runStreaks(chapterNos.filter((n) => heatByChapter.has(n)), (n) => heatByChapter.get(n) < half);
+  for (const st of heatStreaks) {
+    if (st.to - st.from + 1 >= 3) {
+      warn('低热度连片', `${span(st)}热度都不到均值一半（均值 ${Math.round(mean)}）——这一段像是读者流失点，回看这几章的爽点和章尾钩`);
+    }
+  }
+  const sweetVals = [];
+  const plainVals = [];
+  for (const [n, h] of heatByChapter) (sweetByChapter.has(n) ? sweetVals : plainVals).push(h);
+  const avg = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null);
+  heatStats.sweetMean = avg(sweetVals);
+  heatStats.plainMean = avg(plainVals);
+  if (sweetVals.length >= 2 && plainVals.length >= 2 && heatStats.sweetMean < heatStats.plainMean) {
+    warn('爽点与热度', `有爽点的章平均热度 ${heatStats.sweetMean}，没爽点的章 ${heatStats.plainMean}——爽点没换来追读，可能爽得雷同或位置放错了`);
+  }
+}
+
 // ---------- 结果 ----------
 const hardRed = findings.filter((f) => f.level === 'red');
 const softWarn = findings.filter((f) => f.level === 'warn');
@@ -553,20 +613,27 @@ const result = {
     emotion: peaks.size ? `情绪曲线（${peaks.size} 章）` : null,
     outline: detail.plan.size ? `细纲（${detail.files} 张细纲表 / ${detail.plan.size} 章）` : null,
     foreshadow: foreshadow.hasTable ? '状态快照（## 伏笔状态）' : null,
+    heat: heatByChapter.size ? `章节热度（${heatByChapter.size} 章，人工标注）` : null,
   },
   sweet: { checked: sweetChecked, distribution: sweetStats || {} },
   foreshadow: {
     open: foreshadow.open, overdue: foreshadow.overdue, due: foreshadow.due, byType: foreshadow.byType,
   },
   roles: roleStats,
+  heat: heatStats,
   postPublishEdits,
   planDrift,
   findings,
 };
 
+/** 默认只有红线才算失败；--fail-on warn 连黄条也算（给 CI 用） */
+function exitCode() {
+  return hardRed.length || (FAIL_ON === 'warn' && softWarn.length) ? 1 : 0;
+}
+
 if (JSON_OUT) {
   console.log(JSON.stringify(result, null, 2));
-  process.exit(hardRed.length ? 1 : 0);
+  process.exit(exitCode());
 }
 
 // ---------- 文字报告 ----------
@@ -589,6 +656,13 @@ if (roleStats.length) {
   const top = roleStats.slice(0, 5).map((r) => `${r.name} ${r.chapters} 章`).join('、');
   L.push(`【角色】出场最多：${top}`);
 }
+if (heatByChapter.size) {
+  L.push(`【热度】${heatByChapter.size} 章有标注，均值 ${heatStats.mean}`);
+  if (heatStats.low.length) L.push(`   最低：${heatStats.low.map((x) => `第${x.chapter}章 ${x.heat}`).join('、')}`);
+  if (heatStats.sweetMean !== null && heatStats.plainMean !== null) {
+    L.push(`   有爽点章均值 ${heatStats.sweetMean} / 无爽点章 ${heatStats.plainMean}`);
+  }
+}
 if (planDrift.length) {
   L.push(`【计划 vs 实况】${planDrift.length} 章的爽点类型和细纲不一致：`);
   planDrift.slice(0, 5).forEach((d) => L.push(`   第${d.chapter}章 计划「${d.planned}」→ 实写「${d.actual}」`));
@@ -609,7 +683,22 @@ if (softWarn.length) {
 if (hardRed.length) L.push('', '   这些不阻断写作，但它们是「单章全绿、读者却弃书」的常见来源。');
 
 const text = L.join('\n');
-console.log(text);
+const briefLine = `📖 全书体检 第${result.range.from}–${result.range.to}章｜平均 ${meanWords} 字｜🔴 ${hardRed.length}｜⚠️ ${softWarn.length}${heatByChapter.size ? `｜热度均值 ${heatStats.mean}（${heatByChapter.size} 章）` : ''}`;
+result.brief = briefLine;
+
+if (DIGEST) {
+  const digestPath = path.join(settingsDir, '体检日报.md');
+  const now = new Date();
+  const pad2 = (x) => String(x).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  const head = ['# 体检日报', '', '> 每次 `book-report.js --digest` 追加一行，跨天看趋势用。', '', '| 时间 | 跨度 | 平均字数 | 🔴 | ⚠️ | 热度均值 |', '|---|---|---|---|---|---|'];
+  const row = `| ${stamp} | 第${result.range.from}–${result.range.to}章 | ${meanWords} | ${hardRed.length} | ${softWarn.length} | ${heatByChapter.size ? heatStats.mean : '—'} |`;
+  const old = fs.existsSync(digestPath) ? fs.readFileSync(digestPath, 'utf-8') : null;
+  fs.writeFileSync(digestPath, (old ? old.replace(/\s*$/, '\n') : head.join('\n') + '\n') + row + '\n', 'utf-8');
+  console.log(`🗂 日报追加一行 → ${show(digestPath)}`);
+}
+if (BRIEF || DIGEST) console.log(briefLine);
+else console.log(text);
 
 if (WRITE) {
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
@@ -622,4 +711,4 @@ if (WRITE) {
   }
 }
 
-process.exit(hardRed.length ? 1 : 0);
+process.exit(exitCode());
