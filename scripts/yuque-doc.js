@@ -57,6 +57,7 @@ const USAGE = `
   move          把已存在的文档挪进分组（挂载失败留下的孤儿用它修）
   audit         本地 ↔ 语雀 对账（本地有语雀无 / 语雀有本地无 / 两边一致）
   sync          把本地设定档推到语雀（正文除外；按内容比对，只写有差异的）
+  pull          把语雀设定档拉回本地（默认只列清单，--write 才落盘，覆盖前自动备份）
   get           取回一篇文档的正文
 
 通用选项:
@@ -77,10 +78,11 @@ create-mount / move:
   --local <小说根目录>    按方案 A 镜像从 --file 的相对路径自动推分组
   --create-group          目标分组不存在时顺手建一个
 
-audit / sync / get:
-  --local <小说根目录>    含 设定/ 与 第NNN章*.md（audit、sync 必填）
+audit / sync / pull / get:
+  --local <小说根目录>    含 设定/ 与 第NNN章*.md（audit、sync、pull 必填）
   --dry-run               sync 只列要改的，不写
-  --only <关键字>         sync 只处理标题含该关键字的档案
+  --write                 pull 真落盘（默认只列清单）
+  --only <关键字>         sync / pull 只处理标题含该关键字的档案
   --doc <doc_id|标题>     get 要取的文档
   --out <路径>            get 存到文件（不传则打印正文）
 
@@ -352,7 +354,8 @@ async function buildMapping(cfg, book, localDir) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (e.name !== 'changes') walk(p, rel + e.name + '/');
+        // changes 以语雀为权威、点目录（.sync-backup 等）是本工具的备份区，都不参与对账
+        if (e.name !== 'changes' && !e.name.startsWith('.')) walk(p, rel + e.name + '/');
         continue;
       }
       if (!e.name.endsWith('.md')) continue;
@@ -588,6 +591,85 @@ async function cmdSync(cfg, book, opts) {
   return 0;
 }
 
+const BACKUP_DIR = '.sync-backup';
+
+function timestamp() {
+  const d = new Date();
+  const two = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
+}
+
+/**
+ * 反向同步：语雀 → 本地，只碰设定档。
+ * 默认 dry-run（列清单不落盘），--write 才写；覆盖前把本地旧版存 设定/.sync-backup/<时间戳>/<相对路径>。
+ * 不判断「谁新」——本地 mtime 会被 checkout/脚本刷，语雀 updated_at 不会骗人，
+ * 所以口径只有一条：pull 就是拿语雀版本盖本地，值不值得盖由人看清单决定。
+ * 正文永远不参与：语雀正文是 prepare-upload 剥过 CHANGES 的上传版，拉回来会把本地完整版的 CHANGES 抹掉。
+ */
+async function cmdPull(cfg, book, opts) {
+  const localDir = strOpt(opts, 'local');
+  if (!localDir) die('缺少 --local <小说根目录>');
+  if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`, 1);
+  const write = isOn(opts.write);
+  const only = strOpt(opts, 'only');
+
+  const { ok } = await buildMapping(cfg, book, localDir);
+  let targets = ok.filter(x => !x.isBody && x.docId);
+  if (only) targets = targets.filter(x => x.yqTitle.includes(only) || x.local.includes(only));
+
+  const setDir = path.join(localDir, '设定');
+  const backupRoot = path.join(setDir, BACKUP_DIR, timestamp());
+  const failures = [];
+  let updated = 0;
+  let same = 0;
+  let backedUp = 0;
+
+  for (const t of targets) {
+    const r = await request(cfg, 'GET', `/repos/${bookPath(book)}/docs/${t.docId}`, undefined, { soft: true });
+    if (!r.ok) { failures.push(`${t.yqTitle}：拉取失败（${r.message}）`); continue; }
+    const doc = (r.data && r.data.data) || {};
+    if (doc.format && doc.format !== 'markdown') {
+      failures.push(`${t.yqTitle}：远端是 ${doc.format} 格式，拉下来不是 markdown——先在语雀里转回 markdown 或手工处理`);
+      continue;
+    }
+    const remoteBody = doc.body || '';
+    if (!remoteBody.trim()) { failures.push(`${t.yqTitle}：远端正文是空的，不拿空内容覆盖本地`); continue; }
+    const localBody = fs.readFileSync(t.local, 'utf-8');
+    if (bodiesEqual(remoteBody, localBody)) { same++; continue; }
+    console.log(`${write ? '[覆盖]' : '[待覆盖]'} ${t.yqTitle}（本地 ${localBody.trim().length} 字 → 语雀 ${remoteBody.trim().length} 字）`);
+    if (!write) { updated++; continue; }
+    const bak = path.join(backupRoot, path.relative(setDir, t.local));
+    fs.mkdirSync(path.dirname(bak), { recursive: true });
+    fs.copyFileSync(t.local, bak);
+    backedUp++;
+    fs.writeFileSync(t.local, remoteBody.endsWith('\n') ? remoteBody : `${remoteBody}\n`, 'utf-8');
+    updated++;
+  }
+
+  const summary = {
+    write,
+    targets: targets.length,
+    updated,
+    same,
+    backedUp,
+    backupDir: backedUp ? path.relative(localDir, backupRoot) : null,
+    failures,
+  };
+  if (isOn(opts.json)) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`\npull ${write ? '完成' : '预演（默认只列清单）'}：${write ? '覆盖' : '待覆盖'} ${updated}，一致跳过 ${same}，备份 ${backedUp}`);
+    if (backedUp) console.log(`🗂 本地旧版已存 ${path.relative(localDir, backupRoot)}/（要还原就拷回去）`);
+    if (!write && updated) console.log('（确认清单无误后加 --write 落盘；正文不在 pull 范围内）');
+  }
+  if (failures.length) {
+    console.error(`\n❌ ${failures.length} 篇没拉成：`);
+    for (const f of failures) console.error(`   · ${f}`);
+    return 1;
+  }
+  return 0;
+}
+
 async function cmdGet(cfg, book, opts) {
   const ref = strOpt(opts, 'doc');
   if (!ref) die('缺少 --doc <doc_id|标题>');
@@ -636,7 +718,7 @@ async function main(argv) {
     // 什么都不带时算是用法错误；显式 --help / help 是成功
     return !sub && !isOn(opts.help) ? 2 : 0;
   }
-  const known = ['ls-groups', 'create-mount', 'move', 'audit', 'sync', 'get'];
+  const known = ['ls-groups', 'create-mount', 'move', 'audit', 'sync', 'pull', 'get'];
   if (!known.includes(sub)) die(`未知子命令「${sub}」。可用: ${known.join(' / ')} / help`);
 
   const novel = loadNovelConfig(opts);
@@ -648,6 +730,7 @@ async function main(argv) {
   if (sub === 'move') return cmdMove(cfg, book, opts, novel);
   if (sub === 'audit') return cmdAudit(cfg, book, opts);
   if (sub === 'sync') return cmdSync(cfg, book, opts);
+  if (sub === 'pull') return cmdPull(cfg, book, opts);
   return cmdGet(cfg, book, opts);
 }
 

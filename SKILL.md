@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.41
+version: 3.5.42
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -333,6 +333,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 22. 更新配置追踪字段：
     - **2026-10-12 P2-7 落地：回写配置一条命令**——`node scripts/finalize-config.js <config.json> <小说目录> [--chapter N] [--sweet-spot 类型] [--hook-start 类型,强度] [--hook-end 类型,强度] [--emotion 情绪,强度]`：自动算 `current_chapter`（最大章号）/`written_chapters`（全部章号）/`total_words`（全量重算，口径统一），LLM 判断字段（爽点/钩子/情绪峰值）显式传参，4 个 consecutive_* 自动重置；其余字段不动。`--chapter` 必须为正整数且 **≥ 目录最大章号**（传小会报错拦下，防 current_chapter 写回退）；每个 flag 缺值直接报用法错误，不静默默认
     - **语雀档案批量同步（both 模式，P2-7 落地）**：`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run] [--only <关键字>]` 一键把本地 设定/ 推语雀（不含 `设定/changes/`——changes 以语雀为权威；标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑。远端若是 `lake` 格式（在语雀编辑器里写过）会拒写，免得推 markdown 冲掉排版；某一篇失败不影响其余，跑完逐条列出并以 exit 1 收尾（详见手册 7.2）
+    - **语雀反向拉取（语雀改过、本地还是旧的）**：`node scripts/yuque-doc.js pull --book <id> --local <小说目录> [--write] [--only <关键字>]` 把语雀上的设定档拉回本地。默认只列清单，`--write` 才落盘；覆盖前把本地旧版存 `设定/.sync-backup/<时间戳>/`，要还原拷回去即可。**正文永远不参与**——语雀正文是剥过 CHANGES 的上传版，拉回来会抹掉本地完整版；远端 `lake` 格式或空正文跳过，单篇失败不中断、跑完 exit 1 汇总（详见手册 7.2.1）
     - `info.last_sweet_spot` / `consecutive_no_spot` / `consecutive_same_type`
     - `info.last_hook_start` / `last_hook_end` / `consecutive_weak_hooks`
     - `info.last_emotion_peak` / `consecutive_flat_emotion`
@@ -1133,4 +1134,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.41_
+_版本：v3.5.42_

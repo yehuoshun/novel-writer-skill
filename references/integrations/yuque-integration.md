@@ -230,6 +230,7 @@ GET /repos/{book_id}/toc
 | `move --book <id> --doc <doc_id 或标题> --group <分组>` | 把已有文档挪进分组（挂载失败留下的孤儿用它修） |
 | `audit --book <id> --local <小说目录>` | 双写对账（见第 7 节） |
 | `sync --book <id> --local <小说目录> [--dry-run]` | 批量同步（见第 7 节） |
+| `pull --book <id> --local <小说目录> [--write]` | 反向拉取：语雀改动拉回本地（见 7.2.1，默认只列清单） |
 | `get --book <id> --doc <doc_id 或标题> [--out 文件]` | 取回一篇文档正文 |
 
 要点（2026-11 按 `code/yuque-ai-mcp` 的调用口径重写，行为已离线测试覆盖）：
@@ -313,6 +314,18 @@ GET /repos/{book_id}/toc
 
 回写改完本地档案后，`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run] [--only <关键字>]` 一键把本地 设定/ 推语雀（不含 `设定/changes/`——changes 以语雀为权威；标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑。两处保护：远端是 `lake` 格式（在语雀编辑器里写过）时拒写，免得推 markdown 把排版冲掉；某一篇失败不影响其余，跑完逐条列出并以 exit 1 收尾。
 
+#### 7.2.1 pull 反向同步（语雀 → 本地）
+
+在语雀里改过、本地还是旧的，用 `node scripts/yuque-doc.js pull --book <id> --local <小说目录> [--write] [--only <关键字>]` 拉回来。
+
+- **默认只列清单**，加 `--write` 才落盘；先看清「本地 N 字 → 语雀 M 字」再决定，别一上来就覆盖
+- **覆盖前自动备份**：本地旧版存到 `设定/.sync-backup/<yyyyMMdd-HHmmss>/<相对路径>`，跑完打印目录，要还原就拷回去
+- **只拉设定档，正文永不参与**：语雀正文是 `prepare-upload.js` 剥过 CHANGES 的上传版（还带语雀渲染的缩进），拉回来会把本地完整正文里的 CHANGES 抹掉
+- **不做「谁新」判断**：本地 mtime 会被 git checkout / 脚本写文件刷掉，只有语雀的 `updated_at` 可信；pull 的语义就一条——拿语雀版本盖本地，值不值得由人看清单定
+- 远端是 `lake` 格式或正文为空时跳过；单篇失败不中断，跑完逐条列出并以 exit 1 收尾
+- `--json` 拿结构化结果（`updated` / `same` / `backedUp` / `backupDir` / `failures`）
+- `设定/.sync-backup/` 是点目录，audit / sync 都会跳过，不会被当成待补档案
+
 ### 7.3 目录镜像铁律（2026-10-12 老板定）
 
 本地 设定/ 目录与语雀分组**一一对应同构**（角色设定/主角组·反派组·配角组·已故角色、物品设定、地点设定、势力设定、伏笔追踪、细纲、大纲、变更日志、爽点追踪、钩子追踪、情绪曲线、时间线、等级体系、世界观、关键对话、Mermaid关系图）；新增档案按类型归对应分组，语雀调整分组时本地同步挪；audit 的路径分组校验会拦不一致。
@@ -327,7 +340,7 @@ GET /repos/{book_id}/toc
 
 - `configs/example-yuque.json`：语雀模式完整示例
 - `configs/example-both.json`：双写模式完整示例
-- `scripts/yuque-doc.js`：建文档+挂载 / 挪档 / 查分组 / 对账 / 同步 / 取文档（`--help` 看选项与退出码）
+- `scripts/yuque-doc.js`：建文档+挂载 / 挪档 / 查分组 / 对账 / 同步 / 反向拉取 / 取文档（`--help` 看选项与退出码）
 - `scripts/lib/yuque-toc.js`：上面那个工具用的纯逻辑（标题归一、分组查找、正文档判定、错误码翻译），可离线单测
 - `scripts/prepare-upload.js`：上传前预处理（剥离 CHANGES + 占位注释 + 缩进校验）
 - SKILL.md「新建小说」「写章节（阶段四）」「更新图」对应章节

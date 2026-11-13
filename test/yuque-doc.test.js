@@ -453,3 +453,110 @@ test('--novel-config + --group-key 省掉手填 book 与 uuid', async () => {
     assert.strictEqual(lib.findDocNode(srv.state.toc, doc.id).parent_uuid, 't-content');
   });
 });
+
+// ---------- pull（语雀 → 本地） ----------
+
+function seedDoc(srv, { id, title, body, format = 'markdown', parentUuid = '' }) {
+  srv.state.docs.set(id, { id, title, body, format });
+  srv.state.toc.push({ uuid: `n-${id}`, type: 'DOC', doc_id: id, title, parent_uuid: parentUuid });
+}
+
+function makeLocalSet(files) {
+  const root = tmpDir('nw-yq-');
+  for (const [rel, body] of Object.entries(files)) {
+    const p = path.join(root, '设定', rel);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, body, 'utf-8');
+  }
+  return root;
+}
+
+test('pull 默认只列清单：不写本地、不建备份', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7001, title: '角色', body: '语雀上的新版本' });
+    const root = makeLocalSet({ '角色.md': '本地旧版' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root]));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.match(r.stdout, /\[待覆盖\] 角色/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), '本地旧版');
+    assert.ok(!fs.existsSync(path.join(root, '设定', '.sync-backup')), '预演不该建备份');
+  });
+});
+
+test('pull --write 覆盖本地，旧版进 .sync-backup，备份区不污染对账', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7002, title: '角色', body: '语雀上的新版本' });
+    const root = makeLocalSet({ '角色.md': '本地旧版' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.match(r.stdout, /\[覆盖\] 角色/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), '语雀上的新版本\n');
+
+    const stamps = fs.readdirSync(path.join(root, '设定', '.sync-backup'));
+    assert.strictEqual(stamps.length, 1);
+    const bak = path.join(root, '设定', '.sync-backup', stamps[0], '角色.md');
+    assert.strictEqual(fs.readFileSync(bak, 'utf-8'), '本地旧版', '备份必须是覆盖前的旧版');
+
+    const audit = await runCli(apiArgs(srv, ['audit', '--local', root, '--json']));
+    const out = JSON.parse(audit.stdout);
+    assert.deepStrictEqual(out.localMissing, [], '备份文件不该被当成待补档案');
+    assert.ok(out.same.some(x => x.title === '角色'));
+  });
+});
+
+test('pull 内容一致就跳过，不留备份', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7003, title: '角色', body: '一样的内容' });
+    const root = makeLocalSet({ '角色.md': '一样的内容' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.match(r.stdout, /一致跳过 1/);
+    assert.ok(!fs.existsSync(path.join(root, '设定', '.sync-backup')));
+  });
+});
+
+test('pull 遇到 lake 文档拒写，本地不动', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7004, title: '角色', body: '<p>语雀编辑器版本</p>', format: 'lake' });
+    const root = makeLocalSet({ '角色.md': '本地内容' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 1);
+    assert.match(r.stderr, /lake 格式/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), '本地内容');
+  });
+});
+
+test('pull 绝不碰正文：语雀正文是剥过 CHANGES 的上传版', async () => {
+  await withServer({}, async srv => {
+    srv.state.toc.push({ uuid: 't-body', type: 'TITLE', title: '正文', parent_uuid: '' });
+    seedDoc(srv, { id: 7101, title: '第001章 起点', body: '语雀上传版', parentUuid: 't-body' });
+
+    const root = tmpDir('nw-yq-');
+    const chapter = path.join(root, '第001章 起点.md');
+    const full = '正文\n\n---CHANGES---\n- 埋下断锋剑\n---END CHANGES---\n';
+    fs.writeFileSync(chapter, full, 'utf-8');
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.strictEqual(fs.readFileSync(chapter, 'utf-8'), full, '完整版正文（含 CHANGES）不能被覆盖');
+    assert.ok(!/第001章/.test(r.stdout), '正文不该出现在 pull 清单里');
+  });
+});
+
+test('pull 单篇失败不中断，其余照写，最后 exit 1', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7201, title: '角色', body: '语雀角色新版' });
+    seedDoc(srv, { id: 7202, title: '地点', body: '<p>lake</p>', format: 'lake' });
+    const root = makeLocalSet({ '角色.md': '旧角色', '地点.md': '旧地点' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 1);
+    assert.match(r.stderr, /1 篇没拉成/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), '语雀角色新版\n', '好的那篇要写进去');
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '地点.md'), 'utf-8'), '旧地点');
+  });
+});
