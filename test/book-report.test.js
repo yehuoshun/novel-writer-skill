@@ -242,3 +242,35 @@ test('正文目录空着：不报错，说明没什么可看的（还没开始�
   assert.strictEqual(r.status, 0, r.stderr);
   assert.match(r.stdout, /还没开始写/);
 });
+
+test('账本记着发布时的字数：规则按发布时算，发布后被改过另算一条黄条', () => {
+  const { cfgPath, dir } = makeBook({ n: 3, min: 100 });
+  // 第 1 章发布时 200 字，之后正文被改短到 14 字 —— 账本才是「当时的事实」
+  const ledgerDir = path.join(dir, '设定', 'changes');
+  fs.mkdirSync(ledgerDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(ledgerDir, 'ch001-publish.json'),
+    JSON.stringify({ schemaVersion: 1, chapter: 1, publishes: [{ metrics: { words: 200, chars: 260, paragraphs: 6, dialogueRatio: 0.3 } }] }),
+    'utf-8'
+  );
+  const r = run([cfgPath]);
+  assert.strictEqual(r.status, 1, '另外两章仍不足下限，应有红线');
+  assert.match(r.stdout, /2 章短于下限 100 字/, '第 1 章按账本 200 字算，不该算进字数不足');
+  assert.doesNotMatch(r.stdout, /3 章短于下限/);
+  assert.match(r.stdout, /\[发布后改稿\] 第1章 发布时 200 字，现在 14 字（差 93%）/);
+  assert.match(r.stdout, /发布账本（1 章字数取发布时口径）/);
+});
+
+test('账本字数与当前正文差不到 2%：不报发布后改稿', () => {
+  const { cfgPath, dir } = makeBook({ n: 2 });
+  const ledgerDir = path.join(dir, '设定', 'changes');
+  fs.mkdirSync(ledgerDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(ledgerDir, 'ch001-publish.json'),
+    JSON.stringify({ schemaVersion: 1, chapter: 1, publishes: [{ metrics: { words: 14, chars: 18, paragraphs: 1, dialogueRatio: 0 } }] }),
+    'utf-8'
+  );
+  const r = run([cfgPath]);
+  assert.doesNotMatch(r.stdout, /发布后改稿/);
+  assert.match(r.stdout, /发布账本（1 章字数取发布时口径）/);
+});

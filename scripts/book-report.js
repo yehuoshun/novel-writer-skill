@@ -332,6 +332,24 @@ const latest = Math.max(...chapterNos);
 const wordCounts = new Map();
 for (const [n, p] of chapters) wordCounts.set(n, zhCount(fs.readFileSync(p, 'utf-8')));
 
+// 账本记着「发布那一刻」的字数：正文发布后被人改过，当前正文数就不再是当时的事实。
+// 规则一律用发布时口径（读者拿到的那版），另开一张表盯「发布后改稿」。
+const ledgerWords = new Map();
+for (const led of gate.loadPublishLedgers(path.join(settingsDir, 'changes'))) {
+  const last = led.publishes && led.publishes[led.publishes.length - 1];
+  const w = last && last.metrics && Number(last.metrics.words);
+  if (w > 0) ledgerWords.set(led.chapter, w);
+}
+const currentWords = new Map(wordCounts);
+for (const [n, w] of ledgerWords) if (wordCounts.has(n)) wordCounts.set(n, w);
+const postPublishEdits = [];
+for (const [n, w] of ledgerWords) {
+  const now = currentWords.get(n);
+  if (!now) continue;
+  const drift = Math.abs(now - w) / w;
+  if (drift > 0.02) postPublishEdits.push({ chapter: n, published: w, current: now, percent: Math.round(drift * 100) });
+}
+
 const sweetDoc = readTrackDoc('爽点追踪');
 const hookDoc = readTrackDoc('钩子追踪');
 const emotionDoc = readTrackDoc('情绪曲线');
@@ -462,6 +480,12 @@ if (chapterNos.length >= 6) {
   }
 }
 
+// ---- 4.5 发布后改稿（账本记的字数 vs 现在正文） ----
+for (const e of postPublishEdits.slice(0, 5)) {
+  warn('发布后改稿', `第${e.chapter}章 发布时 ${e.published} 字，现在 ${e.current} 字（差 ${e.percent}%）——正文在发布后被改过，本章验收报告与账本记的还是旧稿`);
+}
+if (postPublishEdits.length > 5) warn('发布后改稿', `另有 ${postPublishEdits.length - 5} 章同样在发布后被改过，这里只列了前 5 章`);
+
 // ---- 5. 伏笔 ----
 let foreshadow = { hasTable: false, checked: 0, open: 0, overdue: 0, due: 0, byType: {}, entries: [] };
 let snapshotText = null;
@@ -523,6 +547,7 @@ const result = {
   range: { from: chapterNos[0], to: latest, chapters: chapterNos.length, meanWords },
   sources: {
     content: show(contentDir),
+    ledger: ledgerWords.size ? `发布账本（${ledgerWords.size} 章字数取发布时口径）` : null,
     sweet: sweetSource ? `${sweetSource}（${sweetSource === '爽点追踪' ? '实况' : '计划'}，覆盖 ${sweetChecked} 章）` : null,
     hook: hookChecked ? `钩子追踪（章首 ${headByChapter.size} 章 / 章尾 ${tailByChapter.size} 章）` : null,
     emotion: peaks.size ? `情绪曲线（${peaks.size} 章）` : null,
@@ -534,6 +559,7 @@ const result = {
     open: foreshadow.open, overdue: foreshadow.overdue, due: foreshadow.due, byType: foreshadow.byType,
   },
   roles: roleStats,
+  postPublishEdits,
   planDrift,
   findings,
 };

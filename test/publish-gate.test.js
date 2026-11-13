@@ -209,6 +209,11 @@ test('publish：首次发布 → 正文落盘、账本一条、报告与指纹�
   assert.strictEqual(rec.revised, false);
   assert.match(rec.reportIntegrity, /^sha256:/);
   assert.strictEqual(rec.ruleVersion, gate.RULE_VERSION);
+  // 发布那一刻的正文指标落进账本：之后正文被手改，「当时多少字」还查得到
+  assert.deepStrictEqual(Object.keys(rec.metrics).sort(), ['chars', 'dialogueRatio', 'paragraphs', 'words']);
+  assert.strictEqual(rec.metrics.words, (BODY.match(/[\u4e00-\u9fff]/g) || []).length);
+  assert.ok(rec.metrics.paragraphs >= 1, '段数应该至少 1');
+  assert.ok(rec.metrics.chars >= rec.metrics.words, '去空白字符数不应小于汉字数');
 
   const left = fs.readdirSync(f.contentDir).filter((n) => n.includes('.tmp-'));
   assert.deepStrictEqual(left, [], '不应残留临时文件');

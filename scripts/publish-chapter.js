@@ -36,6 +36,7 @@
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
+const chapterMetrics = require('./lib/chapter-metrics');
 const { spawnSync } = require('node:child_process');
 
 const FLAGS = new Set(['--allow-missing-ai', '--allow-stale-snapshot', '--revise', '--no-gate', '--dry-run', '--json', '--apply-changes', '--scaffold']);
@@ -254,7 +255,6 @@ const out = {
 };
 // --scaffold 的结果要能出现在 --json 输出里（账本里也有，见 record.scaffolded）
 if (opts.scaffold) out.scaffolded = !!scaffolded;
-if (opts.scaffold) out.scaffolded = !!scaffolded;
 
 function printResult(lines) {
   if (opts.json) {
@@ -367,12 +367,18 @@ if (opts.applyChanges) {
   }
 }
 
+// 发布那一刻量一次正文指标（字数/段数/对话占比）记进账本：之后正文被手改，
+// 全书体检仍拿得到「当时多少字」，也能反过来发现「发布后改过稿」
+const metrics = chapterMetrics.measureChapter(finalText);
+
 const record = {
   publishedAt: new Date().toISOString(),
   chapter,
   contentFingerprint: curFp,
   draftFingerprint: report.draftFingerprint,
   fileName: path.basename(targetPath),
+  // 发布那一刻的正文指标；之后正文被手改，账本里留的才是「当时多少字」
+  metrics,
   reportPath: path.relative(path.dirname(ledgerPath), reportPath).split(path.sep).join('/'),
   reportIntegrity: report.integrity,
   ruleVersion: report.ruleVersion,
