@@ -57,4 +57,111 @@ function auditForeshadow({ settingsDir, snapshotText }) {
   return { checked: ids.length, mismatches, oneSided };
 }
 
-module.exports = { auditForeshadow, snapshotStates, docStates };
+
+// ---------- 伏笔账：动笔前先看「哪条欠着」 ----------
+// 快照「## 伏笔状态」表列序：伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章
+//
+// 口径与 check-consistency 的门禁警告对齐（长线埋了 10 章没推进就告警），但提醒时机提前：
+// 门禁是你写完那一章才说话，那时已经动笔了；这张账要在「开写下一章之前」就把欠的伏笔摆出来。
+const TYPE_SPAN = {
+  长线: { due: 5, overdue: 10 },
+  短线: { due: 2, overdue: 4 },
+  误导: { due: 2, overdue: 4 },
+  彩蛋: { due: 3, overdue: 6 },
+};
+const PAYOFF_SPAN = { 长线: 10, 短线: 4, 误导: 4, 彩蛋: 6 };
+const TERMINAL = /^(已回收|已废弃|closed|dropped)$/i;
+const PLANTED = /^(已埋设|open|埋设)$/i;
+const PROGRESSED = /^(已推进|推进|progress)$/i;
+
+function cellNo(cell) {
+  const m = String(cell || '').match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+function stripNote(s) {
+  return String(s || '').trim().replace(/[（(][^）)]*[）)]$/, '');
+}
+
+/** 把快照「## 伏笔状态」表解析成结构化记录（认不出列序的行跳过，表头不是 vX 也会跳过） */
+function snapshotRows(snapshotText) {
+  const sec = (String(snapshotText || '').split(/^##\s*伏笔状态/m)[1] || '').split(/^##\s/m)[0];
+  const rows = [];
+  for (const line of sec.split(/\r?\n/)) {
+    if (!/^\|/.test(line.trim())) continue;
+    const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+    if (cells.length < 5 || !/^v\d+$/.test(cells[0])) continue;
+    rows.push({
+      id: cells[0],
+      name: cells[1] || '',
+      type: cells[2] || '',
+      effect: cells[3] || '',
+      state: stripNote(cells[4]),
+      plant: cellNo(cells[5]),
+      progress: cellNo(cells[6]),
+      payoff: cellNo(cells[7]),
+    });
+  }
+  return rows;
+}
+
+/**
+ * 伏笔账：给定「下一章章号」，算出每条未了结伏笔欠了多少章。
+ * level：overdue=该处理了 / due=快到线 / idle=还早
+ */
+function ledgerReport(rows, nextChapter) {
+  const entries = [];
+  for (const row of rows) {
+    if (TERMINAL.test(row.state)) continue;
+    const type = row.type || '长线';
+    const span = TYPE_SPAN[type] || TYPE_SPAN['长线'];
+    const base = { id: row.id, name: row.name, type, state: row.state, plant: row.plant, progress: row.progress };
+    if (PLANTED.test(row.state)) {
+      if (!row.plant) {
+        entries.push({ ...base, age: null, level: 'idle', text: `${row.id} ${row.name}（${type}）缺埋设章，这笔账算不出来——先补快照的「埋设章」列` });
+        continue;
+      }
+      const age = Math.max(0, nextChapter - row.plant);
+      const level = age >= span.overdue ? 'overdue' : age >= span.due ? 'due' : 'idle';
+      let text = `${row.id} ${row.name}（${type}，第${row.plant}章埋设）已埋 ${age} 章未推进`;
+      if (level === 'overdue') {
+        text += type === '长线'
+          ? '——过了 10 章告警线，再不推进就该挨门禁警告了'
+          : `——${type}拖过 ${span.overdue} 章，读着容易断线，该推进或收了`;
+      } else if (level === 'due') {
+        text += type === '长线'
+          ? `——距 10 章告警线还有 ${span.overdue - age} 章，找个合适的位置推进一次`
+          : `——${type}的窗口不长（${span.overdue} 章），别再搁着`;
+      }
+      entries.push({ ...base, age, level, text });
+      continue;
+    }
+    if (PROGRESSED.test(row.state)) {
+      const from = row.progress || row.plant;
+      if (!from) {
+        entries.push({ ...base, sinceProgress: null, level: 'idle', text: `${row.id} ${row.name}（${type}）已推进但没写推进章，算不出还要多久收` });
+        continue;
+      }
+      const since = Math.max(0, nextChapter - from);
+      const limit = PAYOFF_SPAN[type] || PAYOFF_SPAN['长线'];
+      const level = since >= limit ? 'overdue' : 'idle';
+      const text = `${row.id} ${row.name}（${type}，第${from}章推进）推进后 ${since} 章还没回收` +
+        (level === 'overdue' ? `——${type}推进后 ${limit} 章内该收，别再往后拖` : '');
+      entries.push({ ...base, sinceProgress: since, level, text });
+      continue;
+    }
+    entries.push({ ...base, level: 'idle', text: `${row.id} ${row.name}（${type}）状态「${row.state}」认不得，跳过` });
+  }
+  const byType = {};
+  entries.forEach((e) => { byType[e.type] = (byType[e.type] || 0) + 1; });
+  return {
+    checked: rows.length,
+    open: entries.length,
+    overdue: entries.filter((e) => e.level === 'overdue').length,
+    due: entries.filter((e) => e.level === 'due').length,
+    byType,
+    entries,
+  };
+}
+
+module.exports = { auditForeshadow, snapshotStates, docStates, snapshotRows, ledgerReport };

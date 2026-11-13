@@ -145,3 +145,98 @@ test('用法错误（缺参数 / 未知选项 / 配置不存在）→ exit 2', (
   assert.strictEqual(run([configPath, '--nope']).status, 2);
   assert.strictEqual(run([path.join(os.tmpdir(), 'nw-not-exist', 'config.json')]).status, 2);
 });
+
+// ---------------- 伏笔账（v3.5.39）----------------
+
+const FS_TABLE_HEAD = ['## 伏笔状态', '', '| 伏笔ID | 伏笔名 | 类型 | 预期读者效果 | 状态 | 埋设章 | 推进章 | 揭晓章 |', '|------|------|------|------|------|------|------|------|'];
+
+function snapshotWith(rows, header = '# 状态快照（截止第7章）') {
+  return [header, '', '## 下章交接包', '- 剧情当前位置：前殿西廊', '', ...FS_TABLE_HEAD, ...rows, ''].join('\n');
+}
+
+test('next-chapter：伏笔账点出该处理的、快到线的，终态不记账', () => {
+  const b = makeBook({
+    chapters: [1, 2, 3, 4, 5, 6, 7],
+    ledgerChapters: [1, 2, 3, 4, 5, 6, 7], ledgerSnapshotFp: 'old',
+    snapshot: snapshotWith([
+      '| v1 | 断锋来历 | 长线 | 揭晓震惊 | 已埋设 | 第1章 | — | 待定 |',
+      '| v2 | 古庙秘密 | 短线 | 好奇 | 已埋设 | 第3章 | — | — |',
+      '| v3 | 掌门失踪 | 长线 | 悬疑 | 已推进 | 第2章 | 第4章 | 待定 |',
+      '| v4 | 旧疤来历 | 短线 | 心酸 | 已回收 | 第1章 | 第2章 | 第3章 |',
+    ]),
+  });
+  const r = run([path.join(b.dir, 'config.json')]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /伏笔账（共 3 条未了结：1 条该处理、1 条快到线；长线 2、短线 1）/);
+  assert.match(r.stdout, /🔴 v2 古庙秘密（短线，第3章埋设）已埋 5 章未推进/);
+  assert.match(r.stdout, /🟡 v1 断锋来历（长线，第1章埋设）已埋 7 章未推进——距 10 章告警线还有 3 章/);
+  assert.match(r.stdout, /⚪ v3 掌门失踪（长线，第4章推进）推进后 4 章还没回收/);
+  assert.ok(!/v4 旧疤来历/.test(r.stdout), '已回收的伏笔不该出现在账上');
+  assert.match(r.stdout, /伏笔逾期：1 条到了该推进\/该收的时候/);
+});
+
+test('next-chapter：--json 里带 foreshadow 结构', () => {
+  const b = makeBook({
+    chapters: [1, 2, 3, 4, 5, 6, 7],
+    ledgerChapters: [1, 2, 3, 4, 5, 6, 7], ledgerSnapshotFp: 'old',
+    snapshot: snapshotWith([
+      '| v1 | 断锋来历 | 长线 | 揭晓震惊 | 已埋设 | 第1章 | — | 待定 |',
+      '| v2 | 古庙秘密 | 短线 | 好奇 | 已埋设 | 第3章 | — | — |',
+    ]),
+  });
+  const r = run([path.join(b.dir, 'config.json'), '--json']);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.strictEqual(j.foreshadow.hasTable, true);
+  assert.strictEqual(j.foreshadow.checked, 2);
+  assert.strictEqual(j.foreshadow.open, 2);
+  assert.strictEqual(j.foreshadow.overdue, 1);
+  assert.strictEqual(j.foreshadow.due, 1);
+  assert.deepStrictEqual(j.foreshadow.byType, { 长线: 1, 短线: 1 });
+  const v2 = j.foreshadow.entries.find((e) => e.id === 'v2');
+  assert.strictEqual(v2.level, 'overdue');
+  assert.strictEqual(v2.age, 5);
+  const v1 = j.foreshadow.entries.find((e) => e.id === 'v1');
+  assert.strictEqual(v1.level, 'due');
+  assert.strictEqual(v1.plant, 1);
+});
+
+test('next-chapter：伏笔全收干净时说「没有欠账」', () => {
+  const b = makeBook({
+    chapters: [1, 2],
+    ledgerChapters: [1, 2], ledgerSnapshotFp: 'old',
+    snapshot: snapshotWith([
+      '| v1 | 断锋来历 | 长线 | 揭晓震惊 | 已回收 | 第1章 | 第1章 | 第2章 |',
+      '| v2 | 古庙秘密 | 短线 | 好奇 | 已废弃 | 第2章 | — | — |',
+    ]),
+  });
+  const r = run([path.join(b.dir, 'config.json')]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /伏笔账：2 条都收干净了，没有欠账/);
+  assert.ok(!/伏笔逾期/.test(r.stdout));
+});
+
+test('next-chapter：快照没有伏笔状态表 → 明说算不了，不影响续写判定', () => {
+  const b = makeBook({ chapters: [1, 2], ledgerChapters: [1, 2], ledgerSnapshotFp: 'old', snapshot: SNAPSHOT_WITH_HANDOFF });
+  const r = run([path.join(b.dir, 'config.json')]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /伏笔账：（快照没有 ## 伏笔状态 表，这笔账算不了）/);
+  const j = JSON.parse(run([path.join(b.dir, 'config.json'), '--json']).stdout);
+  assert.strictEqual(j.foreshadow.hasTable, false);
+  assert.deepStrictEqual(j.foreshadow.entries, []);
+});
+
+test('next-chapter：缺埋设章 / 状态认不得时不炸，写明为什么算不出来', () => {
+  const b = makeBook({
+    chapters: [1, 2],
+    ledgerChapters: [1, 2], ledgerSnapshotFp: 'old',
+    snapshot: snapshotWith([
+      '| v1 | 断锋来历 | 长线 | 揭晓震惊 | 已埋设 | — | — | 待定 |',
+      '| v2 | 古庙秘密 | ??? | 好奇 | 挂着 | — | — | — |',
+    ]),
+  });
+  const r = run([path.join(b.dir, 'config.json')]);
+  assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /v1 断锋来历（长线）缺埋设章，这笔账算不出来/);
+  assert.match(r.stdout, /v2 古庙秘密（\?\?\?）状态「挂着」认不得，跳过/);
+});

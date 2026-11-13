@@ -10,6 +10,7 @@
  *   - 正文目录实际到第几章（两者不一致时点名）
  *   - 下一章该写第几章、草稿写哪、发布目标哪
  *   - 下一章该读的交接包（状态快照.md 的 `## 下章交接包`；快照没写就回退到上一章 CHANGES 的 `<!-- 交接包 -->`）
+ *   - 伏笔账：未了结的伏笔各埋了多少章、哪条该推进、哪条该收了（快照「## 伏笔状态」表）
  *   - 阻塞项：快照欠账（下一章发布会 exit 4）、账本说有正文却没有
  *
  * 为什么要有这个脚本：
@@ -23,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const gate = require('./lib/gate-suite');
+const { snapshotRows, ledgerReport } = require('./lib/foreshadow-audit');
 
 function die(msg) {
   console.error(`❌ ${msg}`);
@@ -127,10 +129,18 @@ const chapters = scanChapters(contentDir);
 const contentMax = chapters.size ? Math.max(...[...chapters.keys()]) : 0;
 const nextChapter = Math.max(publishedMax, contentMax) + 1;
 
+// ---- 快照：只读一次，交接包 / 指纹 / 伏笔账共用 ----
+let snapshotText = null;
+try {
+  if (fs.existsSync(snapshotPath)) snapshotText = fs.readFileSync(snapshotPath, 'utf-8');
+} catch (e) {
+  die(`读状态快照失败：${e.message}`);
+}
+
 // ---- 交接包：快照优先，快照没写就回退到上一章 CHANGES ----
 let handoff = { source: null, items: [], from: null };
-if (fs.existsSync(snapshotPath)) {
-  const items = handoffFromSnapshot(fs.readFileSync(snapshotPath, 'utf-8'));
+if (snapshotText !== null) {
+  const items = handoffFromSnapshot(snapshotText);
   if (items) handoff = { source: 'snapshot', items, from: show(snapshotPath) };
 }
 if (!handoff.items.length) {
@@ -147,11 +157,7 @@ const blockers = [];
 const warnings = [];
 
 let snapshotFp = null;
-try {
-  if (fs.existsSync(snapshotPath)) snapshotFp = gate.fileFingerprint(fs.readFileSync(snapshotPath, 'utf-8'));
-} catch (e) {
-  die(`读状态快照失败：${e.message}`);
-}
+if (snapshotText !== null) snapshotFp = gate.fileFingerprint(snapshotText);
 const prevPublish = gate.previousPublish(ledgers, nextChapter);
 const freshness = gate.snapshotFreshness({
   currentFp: snapshotFp,
@@ -198,6 +204,21 @@ if (!handoff.items.length) {
   });
 }
 
+// ---- 伏笔账：动笔前先看哪条欠着 ----
+const foreshadow = (() => {
+  if (snapshotText === null) return { hasTable: false, checked: 0, open: 0, overdue: 0, due: 0, byType: {}, entries: [] };
+  const rows = snapshotRows(snapshotText);
+  const report = ledgerReport(rows, nextChapter);
+  return { hasTable: /^##\s*伏笔状态/m.test(snapshotText), ...report };
+})();
+if (foreshadow.overdue > 0) {
+  warnings.push({
+    code: 'foreshadow-overdue',
+    text: `伏笔逾期：${foreshadow.overdue} 条到了该推进/该收的时候（见上方伏笔账）`,
+    fix: '这一章顺手推一条，比后面一次性补三条容易',
+  });
+}
+
 const result = {
   novel: (config.info && config.info.name) || '',
   published: {
@@ -213,6 +234,7 @@ const result = {
     target: show(path.join(contentDir, chapterFileLabel(nextChapter))),
   },
   handoff,
+  foreshadow,
   readFirst: handoff.source === 'snapshot'
     ? [show(snapshotPath), '本章涉及角色的设定档案（角色设定/主角/*.md）']
     : handoff.from ? [handoff.from, '以及回写后的 状态快照.md'] : [show(snapshotPath)],
@@ -236,6 +258,25 @@ if (handoff.items.length) {
   handoff.items.forEach((it) => lines.push(`     - ${it.key}：${it.value}`));
 } else {
   lines.push('   交接包：（无）');
+}
+if (!foreshadow.hasTable) {
+  lines.push('   伏笔账：（快照没有 ## 伏笔状态 表，这笔账算不了）');
+} else if (!foreshadow.open) {
+  lines.push(`   伏笔账：${foreshadow.checked} 条都收干净了，没有欠账`);
+} else {
+  const head = [];
+  if (foreshadow.overdue) head.push(`${foreshadow.overdue} 条该处理`);
+  if (foreshadow.due) head.push(`${foreshadow.due} 条快到线`);
+  const types = Object.entries(foreshadow.byType).map(([t, n]) => `${t} ${n}`).join('、');
+  lines.push(`   伏笔账（共 ${foreshadow.open} 条未了结${head.length ? '：' + head.join('、') : ''}${types ? '；' + types : ''}）：`);
+  const icon = { overdue: '🔴', due: '🟡', idle: '⚪' };
+  foreshadow.entries
+    .slice()
+    .sort((a, b) => {
+      const rank = { overdue: 0, due: 1, idle: 2 };
+      return (rank[a.level] - rank[b.level]) || (Number(a.id.slice(1)) - Number(b.id.slice(1)));
+    })
+    .forEach((e) => lines.push(`     ${icon[e.level] || '⚪'} ${e.text}`));
 }
 lines.push(`   开写前先读：${result.readFirst.join('、')}`);
 blockers.forEach((b) => {

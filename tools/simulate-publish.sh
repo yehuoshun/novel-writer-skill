@@ -426,6 +426,13 @@ ok "说清楚已经发过了" "$(printf '%s' "$OUT" | grep -q '已经发过了' 
 OUT=$($BATCH config.json --chapters 1 --to 9 2>&1); CODE=$?
 check "--chapters 与 --to 同时给 → exit 2" 2 $CODE "$OUT"
 ok "说清楚只能给一个" "$(printf '%s' "$OUT" | grep -q '只能给一个' && echo 1 || echo 0)" "$OUT"
+# next-chapter 的伏笔账：快照里 v1（长线，第1章埋设）到第 9 章动笔前已埋 8 章
+OUT=$($NEXT config.json 2>&1); CODE=$?
+check "next-chapter 带出伏笔账" 0 $CODE "$OUT"
+printf '%s\n' "$OUT" | grep '伏笔账' || true
+ok "长线 v1 进账" "$(printf '%s' "$OUT" | grep -q 'v1 断锋来历（长线' && echo 1 || echo 0)" "$OUT"
+ok "说清还差两章到告警线" "$(printf '%s' "$OUT" | grep -q '距 10 章告警线还有 2 章' && echo 1 || echo 0)" "$OUT"
+
 # 第 9 章：短章天然带 warn（节奏/钩子），--stop-on-warn 该停在这一章
 cat > 草稿/第009章.md <<'EOF9'
 　　廊下的灯灭了。林山站在原地没有动，等着眼睛适应这层黑。
