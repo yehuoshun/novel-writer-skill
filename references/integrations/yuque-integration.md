@@ -221,11 +221,25 @@ GET /repos/{book_id}/toc
 
 ### 5.5 一步封装工具（推荐）
 
-`node scripts/yuque-doc.js`（独立工具，与 SKILL.md 主流程解耦）：
-- `create-mount --book <id> --title <标题> --file <out.md> --group 正文`：创建文档 + 挂载分组一步完成（自带查分组/异常提示；详情 `node scripts/yuque-doc.js --help`）
-- `ls-groups --book <id>`：列全部分组
-- `audit --book <id> --local <小说目录>`：双写对账（见第 7 节）
-- `sync --book <id> --local <小说目录> [--dry-run]`：批量同步（见第 7 节）
+`node scripts/yuque-doc.js`（独立工具，与 SKILL.md 主流程解耦；`node scripts/yuque-doc.js --help` 看全部选项）：
+
+| 子命令 | 干什么 |
+|---|---|
+| `ls-groups --book <id>` | 列分组、每组篇数，以及还挂在 TOC 根上的散档 |
+| `create-mount --book <id> --title <标题> --file <out.md> --group 正文` | 建文档 + 挂进分组（先确认分组存在再建文档，不留孤儿） |
+| `move --book <id> --doc <doc_id 或标题> --group <分组>` | 把已有文档挪进分组（挂载失败留下的孤儿用它修） |
+| `audit --book <id> --local <小说目录>` | 双写对账（见第 7 节） |
+| `sync --book <id> --local <小说目录> [--dry-run]` | 批量同步（见第 7 节） |
+| `get --book <id> --doc <doc_id 或标题> [--out 文件]` | 取回一篇文档正文 |
+
+要点（2026-11 按 `code/yuque-ai-mcp` 的调用口径重写，行为已离线测试覆盖）：
+
+- **超时 + 重试**：30s 超时；网络异常 / 429 / 5xx 退避重试 3 次（1s→2s→4s）；401/403/404/422 立刻报错，并把状态码和业务 code 翻成人话（`book_not_found` → 知识库不存在、`token_expired` → 去重新生成 token）
+- **先定分组再建文档**：分组不存在时在建文档之前就失败，不会留下「建好了没挂上」的孤儿
+- **挂载走 node_uuid 直移**：先 `appendNode + doc_ids` 挂根拿到节点 uuid，再 `{"action":"appendNode","action_mode":"child","node_uuid":"…","target_uuid":"…"}` 移进分组——对 DOC 用 `doc_ids + target_uuid` 语雀会挂根或漏挂
+- **挂完回读校验**：TOC 写路径高频写会静默积压（响应是乐观回显），脚本挂完重读 TOC 比对 `parent_uuid`，对不上就 exit 1 并给出 `move` 修复命令
+- `--group-key <键> --novel-config <小说配置>`：从配置的 `yuque.groups` 直接取分组 uuid、从 `yuque.book` 取知识库，省得手抄 uuid
+- 退出码：0=成功、1=业务失败（含挂载校验不过）、2=用法错误
 
 ---
 
@@ -245,7 +259,7 @@ GET /repos/{book_id}/toc
 
 ### 6.3 正文上传（创建+挂载）
 
-**推荐：`node scripts/yuque-doc.js create-mount --book <id> --title <标题> --file <out.md> --group 正文`** 一步完成「创建+挂载」，自带查分组/异常提示。
+**推荐：`node scripts/yuque-doc.js create-mount --book <id> --title <标题> --file <out.md> --group 正文`** 一步完成「创建+挂载」：分组不存在会在建文档之前失败（不留孤儿），挂完还会重读 TOC 校验 `parent_uuid`，对不上就报错并给出 `move` 修复命令。
 
 手动两步：
 1. `POST /repos/{book_id}/docs` 创建（body 用 prepare-upload.js 输出的 out.md，不用原始正文文件；⚠️ 实测 parent_uuid 参数不生效，创建出的文档不在 TOC 树内）
@@ -293,11 +307,11 @@ GET /repos/{book_id}/toc
 
 ### 7.1 audit 对账
 
-本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步。
+本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步。加 `--json` 可拿到结构化结果（`same` / `localMissing` / `yqMissing`）；书里还没有「正文」分组时，正文档会被逐条点名而不是让脚本崩掉。
 
 ### 7.2 sync 批量同步
 
-回写改完本地档案后，`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run]` 一键把本地 设定/ 全部推语雀（含 changes，标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑。
+回写改完本地档案后，`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run] [--only <关键字>]` 一键把本地 设定/ 推语雀（不含 `设定/changes/`——changes 以语雀为权威；标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑。两处保护：远端是 `lake` 格式（在语雀编辑器里写过）时拒写，免得推 markdown 把排版冲掉；某一篇失败不影响其余，跑完逐条列出并以 exit 1 收尾。
 
 ### 7.3 目录镜像铁律（2026-10-12 老板定）
 
@@ -313,6 +327,7 @@ GET /repos/{book_id}/toc
 
 - `configs/example-yuque.json`：语雀模式完整示例
 - `configs/example-both.json`：双写模式完整示例
-- `scripts/yuque-doc.js`：创建+挂载/查分组/audit/sync 一步封装工具
+- `scripts/yuque-doc.js`：建文档+挂载 / 挪档 / 查分组 / 对账 / 同步 / 取文档（`--help` 看选项与退出码）
+- `scripts/lib/yuque-toc.js`：上面那个工具用的纯逻辑（标题归一、分组查找、正文档判定、错误码翻译），可离线单测
 - `scripts/prepare-upload.js`：上传前预处理（剥离 CHANGES + 占位注释 + 缩进校验）
 - SKILL.md「新建小说」「写章节（阶段四）」「更新图」对应章节

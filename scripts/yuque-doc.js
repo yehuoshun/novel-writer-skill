@@ -1,112 +1,363 @@
 #!/usr/bin/env node
 /**
- * 语雀文档工具 — 把「创建 → 挂载」一步封装，绕开 mcporter 数组参数坑
+ * 语雀文档工具 — 建文档 / 挂目录 / 对账 / 同步，全部走 REST
  *
- * 背景（2026-10-12 ch023 实弹）：
- *   - yuque_create_doc 的 parent_uuid 参数不生效，创建的文档落在 TOC 根部
- *   - TOC 挂载 appendNode + doc_ids 对「已在根部的 doc」无效，正确姿势是
- *     PUT /toc {"action":"appendNode","action_mode":"child","target_uuid":"<分组uuid>","node_uuid":"<TOC节点uuid>"}
- *     （node_uuid 是 TOC 节点 uuid，不是 doc_id）
- *   - mcporter 的 key=value 传数组参数会变形，--args JSON 才稳；本脚本直接用 REST API 免这层坑
+ * 为什么不走 mcporter：数组参数（doc_ids）在 key=value 里会变形，--args JSON 才稳；
+ * 直接打 REST 少一层坑，也方便把重试和校验写死。
  *
- * 用法:
- *   node scripts/yuque-doc.js ls-groups --book 84415848
- *   node scripts/yuque-doc.js create-mount --book 84415848 --title "第024章 xxx" --file /path/正文.md --group 正文
+ * 调用口径照 code/yuque-ai-mcp（同一套 REST 的另一种封装），要点：
+ *   - 30s 超时；网络异常 / 429 / 5xx 退避重试 3 次（1s→2s→4s），400/401/403/404/422 立刻报错
+ *   - POST /docs 创建的文档不进目录，必须 appendNode + doc_ids 才生成 TOC 节点
+ *   - 移动 DOC 用 node_uuid 直移（语雀 v2 对 DOC 用 doc_ids + target_uuid 不可靠，会挂根/漏挂）
+ *   - appendNode 不带 target_uuid 时要把字段整个去掉，不能传 ""（传空串可能清空目录结构）
+ *   - TOC 写路径高频写会静默积压：响应是乐观回显，挂载后必须回读 TOC 校验
  *
- * 选项:
- *   --book <id|namespace>  知识库（必填）
- *   --title <标题>         新文档标题（create-mount 必填）
- *   --file <路径>          markdown 正文文件（create-mount 必填）
- *   --group <分组标题>     目标分组标题（默认 TOC 根；用 title 查 uuid）
- *   --group-uuid <uuid>    目标分组 uuid（优先于 --group，可跳过 TOC 查找）
- *   --config <路径>        yuque-mcp config.json（默认 skills/yuque-ai-mcp/config/config.json）
+ * 用法（node scripts/yuque-doc.js <子命令> [选项]）：
+ *   ls-groups   列出分组
+ *   create-mount 建文档并挂进分组（先定分组再建文档，不留孤儿）
+ *   move        把已有文档挪进分组（修挂载失败的孤儿）
+ *   audit       本地↔语雀对账
+ *   sync        把本地设定档推到语雀
+ *   get         取回一篇文档（--out 存文件）
  *
- * 退出码: 0=成功, 1=业务失败, 2=用法错误
+ * 退出码: 0=成功, 1=业务失败（含挂载校验不过）, 2=用法错误
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const {
+  argParse,
+  normTitle,
+  findGroup,
+  findDocNode,
+  findDocByTitle,
+  isBodyFile,
+  bodiesEqual,
+  groupFromLocalPath,
+  formatApiError,
+} = require('./lib/yuque-toc');
 
 const DEF_CONFIG = path.join(__dirname, '../../yuque-ai-mcp/config/config.json');
+const DEFAULT_BASE = 'https://www.yuque.com/api/v2';
+const MAX_RETRIES = intEnv('YUQUE_MAX_RETRIES', 3);
+const RETRY_BASE_MS = intEnv('YUQUE_RETRY_BASE_MS', 1000);
+const TIMEOUT_MS = intEnv('YUQUE_TIMEOUT_MS', 30000);
+const MOUNT_POLL_MS = intEnv('YUQUE_POLL_MS', 600);
+const SYNC_DELAY_MS = 200;
 
-function die(msg, code = 2) { console.error(`❌ ${msg}`); process.exit(code); }
+const USAGE = `
+语雀文档工具（设定档 / 正文的上传、挂载、对账、同步）
 
-function argParse(argv) {
-  const out = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a.startsWith('--')) {
-      const k = a.slice(2);
-      const v = argv[i + 1];
-      if (v === undefined || v.startsWith('--')) out[k] = true;
-      else { out[k] = v; i++; }
-    }
-  }
-  return out;
+用法: node scripts/yuque-doc.js <子命令> --book <id|namespace> [选项]
+
+子命令:
+  help          显示本说明
+  ls-groups     列出知识库里的分组（TITLE 节点）与它们下面的文档
+  create-mount  新建文档并挂进分组（先确认分组存在，再建文档，建完回读校验）
+  move          把已存在的文档挪进分组（挂载失败留下的孤儿用它修）
+  audit         本地 ↔ 语雀 对账（本地有语雀无 / 语雀有本地无 / 两边一致）
+  sync          把本地设定档推到语雀（正文除外；按内容比对，只写有差异的）
+  get           取回一篇文档的正文
+
+通用选项:
+  --book <id|namespace>   知识库（必填；也可由 --novel-config 的 yuque.book 提供）
+  --config <路径>         语雀 token 配置（默认 code/yuque-ai-mcp/config/config.json）
+  --token <token>         覆盖 token（测试用，避免读真实凭据）
+  --api-base <url>        覆盖 API 地址（默认 ${DEFAULT_BASE}）
+  --json                  机器可读输出
+
+create-mount / move:
+  --title <标题>          新文档标题（create-mount 必填）
+  --file <路径>           markdown 正文（create-mount 必填）
+  --doc <doc_id|标题>     要挪的文档（move 必填）
+  --group <分组标题>      目标分组
+  --group-uuid <uuid>     目标分组 uuid（省一次 TOC 查找）
+  --group-key <键>        从小说配置的 yuque.groups 里取 uuid（如 content / characters）
+  --novel-config <路径>   小说 config.json（提供 book 与 groups）
+  --local <小说根目录>    按方案 A 镜像从 --file 的相对路径自动推分组
+  --create-group          目标分组不存在时顺手建一个
+
+audit / sync / get:
+  --local <小说根目录>    含 设定/ 与 第NNN章*.md（audit、sync 必填）
+  --dry-run               sync 只列要改的，不写
+  --only <关键字>         sync 只处理标题含该关键字的档案
+  --doc <doc_id|标题>     get 要取的文档
+  --out <路径>            get 存到文件（不传则打印正文）
+
+环境变量（测试用）: YUQUE_MAX_RETRIES / YUQUE_RETRY_BASE_MS / YUQUE_TIMEOUT_MS / YUQUE_POLL_MS
+
+退出码: 0=成功, 1=业务失败（含挂载回读校验不过）, 2=用法错误
+`.trim();
+
+function intEnv(name, def) {
+  const v = Number.parseInt(process.env[name] || '', 10);
+  return Number.isFinite(v) && v >= 0 ? v : def;
 }
 
-function loadCfg(p) {
-  if (!fs.existsSync(p)) die(`config 不存在: ${p}`);
-  const c = JSON.parse(fs.readFileSync(p, 'utf-8'));
-  const tok = c.token || c.api_token || '';
-  if (!tok) die(`config 里没有 token: ${p}`);
-  return { token: tok, base: (c.api_base || 'https://www.yuque.com/api/v2').replace(/\/$/, '') };
+// 不用 process.exit：Windows 上管道输出可能被截断，改成抛 silent 错误由底部统一收口
+function die(msg, code = 2) {
+  console.error(`❌ ${msg}`);
+  const e = new Error('exit');
+  e.silent = true;
+  e.exitCode = code;
+  throw e;
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function isOn(v) {
+  return v === true || v === 'true' || v === '1' || v === 'yes';
+}
+
+function strOpt(opts, key) {
+  return typeof opts[key] === 'string' && opts[key].trim() ? opts[key].trim() : '';
+}
+
+// ---- 配置 ----
+
+function loadConfig(opts) {
+  const p = strOpt(opts, 'config') || DEF_CONFIG;
+  let c = {};
+  if (fs.existsSync(p)) {
+    try { c = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (e) { die(`config 不是合法 JSON: ${p}（${e.message}）`); }
+  } else if (opts.config) {
+    die(`config 不存在: ${p}`);
+  }
+  const token = strOpt(opts, 'token') || c.token || c.api_token || '';
+  if (!token || /在此填入/.test(token)) {
+    die(`没有可用的 token：检查 ${p} 里的 token（或传 --token）`);
+  }
+  const base = (strOpt(opts, 'api-base') || c.api_base || DEFAULT_BASE).replace(/\/+$/, '');
+  return { token, base, source: p };
+}
+
+function loadNovelConfig(opts) {
+  const p = strOpt(opts, 'novel-config');
+  if (!p) return null;
+  if (!fs.existsSync(p)) die(`小说配置不存在: ${p}`);
+  let c;
+  try { c = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (e) { die(`小说配置不是合法 JSON: ${p}（${e.message}）`); }
+  return { path: p, data: c, yuque: c.yuque || {} };
+}
+
+function resolveBook(opts, novel) {
+  const direct = strOpt(opts, 'book');
+  if (direct) return direct;
+  const b = novel && novel.yuque && novel.yuque.book;
+  if (typeof b === 'number') return String(b);
+  if (b && typeof b === 'object') {
+    if (b.book_id) return String(b.book_id);
+    if (b.namespace) return String(b.namespace);
+    if (b.slug) return String(b.slug);
+  }
+  if (typeof b === 'string' && b) return b;
+  die('缺少 --book（知识库 id 或 namespace；也可用 --novel-config 指向含 yuque.book 的小说配置）');
+}
+
+function groupUuidFromKey(opts, novel) {
+  const key = strOpt(opts, 'group-key');
+  if (!key) return '';
+  const groups = novel && novel.yuque && novel.yuque.groups;
+  if (!groups) die(`--group-key 需要 --novel-config 指向含 yuque.groups 的小说配置`);
+  const uuid = groups[key];
+  if (!uuid) {
+    die(`小说配置里没有分组键「${key}」。可用: ${Object.keys(groups).join(' / ') || '（空）'}`, 1);
+  }
+  return String(uuid);
+}
+
+// ---- HTTP ----
+
+function bookPath(book) {
+  return String(book).split('/').map(encodeURIComponent).join('/');
+}
+
+/**
+ * 一次请求。软失败（soft）不退出，交给调用方汇总——sync 要逐条报错不中断。
+ * 返回 { ok, data } 或 { ok:false, message }。
+ */
+async function request(cfg, method, urlPath, bodyObj, { soft = false } = {}) {
+  const url = `${cfg.base}${urlPath}`;
+  const payload = bodyObj === undefined ? undefined : JSON.stringify(bodyObj);
+  let lastMessage = '';
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = RETRY_BASE_MS * 2 ** (attempt - 1);
+      console.error(`   ↻ ${lastMessage}，${delay}ms 后重试（第 ${attempt}/${MAX_RETRIES} 次）`);
+      await sleep(delay);
+    }
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+    let res, raw;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: {
+          'X-Auth-Token': cfg.token,
+          ...(payload !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: payload,
+        signal: ac.signal,
+      });
+      raw = await res.text();
+    } catch (e) {
+      lastMessage = e && e.name === 'AbortError'
+        ? `${method} ${urlPath} 超时（${TIMEOUT_MS}ms）`
+        : `${method} ${urlPath} 连不上（${e.message}）`;
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
+    // 429 / 5xx 可重试；其余错误立刻定性，重试也不会变好
+    if (res.status === 429 || res.status >= 500) {
+      lastMessage = `${method} ${urlPath} ${formatApiError(res.status, raw)}`;
+      continue;
+    }
+    if (!res.ok) {
+      const message = `${method} ${urlPath} ${formatApiError(res.status, raw)}`;
+      if (soft) return { ok: false, message };
+      die(message, 1);
+    }
+    if (!raw || !raw.trim()) return { ok: true, data: null };
+    try {
+      return { ok: true, data: JSON.parse(raw) };
+    } catch {
+      const message = `${method} ${urlPath} 返回的不是 JSON：${raw.slice(0, 160)}`;
+      if (soft) return { ok: false, message };
+      die(message, 1);
+    }
+  }
+  const message = `${lastMessage}（已重试 ${MAX_RETRIES} 次）`;
+  if (soft) return { ok: false, message };
+  die(message, 1);
 }
 
 async function api(cfg, method, urlPath, bodyObj) {
-  const res = await fetch(`${cfg.base}${urlPath}`, {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Auth-Token': cfg.token },
-    body: bodyObj ? JSON.stringify(bodyObj) : undefined,
-  });
-  const raw = await res.text();
-  let data;
-  try { data = JSON.parse(raw); } catch { data = { raw }; }
-  if (!res.ok) {
-    const msg = data && data.detail ? data.detail : (data && data.message ? data.message : raw.slice(0, 200));
-    die(`${method} ${urlPath} 失败 (${res.status}): ${msg}`, 1);
-  }
-  return data;
+  const r = await request(cfg, method, urlPath, bodyObj);
+  return r.data;
+}
+
+function tocOf(data) {
+  return Array.isArray(data && data.data) ? data.data : [];
 }
 
 async function getToc(cfg, book) {
-  const d = await api(cfg, 'GET', `/repos/${book}/toc`);
-  return d.data || [];
+  return tocOf(await api(cfg, 'GET', `/repos/${bookPath(book)}/toc`));
 }
 
-function findGroup(toc, title) {
-  return toc.find(n => n.type === 'TITLE' && n.title === title) || null;
+/**
+ * 写 TOC。PUT 的响应就是更新后的全量节点数组（官方文档），所以不用再 GET 找 uuid。
+ * 注意：payload 里绝不能出现 target_uuid: ''（会清空目录结构），由调用方负责不带该键。
+ */
+async function putToc(cfg, book, payload) {
+  return tocOf(await api(cfg, 'PUT', `/repos/${bookPath(book)}/toc`, payload));
 }
 
-// 本地↔语雀映射（audit/sync 共用）：标题规范化匹配 + 路径分组校验（方案 A 镜像）+ 正文对账
-// 本地不存 changes（2026-10-12 老板定：changes 由语雀权威备份），故不对账 changes
-// 返回 { ok:[{local, yqTitle, docId}], localMissing:[], yqMissing:[] }
+// ---- 目录操作 ----
+
+/**
+ * 把文档挂进分组：先挂根拿到节点 uuid，再按 node_uuid 直移。
+ * 返回 { ok, nodeUuid, parentUuid }；不 ok 时调用方负责提示 move 修。
+ */
+async function attachDoc(cfg, book, docId, targetUuid) {
+  let node = findDocNode(await getToc(cfg, book), docId);
+
+  // 1. 不在 TOC 里就先挂根（POST /docs 不自动进目录）
+  if (!node) {
+    const t = await putToc(cfg, book, { action: 'appendNode', action_mode: 'child', type: 'DOC', doc_ids: [docId] });
+    node = findDocNode(t, docId) || findDocNode(await getToc(cfg, book), docId);
+    if (!node) return { ok: false, nodeUuid: null, parentUuid: '', why: '挂到 TOC 根之后仍然找不到节点' };
+  }
+  if (!targetUuid) return { ok: true, nodeUuid: node.uuid, parentUuid: node.parent_uuid || '' };
+  if ((node.parent_uuid || '') === targetUuid) return { ok: true, nodeUuid: node.uuid, parentUuid: targetUuid };
+
+  // 2. node_uuid 直移：语雀 v2 对 DOC 用 doc_ids + target_uuid 会挂根或漏挂
+  await putToc(cfg, book, { action: 'appendNode', action_mode: 'child', node_uuid: node.uuid, target_uuid: targetUuid });
+
+  // 3. 回读校验：响应是乐观回显，高频写 TOC 时会静默失败
+  const seen = await verifyMount(cfg, book, docId, targetUuid);
+  return { ok: seen.ok, nodeUuid: seen.nodeUuid, parentUuid: seen.parentUuid };
+}
+
+async function verifyMount(cfg, book, docId, targetUuid) {
+  let node = null;
+  for (let i = 0; i < 4; i++) {
+    if (i > 0) await sleep(MOUNT_POLL_MS);
+    node = findDocNode(await getToc(cfg, book), docId);
+    if (!node) continue;
+    const parent = node.parent_uuid || '';
+    if (targetUuid ? parent === targetUuid : !parent) return { ok: true, nodeUuid: node.uuid, parentUuid: parent };
+  }
+  return { ok: false, nodeUuid: node && node.uuid, parentUuid: (node && node.parent_uuid) || '' };
+}
+
+async function ensureGroup(cfg, book, title) {
+  const resp = await putToc(cfg, book, { action: 'appendNode', action_mode: 'child', type: 'TITLE', title });
+  const node = findGroup(resp, title) || findGroup(await getToc(cfg, book), title);
+  if (!node || !node.uuid) {
+    die(`建分组「${title}」失败：响应里没有这个节点（TOC 写路径可能积压了，静置 10 分钟再试）`, 1);
+  }
+  console.log(`✅ 已建分组「${title}」（node=${node.uuid}）`);
+  return node.uuid;
+}
+
+/** 目标分组：--group-uuid / --group-key > --group > --local 自动推；都给不出就回 TOC 根 */
+async function resolveTarget(cfg, book, opts, novel) {
+  const byKey = groupUuidFromKey(opts, novel);
+  if (byKey) return { uuid: byKey, name: strOpt(opts, 'group') || strOpt(opts, 'group-key') };
+  const byUuid = strOpt(opts, 'group-uuid');
+  if (byUuid) return { uuid: byUuid, name: strOpt(opts, 'group') || byUuid };
+
+  let name = strOpt(opts, 'group');
+  const local = strOpt(opts, 'local');
+  const file = strOpt(opts, 'file');
+  if (!name && local && file) name = groupFromLocalPath(local, file);
+  if (!name) return null;
+
+  const toc = await getToc(cfg, book);
+  const found = findGroup(toc, name);
+  if (found) return { uuid: found.uuid, name };
+  if (isOn(opts['create-group'])) return { uuid: await ensureGroup(cfg, book, name), name, created: true };
+
+  const list = toc.filter(n => n.type === 'TITLE').map(n => `  ${n.title}  →  ${n.uuid}`).join('\n');
+  die(`分组「${name}」不存在（文档还没创建，什么都没改）。现有分组：\n${list || '  （这个知识库还没有分组）'}\n加 --create-group 可顺手建，或用 --group-uuid 直接指定`, 1);
+}
+
+// ---- 本地 ↔ 语雀映射（audit / sync 共用） ----
+
+/**
+ * 本地不存 changes（2026-10-12 定：changes 由语雀权威备份），故不对账 changes。
+ * 返回 { ok:[{local,yqTitle,docId,isBody?}], localMissing:[], yqMissing:[] }
+ */
 async function buildMapping(cfg, book, localDir) {
   const setDir = path.join(localDir, '设定');
   const toc = await getToc(cfg, book);
   const yqDocs = toc.filter(n => n.type === 'DOC');
-  const norm = (t) => (t || '')
-    .replace(/（第\d+章[^）]*）$/, '')
-    .replace(/（截止第\d+章）$/, '')
-    .replace(/^第\d+章\s*/, '')
-    .trim();
   const yqByNorm = new Map();
-  for (const n of yqDocs) yqByNorm.set(norm(n.title), n);
+  for (const n of yqDocs) yqByNorm.set(normTitle(n.title), n);
 
-  const ok = [], localMissing = [], yqMissing = [];
+  const ok = [];
+  const localMissing = [];
+  const yqMissing = [];
   const localAll = new Set();
 
   // A. 设定档：设定/*.md 扁平 + 子目录（伏笔追踪/大纲/变更日志）
-  const flat = [], sub = [];
+  const flat = [];
+  const sub = [];
   (function walk(d, rel) {
     if (!fs.existsSync(d)) return;
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) { if (e.name !== 'changes') walk(p, rel + e.name + '/'); continue; }
-      if (e.name.endsWith('.md')) {
-        if (rel === '') flat.push(e.name.slice(0, -3));
-        else sub.push({ rel: rel + e.name, base: e.name.slice(0, -3) });
+      if (e.isDirectory()) {
+        if (e.name !== 'changes') walk(p, rel + e.name + '/');
+        continue;
       }
+      if (!e.name.endsWith('.md')) continue;
+      if (rel === '') flat.push(e.name.slice(0, -3));
+      else sub.push({ rel: rel + e.name, base: e.name.slice(0, -3) });
     }
   })(setDir, '');
 
@@ -120,9 +371,10 @@ async function buildMapping(cfg, book, localDir) {
     localAll.add(f.base);
     const n = yqByNorm.get(f.base);
     if (!n) { localMissing.push(`设定/${f.rel}`); continue; }
-    // 路径分组校验（方案 A 镜像）：本地 rel 首目录 应等于 语雀所属分组
+    // 方案 A 镜像：本地 rel 首目录应等于语雀所属分组
     const localGroup = f.rel.split('/')[0];
-    const yqGroup = (() => { const p = toc.find(x => x.uuid === n.parent_uuid); return p ? p.title : ''; })();
+    const parent = toc.find(x => x.uuid === n.parent_uuid);
+    const yqGroup = parent ? parent.title : '';
     if (localGroup !== yqGroup) {
       localMissing.push(`设定/${f.rel}（路径分组「${localGroup}」≠ 语雀分组「${yqGroup}」——需挪目录或调整语雀）`);
       continue;
@@ -130,148 +382,279 @@ async function buildMapping(cfg, book, localDir) {
     ok.push({ local: path.join(setDir, f.rel), yqTitle: n.title, docId: n.doc_id });
   }
 
-  // C. 正文对账（本地非上传版 vs 语雀正文分组）
-  const contentGroup = toc.find(n => n.type === 'TITLE' && n.title === '正文');
-  const contentTitles = new Set(toc.filter(n => n.parent_uuid === contentGroup.uuid).map(n => n.title));
-  const bodyFiles = fs.readdirSync(localDir).filter(f =>
-    /^第\d+章 .+\.md$/.test(f) && !/(上传版|备份|润色版|旧版|初稿|三轮版|版本)/.test(f));
+  // C. 正文对账（本地非上传版 vs 语雀「正文」分组）
+  const contentGroup = findGroup(toc, '正文');
+  const contentNodes = contentGroup
+    ? toc.filter(n => n.type === 'DOC' && (n.parent_uuid || '') === contentGroup.uuid)
+    : [];
+  const contentByTitle = new Map(contentNodes.map(n => [n.title, n]));
+  const bodyFiles = fs.readdirSync(localDir).filter(f => isBodyFile(f));
   for (const f of bodyFiles) {
     const t = f.slice(0, -3);
-    if (contentTitles.has(t)) ok.push({ local: path.join(localDir, f), yqTitle: t, docId: null, isBody: true });
+    const n = contentByTitle.get(t);
+    if (n) ok.push({ local: path.join(localDir, f), yqTitle: t, docId: n.doc_id, isBody: true });
+    else if (!contentGroup) localMissing.push(`正文/${f}（语雀没有「正文」分组）`);
     else localMissing.push(`正文/${f}（语雀正文分组无「${t}」）`);
   }
-  for (const cd of toc.filter(n => n.parent_uuid === contentGroup.uuid)) {
-    const localFile = bodyFiles.find(f => f.slice(0, -3) === cd.title);
-    if (!localFile) yqMissing.push(`正文/${cd.title}（本地无同名非上传版正文）`);
+  for (const n of contentNodes) {
+    if (!bodyFiles.some(f => f.slice(0, -3) === n.title)) yqMissing.push(`正文/${n.title}（本地无同名非上传版正文）`);
   }
 
   // D. 语雀有本地无（设定档，排除语雀特有/正文/changes/状态快照）
   for (const n of yqDocs) {
-    const nn = norm(n.title);
+    const nn = normTitle(n.title);
     if (nn === '' || nn === '章节摘要' || nn.startsWith('ch') || /^第\d+章/.test(n.title)) continue;
-    if (/^状态快照/.test(n.title)) { if (!fs.existsSync(path.join(setDir, '状态快照.md'))) yqMissing.push(`状态快照（语雀有 ${n.title}）`); continue; }
+    if (/^状态快照/.test(n.title)) {
+      if (!fs.existsSync(path.join(setDir, '状态快照.md'))) yqMissing.push(`状态快照（语雀有 ${n.title}）`);
+      continue;
+    }
     if (nn === '简介' || nn === '地点关系图') continue;
     if (!localAll.has(nn)) yqMissing.push(`${n.title}（语雀 ${n.title} 本地无）`);
   }
+
   return { ok, localMissing, yqMissing };
 }
 
-async function main() {
-  const a = argParse(process.argv.slice(2));
-  const sub = process.argv[2];
-  const book = a.book;
-  if (!book) die('缺少 --book');
-  const cfg = loadCfg(a.config || DEF_CONFIG);
+// ---- 子命令 ----
 
-  if (sub === 'ls-groups') {
-    const toc = await getToc(cfg, book);
-    console.log('📁 知识库分组（TITLE 节点）:');
-    for (const n of toc) if (n.type === 'TITLE') console.log(`  ${n.title}  →  ${n.uuid}`);
+function printGroups(toc) {
+  const groups = toc.filter(n => n.type === 'TITLE');
+  if (!groups.length) {
+    console.log('📁 这个知识库还没有分组（TITLE 节点）——文档都在 TOC 根上。');
     return;
   }
-
-  if (sub === 'create-mount') {
-    const title = a.title, file = a.file;
-    if (!title) die('缺少 --title');
-    if (!file) die('缺少 --file');
-    if (!fs.existsSync(file)) die(`正文文件不存在: ${file}`);
-    const body = fs.readFileSync(file, 'utf-8');
-    // 方案 A 镜像：--local <小说根目录> 时，从 file 相对路径自动推分组（免手动 --group）
-    if (!a.group && a.local) {
-      const rel = path.relative(path.resolve(a.local), path.resolve(file));
-      const seg = rel.split(path.sep);
-      if (seg[0] === '设定' && seg.length >= 3) a.group = seg[1];
-    }
-
-    // 1. 创建文档（parent_uuid 参数实测不生效，创建后落在 TOC 根）
-    const created = await api(cfg, 'POST', `/repos/${book}/docs`, { title, format: 'markdown', body });
-    const docId = created.data && created.data.id;
-    if (!docId) die('创建文档失败：响应无 doc id');
-    console.log(`✅ 已创建 DOC: ${title} (doc_id=${docId})`);
-
-    // 2. 查目标分组 uuid
-    let targetUuid = a['group-uuid'];
-    if (!targetUuid && a.group) {
-      const toc = await getToc(cfg, book);
-      const g = findGroup(toc, a.group);
-      if (!g) {
-        console.error(`⚠️ 分组「${a.group}」不存在，可用分组:`);
-        for (const n of toc) if (n.type === 'TITLE') console.error(`  ${n.title}`);
-        console.error(`文档已创建但未挂载（doc_id=${docId}），可重跑本命令修正 --group`);
-        process.exit(1);
-      }
-      targetUuid = g.uuid;
-    }
-    if (!targetUuid) { console.log(`ℹ️ 未指定分组，文档留在 TOC 根（doc_id=${docId}）`); return; }
-
-    // 3. 查新文档的 TOC 节点 uuid（REST POST /docs 创建后不进 TOC——2026-10-12 实测，
-    //    与 mcporter 的 create_doc 行为不同——需先 appendNode 挂根再移动）
-    // 创建后立刻查 TOC 可能命中缓存（2026-10-12 实弹：POST /docs 后 GET /toc 查不到新 doc），
-    // appendNode 挂根后重试 3 次（间隔 600ms）再放弃
-    const findNode = async () => (await getToc(cfg, book)).filter(n => n.doc_id === docId).pop();
-    let node = await findNode();
-    if (!node) {
-      await api(cfg, 'PUT', `/repos/${book}/toc`, { action: 'appendNode', action_mode: 'sibling', type: 'DOC', doc_ids: [docId] });
-      for (let i = 0; i < 3 && !node; i++) {
-        await new Promise(r => setTimeout(r, 600));
-        node = await findNode();
-      }
-    }
-    if (!node || !node.uuid) die(`找不到新文档的 TOC 节点 (doc_id=${docId})`);
-
-    // 4. 移动到目标分组
-    await api(cfg, 'PUT', `/repos/${book}/toc`, {
-      action: 'appendNode', action_mode: 'child', type: 'DOC',
-      target_uuid: targetUuid, node_uuid: node.uuid,
-    });
-    console.log(`✅ 已挂载 → 分组「${a.group || targetUuid}」（doc_id=${docId}, node=${node.uuid}）`);
-    return;
+  console.log('📁 知识库分组（TITLE 节点）:');
+  for (const g of groups) {
+    const kids = toc.filter(n => n.type === 'DOC' && (n.parent_uuid || '') === g.uuid);
+    console.log(`  ${g.title}  →  ${g.uuid}（${kids.length} 篇）`);
+    for (const k of kids) console.log(`      · ${k.title} (doc=${k.doc_id})`);
   }
-
-  if (sub === 'audit') {
-    const localDir = a.local;
-    if (!localDir) die('缺少 --local <小说根目录>（含 设定/ 与 第NNN章*.md）');
-    if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`);
-    const { ok, localMissing, yqMissing } = await buildMapping(cfg, book, localDir);
-    console.log(`\n📋 本地↔语雀对账（book=${book}）`);
-    console.log(`\n🟢 两边一致（${ok.length}）:`);
-    ok.forEach(x => console.log(`  ${x.isBody ? '正文/' : ''}${x.yqTitle} → ${x.yqTitle} (${x.docId || '正文'})`));
-    console.log(`\n🔴 本地有、语雀无（${localMissing.length}）——需上传/补建:`);
-    localMissing.forEach(x => console.log(`  ${x}`));
-    console.log(`\n🔵 语雀有、本地无（${yqMissing.length}）——需下载/补档:`);
-    yqMissing.forEach(x => console.log(`  ${x}`));
-    console.log(`\n（对账按标题匹配，标题不同但内容相同的档会误报——人工核对后再补）`);
-    return;
+  const rootDocs = toc.filter(n => n.type === 'DOC' && !n.parent_uuid);
+  if (rootDocs.length) {
+    console.log(`\n  ⚠️ TOC 根上还有 ${rootDocs.length} 篇没归组：`);
+    for (const d of rootDocs) console.log(`      · ${d.title} (doc=${d.doc_id}, node=${d.uuid})`);
   }
-
-  if (sub === 'sync') {
-    const localDir = a.local;
-    if (!localDir) die('缺少 --local <小说根目录>');
-    if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`);
-    const { ok } = await buildMapping(cfg, book, localDir);
-    const targets = ok.filter(x => !x.isBody);  // 正文不进 sync（语雀正文是上传版，本地非上传版含 CHANGES）
-    const dryRun = a['dry-run'] === 'true' || a['dry-run'] === true;
-    let updated = 0, same = 0, skipped = 0;
-    for (const t of targets) {
-      if (!t.docId) { skipped++; continue; }
-      const localBody = fs.readFileSync(t.local, 'utf-8');
-      const r = await api(cfg, 'GET', `/repos/${book}/docs/${t.docId}?raw=1`);
-      const yqBody = (r.data && r.data.body) || '';
-      // 标题头差异豁免（双向——任一边带「# 标题」行，去标题后相同即视为一致）+ 尾部换行豁免
-      const trimEq = (x) => x.replace(/^#\s+.*\n+/, '').replace(/\s+$/, '');
-      if (trimEq(yqBody) === trimEq(localBody)) { same++; continue; }
-      console.log(`${dryRun ? '[待更新]' : '[更新]'} ${t.yqTitle} (${t.docId})`);
-      if (!dryRun) {
-        await api(cfg, 'PUT', `/repos/${book}/docs/${t.docId}`, { format: 'markdown', body: localBody });
-        updated++;
-      } else updated++;
-    }
-    console.log(`\nsync ${dryRun ? '预演（--dry-run）' : '完成'}: 需更新 ${updated}（含预演），一致跳过 ${same}，跳过正文/无 id ${skipped}`);
-    console.log(dryRun ? '加 --dry-run 可预演；确认后去掉即执行' : '✅ 全部档案已与本地对齐（正文除外——正文用 create-mount 上传上传版）');
-    return;
-  }
-
-  die(`未知子命令「${sub}」。可用: ls-groups / create-mount / audit`);
 }
 
-main().catch(e => { console.error(`❌ ${e.message}`); process.exit(1); });
+async function cmdLsGroups(cfg, book, opts) {
+  const toc = await getToc(cfg, book);
+  if (isOn(opts.json)) {
+    console.log(JSON.stringify({
+      groups: toc.filter(n => n.type === 'TITLE').map(n => ({ title: n.title, uuid: n.uuid })),
+      rootDocs: toc.filter(n => n.type === 'DOC' && !n.parent_uuid).map(n => ({ title: n.title, docId: n.doc_id })),
+      total: toc.length,
+    }, null, 2));
+    return 0;
+  }
+  printGroups(toc);
+  return 0;
+}
+
+async function cmdCreateMount(cfg, book, opts, novel) {
+  const title = strOpt(opts, 'title');
+  const file = strOpt(opts, 'file');
+  if (!title) die('缺少 --title');
+  if (!file) die('缺少 --file');
+  if (!fs.existsSync(file)) die(`正文文件不存在: ${file}`, 1);
+  const body = fs.readFileSync(file, 'utf-8');
+  if (!body.trim()) die(`正文是空的: ${file}`, 1);
+
+  // 1. 先定分组——分组不存在就在建文档之前失败，不留孤儿 DOC
+  const target = await resolveTarget(cfg, book, opts, novel);
+  if (!target) console.log('ℹ️ 没指定分组，文档会留在 TOC 根');
+
+  // 2. 建文档（format=markdown；POST /docs 不会自动进目录）
+  const created = await api(cfg, 'POST', `/repos/${bookPath(book)}/docs`, {
+    title,
+    format: 'markdown',
+    body,
+  });
+  const docId = created && created.data && created.data.id;
+  if (!docId) die('建文档失败：响应里没有 doc id', 1);
+  console.log(`✅ 已建文档：${title}（doc_id=${docId}）`);
+
+  // 3. 挂进分组并回读校验
+  const res = await attachDoc(cfg, book, docId, target ? target.uuid : '');
+  if (!res.ok) {
+    console.error(`❌ 文档建好了，但挂载回读校验没过（现在在「${res.parentUuid || 'TOC 根'}」，目标「${target.name}」）。`);
+    console.error('   语雀 TOC 写路径高频写时会静默积压（要静置 ~10 分钟）。等一会儿再修：');
+    console.error(`   node scripts/yuque-doc.js move --book ${book} --doc ${docId} --group-uuid ${target.uuid}`);
+    return 1;
+  }
+  if (target) console.log(`✅ 已挂进分组「${target.name}」（node=${res.nodeUuid}）`);
+  if (isOn(opts.json)) console.log(JSON.stringify({ docId, nodeUuid: res.nodeUuid, group: target ? target.name : null }, null, 2));
+  return 0;
+}
+
+async function cmdMove(cfg, book, opts, novel) {
+  const ref = strOpt(opts, 'doc');
+  if (!ref) die('缺少 --doc <doc_id|标题>');
+  const toc = await getToc(cfg, book);
+  const node = /^\d+$/.test(ref) ? findDocNode(toc, ref) : findDocByTitle(toc, ref);
+  const docId = node ? node.doc_id : (/^\d+$/.test(ref) ? Number(ref) : 0);
+  if (!docId) die(`语雀里找不到「${ref}」对应的文档`, 1);
+
+  const target = await resolveTarget(cfg, book, opts, novel);
+  if (!target) die('缺少目标分组（--group / --group-uuid / --group-key）');
+  const res = await attachDoc(cfg, book, docId, target.uuid);
+  if (!res.ok) {
+    console.error(`❌ 还是没挂上（现在在「${res.parentUuid || 'TOC 根'}」）。TOC 写路径可能积压了，静置 10 分钟重跑同一条命令。`);
+    return 1;
+  }
+  console.log(`✅ ${node ? node.title : 'doc=' + docId} → 分组「${target.name}」（node=${res.nodeUuid}）`);
+  return 0;
+}
+
+async function cmdAudit(cfg, book, opts) {
+  const localDir = strOpt(opts, 'local');
+  if (!localDir) die('缺少 --local <小说根目录>（含 设定/ 与 第NNN章*.md）');
+  if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`, 1);
+  const { ok, localMissing, yqMissing } = await buildMapping(cfg, book, localDir);
+
+  if (isOn(opts.json)) {
+    console.log(JSON.stringify({
+      book,
+      same: ok.map(x => ({ title: x.yqTitle, docId: x.docId, body: !!x.isBody })),
+      localMissing,
+      yqMissing,
+    }, null, 2));
+    return 0;
+  }
+
+  console.log(`\n📋 本地↔语雀对账（book=${book}）`);
+  console.log(`\n🟢 两边一致（${ok.length}）:`);
+  for (const x of ok) console.log(`  ${x.isBody ? '正文/' : ''}${x.yqTitle}（doc=${x.docId}）`);
+  console.log(`\n🔴 本地有、语雀无（${localMissing.length}）——需上传/补建:`);
+  for (const x of localMissing) console.log(`  ${x}`);
+  console.log(`\n🔵 语雀有、本地无（${yqMissing.length}）——需下载/补档:`);
+  for (const x of yqMissing) console.log(`  ${x}`);
+  console.log('\n（对账按标题匹配，标题不同但内容相同的档会误报——人工核对后再补）');
+  return 0;
+}
+
+async function cmdSync(cfg, book, opts) {
+  const localDir = strOpt(opts, 'local');
+  if (!localDir) die('缺少 --local <小说根目录>');
+  if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`, 1);
+  const dryRun = isOn(opts['dry-run']);
+  const only = strOpt(opts, 'only');
+
+  const { ok } = await buildMapping(cfg, book, localDir);
+  // 正文不进 sync：语雀正文是上传版，本地非上传版含 CHANGES
+  let targets = ok.filter(x => !x.isBody && x.docId);
+  if (only) targets = targets.filter(x => x.yqTitle.includes(only) || x.local.includes(only));
+  const skipped = ok.filter(x => !x.isBody && !x.docId).length;
+
+  let updated = 0;
+  let same = 0;
+  let skippedFormat = 0;
+  const failures = [];
+  let firstWrite = true;
+
+  for (const t of targets) {
+    const localBody = fs.readFileSync(t.local, 'utf-8');
+    const r = await request(cfg, 'GET', `/repos/${bookPath(book)}/docs/${t.docId}`, undefined, { soft: true });
+    if (!r.ok) { failures.push(`${t.yqTitle}：拉取失败（${r.message}）`); continue; }
+    const doc = (r.data && r.data.data) || {};
+    // 远端若是 lake（在语雀编辑器里写过），PUT markdown 会把排版冲掉——跳过等人处理
+    if (doc.format && doc.format !== 'markdown') {
+      failures.push(`${t.yqTitle}：远端是 ${doc.format} 格式，直接推 markdown 会毁排版——请在语雀里改或先转格式`);
+      skippedFormat++;
+      continue;
+    }
+    if (bodiesEqual(doc.body || '', localBody)) { same++; continue; }
+    console.log(`${dryRun ? '[待更新]' : '[更新]'} ${t.yqTitle} (${t.docId})`);
+    if (dryRun) { updated++; continue; }
+    if (!firstWrite) await sleep(SYNC_DELAY_MS);
+    firstWrite = false;
+    const w = await request(cfg, 'PUT', `/repos/${bookPath(book)}/docs/${t.docId}`, { format: 'markdown', body: localBody }, { soft: true });
+    if (!w.ok) { failures.push(`${t.yqTitle}：写入失败（${w.message}）`); continue; }
+    updated++;
+  }
+
+  const summary = { dryRun, targets: targets.length, updated, same, skipped, skippedFormat, failures };
+  if (isOn(opts.json)) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    console.log(`\nsync ${dryRun ? '预演（--dry-run）' : '完成'}：需更新 ${updated}，一致跳过 ${same}，无 doc_id 跳过 ${skipped}`);
+    if (dryRun) console.log('（预演模式：确认无误后去掉 --dry-run 再跑）');
+    else if (!failures.length) console.log('✅ 设定档已与本地对齐（正文不在此列——正文用 create-mount 上传上传版）');
+  }
+  if (failures.length) {
+    console.error(`\n❌ ${failures.length} 篇没同步成：`);
+    for (const f of failures) console.error(`   · ${f}`);
+    return 1;
+  }
+  return 0;
+}
+
+async function cmdGet(cfg, book, opts) {
+  const ref = strOpt(opts, 'doc');
+  if (!ref) die('缺少 --doc <doc_id|标题>');
+  let docRef = ref;
+  if (!/^\d+$/.test(ref)) {
+    const node = findDocByTitle(await getToc(cfg, book), ref);
+    if (!node) die(`语雀里找不到标题为「${ref}」的文档`, 1);
+    docRef = node.doc_id;
+  }
+  const r = await api(cfg, 'GET', `/repos/${bookPath(book)}/docs/${docRef}`);
+  const doc = (r && r.data) || {};
+  const out = strOpt(opts, 'out');
+  if (out) {
+    fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+    fs.writeFileSync(out, doc.body || '', 'utf-8');
+    console.log(`✅ 已保存：${out}（${(doc.body || '').length} 字，format=${doc.format || '?'}）`);
+    return 0;
+  }
+  if (isOn(opts.json)) {
+    console.log(JSON.stringify({
+      id: doc.id,
+      slug: doc.slug,
+      title: doc.title,
+      format: doc.format,
+      wordCount: doc.word_count,
+      updatedAt: doc.updated_at,
+      body: doc.body || '',
+    }, null, 2));
+    return 0;
+  }
+  if (doc.format && doc.format !== 'markdown') {
+    console.error(`⚠️ 这篇在语雀里是 ${doc.format} 格式，body 可能不是 markdown 原文`);
+  }
+  process.stdout.write(doc.body || '');
+  if (!(doc.body || '').endsWith('\n')) process.stdout.write('\n');
+  return 0;
+}
+
+async function main(argv) {
+  const opts = argParse(argv);
+  const positionals = opts._;
+  const sub = positionals[0];
+
+  if (!sub || sub === 'help' || isOn(opts.help)) {
+    console.log(USAGE);
+    // 什么都不带时算是用法错误；显式 --help / help 是成功
+    return !sub && !isOn(opts.help) ? 2 : 0;
+  }
+  const known = ['ls-groups', 'create-mount', 'move', 'audit', 'sync', 'get'];
+  if (!known.includes(sub)) die(`未知子命令「${sub}」。可用: ${known.join(' / ')} / help`);
+
+  const novel = loadNovelConfig(opts);
+  const book = resolveBook(opts, novel);
+  const cfg = loadConfig(opts);
+
+  if (sub === 'ls-groups') return cmdLsGroups(cfg, book, opts);
+  if (sub === 'create-mount') return cmdCreateMount(cfg, book, opts, novel);
+  if (sub === 'move') return cmdMove(cfg, book, opts, novel);
+  if (sub === 'audit') return cmdAudit(cfg, book, opts);
+  if (sub === 'sync') return cmdSync(cfg, book, opts);
+  return cmdGet(cfg, book, opts);
+}
+
+main(process.argv.slice(2))
+  .then(code => { process.exitCode = code || 0; })
+  .catch(e => {
+    if (e && e.silent) { process.exitCode = e.exitCode; return; }
+    console.error(`❌ ${e && e.stack ? e.stack : e}`);
+    process.exitCode = 1;
+  });

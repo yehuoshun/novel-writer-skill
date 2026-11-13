@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-version: 3.5.40
+version: 3.5.41
 description: 小说写作辅助技能。支持设定管理、大纲规划、章节写作、CHANGES变更声明协议、12门禁校验（引用/一致性/描写/未知实体/蓝图合规/伏笔闭环）、爽点钩子追踪、情绪曲线、去AI味、事实快照+下章交接包状态管理。当用户提到「写小说」「新建小说」「写章节」「续写」「更新设定」「补充设定」「查设定」「查冲突」「写大纲」「查大纲」「回溯」「状态」「切换小说」「更新图」时触发。
 ---
 
@@ -312,7 +312,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 17. 门禁全部通过后 → 落地（按 save_location）：
     - **本地模式（主线）**：正文存**完整版（含 CHANGES 块，工作态）**到 `local.content_path`；CHANGES 以正文内嵌块为权威，`设定/changes/` 目录**可选**（旧布局兼容：backup-snapshot 快照优先读 changes/chXXX.md，无则从正文提取归档）
     - **语雀 / 双写（both）模式**：上传前预处理（`prepare-upload.js` 剥离 CHANGES + 占位注释 + 缩进校验）→ 创建+挂载正文 DOC，全程细节（含 2026-10-09/11/12 语雀渲染与挂载踩坑记录）见 [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) 第 6 节
-17.5. **双写对账（both 模式，2026-10-12 补）**：本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步（详见手册第 7 节）
+17.5. **双写对账（both 模式，2026-10-12 补）**：本地/语雀档案同步前后跑 `node scripts/yuque-doc.js audit --book <id> --local <小说目录>` 验证两侧一致（🟢 一致 / 🔴 本地有语雀无 / 🔵 语雀有本地无）；不一致先处理再进下一步。加 `--json` 可得结构化结果；书里还没建「正文」分组时，正文档会被逐条点名而不是让脚本崩掉（详见手册第 7 节）
 18. **从 CHANGES 块提取变更**，自动更新设定：
     - **结构化那半可以交给脚本（v3.5.32）**：`node scripts/apply-changes.js <config.json> <本章正文.md> --write` 按 CHANGES 直接改 `状态快照.md`——角色状态与移动、伏笔四态、地点/势力、物品归属、冲突进度、时间线、整段交接包；**默认 dry-run**（只打印将改哪几行），重复跑幂等，快照里没登记的伏笔 ID 直接报错不猜。`publish-chapter.js --apply-changes` 则是发布成功后自动跑一遍。脚本碰表格与交接包，**并在同一趟同步伏笔档案**（`伏笔追踪/vID-*.md` 的 `- 状态：`、`- 埋设章节：`、`- 推进章节：`、`- 揭晓章：`，v3.5.35；档案不存在只提醒不新建）——7 个追踪文档、语雀侧 DOC 仍要按下面手工补。
     - **档案骨架也能机械建（v3.5.34）**：`node scripts/scaffold-entity.js <config.json> <草稿.md> --write` 按本章 CHANGES 把缺的**角色/地点/物品/势力档案**与「新埋设」的**伏笔档案**补出骨架，已有文件一个字节不动（默认 dry-run）。发布时加 `--scaffold` 就在门禁之前跑一遍——新角色上场前不建档，门禁 1 会拿「未登记实体」拦你。骨架只补字段（`身份：待补`、外貌段留空），内容还得自己填；**推进/回收没建过档的伏笔不补建**，直接报错（补建等于把漏建档洗成刚埋设）。
@@ -332,7 +332,7 @@ description: 小说写作辅助技能。支持设定管理、大纲规划、章�
 21. 更新 `info.written_chapters` 列表
 22. 更新配置追踪字段：
     - **2026-10-12 P2-7 落地：回写配置一条命令**——`node scripts/finalize-config.js <config.json> <小说目录> [--chapter N] [--sweet-spot 类型] [--hook-start 类型,强度] [--hook-end 类型,强度] [--emotion 情绪,强度]`：自动算 `current_chapter`（最大章号）/`written_chapters`（全部章号）/`total_words`（全量重算，口径统一），LLM 判断字段（爽点/钩子/情绪峰值）显式传参，4 个 consecutive_* 自动重置；其余字段不动。`--chapter` 必须为正整数且 **≥ 目录最大章号**（传小会报错拦下，防 current_chapter 写回退）；每个 flag 缺值直接报用法错误，不静默默认
-    - **语雀档案批量同步（both 模式，P2-7 落地）**：`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run]` 一键把本地 设定/ 推语雀（含 changes，标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑（详见手册 7.2）
+    - **语雀档案批量同步（both 模式，P2-7 落地）**：`node scripts/yuque-doc.js sync --book <id> --local <小说目录> [--dry-run] [--only <关键字>]` 一键把本地 设定/ 推语雀（不含 `设定/changes/`——changes 以语雀为权威；标题头/尾部换行差异自动豁免）；先 `--dry-run` 预演确认差异方向（本地新才推，若语雀新需反向处理），再真跑。远端若是 `lake` 格式（在语雀编辑器里写过）会拒写，免得推 markdown 冲掉排版；某一篇失败不影响其余，跑完逐条列出并以 exit 1 收尾（详见手册 7.2）
     - `info.last_sweet_spot` / `consecutive_no_spot` / `consecutive_same_type`
     - `info.last_hook_start` / `last_hook_end` / `consecutive_weak_hooks`
     - `info.last_emotion_peak` / `consecutive_flat_emotion`
@@ -1133,4 +1133,4 @@ graph LR
 | [references/integrations/yuque-integration.md](references/integrations/yuque-integration.md) | 语雀/both 模式（save_location=yuque/both）时全流程必读；**纯本地模式无需加载** |
 ---
 
-_版本：v3.5.40_
+_版本：v3.5.41_

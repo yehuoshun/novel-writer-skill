@@ -61,6 +61,8 @@
 ### 语雀（可选）
 正文和设定存同一个知识库，语雀内用 TITLE 节点做分组目录（正文/ + 21 个设定组）。全部语雀操作细节（建库分组/API 速查/上传挂载/changes 归档/audit/sync）见 `references/integrations/yuque-integration.md`；纯本地模式无需语雀。
 
+语雀批量操作用 `node scripts/yuque-doc.js`（`--help` 看用法）：建文档+挂载、挪档、查分组、对账、同步、取文档。调用口径照 `code/yuque-ai-mcp`：30s 超时 + 429/5xx 指数退避重试、错误翻中文、先定分组再建文档（不留孤儿）、挂载后回读 TOC 校验（语雀 TOC 高频写会静默失败）。
+
 ## 配置文件
 
 放在 `configs/[小说名].json`（本地模式示例：`configs/example.json`；语雀模式示例：`configs/example-yuque.json`；双写模式示例：`configs/example-both.json`）。
