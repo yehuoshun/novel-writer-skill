@@ -5,6 +5,7 @@
 #       改稿默认拒绝 exit 3 / --revise 覆盖并留旧指纹 / 门禁阻断 exit 1 且正文一个字节不动 / 账本审计 exit 0 /
 #       --apply-changes 自动回写快照 / housekeeping 清理草稿报告且不碰验收记录与账本 /
 #       publish-status 伏笔双写体检（档案状态 × 快照伏笔表，打架 exit 1，正文未入账只提醒）
+#       publish-batch 多章续跑（从账本断点起连发 N 章，中途被打回就停在该章，后面的不动）
 # 为什么放 CI：node --test 跑的是进程内逻辑；发布链路的真实入口是 shell 里的 CLI，退出码与账本落盘
 # 只有在这里跑一遍才算验过（v3.5.26 的 exit 4 与 v3.5.28 的 --data 比对都靠它兜底）。
 set +e
@@ -14,6 +15,7 @@ STATUS="node $ROOT/scripts/publish-status.js"
 NEXT="node $ROOT/scripts/next-chapter.js"
 REPORT="node $ROOT/scripts/gate-report.js"
 HK="node $ROOT/scripts/housekeeping.js"
+BATCH="node $ROOT/scripts/publish-batch.js"
 WORK="$(mktemp -d /tmp/nw-publish.XXXXXX)"
 cd "$WORK" || exit 2
 mkdir -p 草稿 正文 设定/changes 设定/角色设定/主角 设定/地点设定
@@ -307,6 +309,86 @@ check "改回一致 + 正文多一章没入账 → 只提醒、exit 0" 0 $CODE "
 ok "报告双写一致" "$(printf '%s' "$OUT" | grep -q '伏笔双写一致' && echo 1 || echo 0)" "$OUT"
 ok "正文未入账只提醒" "$(printf '%s' "$OUT" | grep -q '正文有 第009章.md 但账本没有它的发布记录' && echo 1 || echo 0)" "$OUT"
 
+echo ""
+echo "===== 场景 14：publish-batch 连发两章（从账本断点起，每章自动 --apply-changes --scaffold）====="
+rm -f 正文/第009章.md   # 场景 13 故意留的未入账正文，这里收拾掉，免得干扰续跑判断
+cat > 草稿/第005章.md <<'EOF5'
+　　雾气散得比平日早，林山沿着竹林边缘往回走，落叶踩上去没有声音。
+　　他把竹牌收进内袋，指腹还留着那道刻痕的触感。山门方向传来钟声，一下，两下，很慢。
+　　走到前殿时天亮了半边，檐角的铜铃在风里晃。他站在阶下没进殿，先看了一眼那块长明灯。
+　　灯还亮着。他这才抬脚跨过门槛，把断锋剑解下来，靠在门边。
+---CHANGES---
+<!-- 角色状态变化 -->
+- **[林山]**：健康→健康
+<!-- 角色移动 -->
+- **[林山]**：后山竹林→青云山前殿
+<!-- 交接包 -->
+- 剧情当前位置：青云山前殿
+- 未了结线索：殿里的长明灯
+---END CHANGES---
+EOF5
+cat > 草稿/第006章.md <<'EOF6'
+　　殿里比外头冷，香灰积在铜炉底，厚度不匀。林山蹲下去用剑鞘尖拨了一下，灰里露出一角纸。
+　　他没有立刻去拿，先抬头看了梁上的灯绳。绳子是新的，绑法却与别处不同。
+　　纸角被香灰压着，抽出来时碎了一道口。上面只剩半个字，笔画收得很急，像写的人手在抖。
+　　林山把纸对折夹进竹牌旁，想起昨夜那句没说完的话，忽然觉得两者之间隔着点什么。
+---CHANGES---
+<!-- 角色状态变化 -->
+- **[林山]**：健康→健康
+<!-- 角色移动 -->
+- **[林山]**：青云山前殿→前殿西廊
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+- 未了结线索：香灰里的半个字
+---END CHANGES---
+EOF6
+mkdir -p 声明
+make_decl 草稿/第005章.md 声明/ch005-ai-gates.json "落叶踩上去没有声音"
+make_decl 草稿/第006章.md 声明/ch006-ai-gates.json "林山蹲下去用剑鞘尖拨了一下"
+OUT=$($BATCH config.json --chapters 2 --ai-gates 声明 --write 2>&1); CODE=$?
+check "批量发第5、6章" 0 $CODE "$OUT"
+ok "第5章正文落盘" "$([ -f 正文/第005章.md ] && echo 1 || echo 0)" "正文/第005章.md 不存在"
+ok "第6章正文落盘" "$([ -f 正文/第006章.md ] && echo 1 || echo 0)" "正文/第006章.md 不存在"
+ok "快照一路推进到第6章" "$(grep -q '# 状态快照（截止第6章）' 设定/状态快照.md && echo 1 || echo 0)" "$(head -1 设定/状态快照.md)"
+ok "第6章位置回写生效" "$(grep -q '前殿西廊' 设定/状态快照.md && echo 1 || echo 0)" "$(tail -6 设定/状态快照.md)"
+ok "账本记 5、6 两章" "$([ "$(ledger_count 5)" = "1" ] && [ "$(ledger_count 6)" = "1" ] && echo 1 || echo 0)" "5=$(ledger_count 5) 6=$(ledger_count 6)"
+ok "结尾汇总已发两章" "$(printf '%s' "$OUT" | grep -q '已发布 2 章：第5、6章' && echo 1 || echo 0)" "$OUT"
+
+echo ""
+echo "===== 场景 15：批量 dry-run 从断点起算 / 一章被打回就停，后面的不动 ===="
+OUT=$($BATCH config.json --chapters 1 2>&1); CODE=$?
+check "dry-run 认断点" 0 $CODE "$OUT"
+ok "从第7章起算" "$(printf '%s' "$OUT" | grep -q '从第7章起' && echo 1 || echo 0)" "$OUT"
+ok "点出第7章缺草稿" "$(printf '%s' "$OUT" | grep -q '第007章  （缺草稿）' && echo 1 || echo 0)" "$OUT"
+ok "dry-run 没落正文" "$([ -f 正文/第007章.md ] && echo 0 || echo 1)" "第7章不该存在"
+cat > 草稿/第007章.md <<'EOF7'
+　　前殿的门被风吹得响了一声,他回头,看见廊下站着一个人。那人不说话,只抬了抬下巴。
+　　林山握紧剑柄,又慢慢松开。他往侧廊走了两步,脚底的石砖比刚才凉。
+　　檐角的水一滴一滴砸下来,落在两人中间。谁也没先开口,风把那点凉意送过来。
+---CHANGES---
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+---END CHANGES---
+EOF7
+cat > 草稿/第008章.md <<'EOF8'
+　　那人先转身走了，脚步声在侧廊里散开。林山数着那脚步，数到第七下才跟上去。
+　　转过廊角，前面的影子已经没了。尽头是扇半掩的门，门缝里透出一线灯。
+　　他把竹牌按在掌心，指节压得发白。门里的灯忽然暗了一瞬，又亮起来。
+---CHANGES---
+<!-- 交接包 -->
+- 剧情当前位置：前殿西廊
+---END CHANGES---
+EOF8
+make_decl 草稿/第007章.md 声明/ch007-ai-gates.json "前殿的门被风吹得响了一声"
+make_decl 草稿/第008章.md 声明/ch008-ai-gates.json "脚步声在侧廊里散开"
+OUT=$($BATCH config.json --chapters 2 --ai-gates 声明 --write 2>&1); CODE=$?
+check "第7章半角标点被打回 → 批量 exit 1" 1 $CODE "$OUT"
+ok "报出停在第7章" "$(printf '%s' "$OUT" | grep -q '停在第7章' && echo 1 || echo 0)" "$OUT"
+ok "第7章正文未落盘" "$([ -f 正文/第007章.md ] && echo 0 || echo 1)" "第7章不该存在"
+ok "第8章一个字节都没动" "$([ -f 正文/第008章.md ] && echo 0 || echo 1)" "第8章不该存在"
+ok "第8章账本没写" "$([ "$(ledger_count 8)" = "0" ] && echo 1 || echo 0)" "实际 $(ledger_count 8) 笔"
+OUT=$($STATUS config.json 2>&1); CODE=$?
+check "被打回后账本仍然干净" 0 $CODE "$OUT"
 echo "===== 结果: PASS=$PASS FAIL=$FAIL ====="
 cd / && rm -rf "$WORK"
 exit $FAIL
