@@ -230,7 +230,7 @@ GET /repos/{book_id}/toc
 | `move --book <id> --doc <doc_id 或标题> --group <分组>` | 把已有文档挪进分组（挂载失败留下的孤儿用它修） |
 | `audit --book <id> --local <小说目录>` | 双写对账（见第 7 节） |
 | `sync --book <id> --local <小说目录> [--dry-run]` | 批量同步（见第 7 节） |
-| `pull --book <id> --local <小说目录> [--write]` | 反向拉取：语雀改动拉回本地（见 7.2.1，默认只列清单） |
+| `pull --book <id> --local <小说目录> [--write] [--force]` | 反向拉取：语雀改动拉回本地（见 7.2.1，默认只列清单，两边都改过会跳过） |
 | `get --book <id> --doc <doc_id 或标题> [--out 文件]` | 取回一篇文档正文 |
 
 要点（2026-11 按 `code/yuque-ai-mcp` 的调用口径重写，行为已离线测试覆盖）：
@@ -316,14 +316,15 @@ GET /repos/{book_id}/toc
 
 #### 7.2.1 pull 反向同步（语雀 → 本地）
 
-在语雀里改过、本地还是旧的，用 `node scripts/yuque-doc.js pull --book <id> --local <小说目录> [--write] [--only <关键字>]` 拉回来。
+在语雀里改过、本地还是旧的，用 `node scripts/yuque-doc.js pull --book <id> --local <小说目录> [--write] [--only <关键字>] [--force]` 拉回来。
 
 - **默认只列清单**，加 `--write` 才落盘；先看清「本地 N 字 → 语雀 M 字」再决定，别一上来就覆盖
 - **覆盖前自动备份**：本地旧版存到 `设定/.sync-backup/<yyyyMMdd-HHmmss>/<相对路径>`，跑完打印目录，要还原就拷回去
 - **只拉设定档，正文永不参与**：语雀正文是 `prepare-upload.js` 剥过 CHANGES 的上传版（还带语雀渲染的缩进），拉回来会把本地完整正文里的 CHANGES 抹掉
-- **不做「谁新」判断**：本地 mtime 会被 git checkout / 脚本写文件刷掉，只有语雀的 `updated_at` 可信；pull 的语义就一条——拿语雀版本盖本地，值不值得由人看清单定
-- 远端是 `lake` 格式或正文为空时跳过；单篇失败不中断，跑完逐条列出并以 exit 1 收尾
-- `--json` 拿结构化结果（`updated` / `same` / `backedUp` / `backupDir` / `failures`）
+- **认识「谁改的」**：`sync` / `pull` 成功时会在小说根写 `.yuque-sync-state.json`（每篇的本地/远端正文指纹，按标题头与尾部空白归一，跟 `bodiesEqual` 同一口径）。有基线才分得清：只有语雀动过 → 直接覆盖；**只有本地动过 → 跳过并提示去 `sync`**（它比语雀新，拉回来等于回退）；**两边都动过 → 跳过并 exit 1**，确认以语雀为准再加 `--force`（本地那版仍在备份里）
+- **没基线的档按「不清楚」处理**：状态文件还不存在（第一次用 pull）时照旧覆盖，同时把基线建起来；已有状态却缺这一篇（语雀新建 + 本地同名手写档），要 `--force` 才盖
+- 远端是 `lake` 格式或正文为空时跳过；单篇失败或冲突都不中断其余，跑完逐条列出并以 exit 1 收尾
+- `--json` 拿结构化结果（`updated` / `same` / `backedUp` / `noBaseline` / `conflicts` / `localAhead` / `backupDir` / `failures`）
 - `设定/.sync-backup/` 是点目录，audit / sync 都会跳过，不会被当成待补档案
 
 ### 7.3 目录镜像铁律（2026-10-12 老板定）

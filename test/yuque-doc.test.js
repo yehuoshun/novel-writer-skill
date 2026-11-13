@@ -560,3 +560,97 @@ test('pull 单篇失败不中断，其余照写，最后 exit 1', async () => {
     assert.strictEqual(fs.readFileSync(path.join(root, '设定', '地点.md'), 'utf-8'), '旧地点');
   });
 });
+
+// ---------- pull 的同步基线（分得清「谁改的」） ----------
+
+test('sync 建过基线后，只有语雀改过：pull --write 正常覆盖', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7301, title: '角色', body: 'v1 角色' });
+    const root = makeLocalSet({ '角色.md': 'v1 角色' });
+
+    const synced = await runCli(apiArgs(srv, ['sync', '--local', root]));
+    assert.strictEqual(synced.code, 0, synced.stderr);
+    assert.ok(fs.existsSync(path.join(root, '.yuque-sync-state.json')), 'sync 之后要留下基线文件');
+
+    srv.state.docs.get(7301).body = 'v2 语雀改的';
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), 'v2 语雀改的\n');
+  });
+});
+
+test('两边都改过：pull 跳过并 exit 1，其余照拉，--force 才盖', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7311, title: '角色', body: 'v1 角色' });
+    seedDoc(srv, { id: 7312, title: '地点', body: 'v1 地点' });
+    const root = makeLocalSet({ '角色.md': 'v1 角色', '地点.md': 'v1 地点' });
+    await runCli(apiArgs(srv, ['sync', '--local', root]));
+
+    fs.writeFileSync(path.join(root, '设定', '角色.md'), 'v1 角色\n\n补了一段本地设定\n', 'utf-8');
+    srv.state.docs.get(7311).body = 'v2 语雀改的';
+    srv.state.docs.get(7312).body = 'v2 语雀改的地点';
+
+    const blocked = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(blocked.code, 1, '有冲突就不该报成功');
+    assert.match(blocked.stdout, /本地和语雀都改过/);
+    assert.match(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), /补了一段本地设定/, '本地改动不能被静默抹掉');
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '地点.md'), 'utf-8'), 'v2 语雀改的地点\n', '没冲突的那篇照拉');
+
+    const forced = await runCli(apiArgs(srv, ['pull', '--local', root, '--write', '--force']));
+    assert.strictEqual(forced.code, 0, forced.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), 'v2 语雀改的\n');
+    const bakRoot = path.join(root, '设定', '.sync-backup');
+    const stamp = fs.readdirSync(bakRoot).sort().pop();
+    assert.match(fs.readFileSync(path.join(bakRoot, stamp, '角色.md'), 'utf-8'), /补了一段本地设定/, '强制覆盖前要留底');
+  });
+});
+
+test('只有本地改过：pull 不动它，提示去 sync', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7321, title: '角色', body: 'v1 角色' });
+    const root = makeLocalSet({ '角色.md': 'v1 角色' });
+    await runCli(apiArgs(srv, ['sync', '--local', root]));
+
+    const edited = 'v1 角色\n\n本地又加了点\n';
+    fs.writeFileSync(path.join(root, '设定', '角色.md'), edited, 'utf-8');
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.match(r.stdout, /本地比语雀新/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), edited, '本地新版不能被旧的语雀版盖回去');
+    assert.strictEqual(srv.state.docs.get(7321).body, 'v1 角色', 'pull 不该往语雀写');
+  });
+});
+
+test('首次拉取没有基线：照旧覆盖，不误报冲突', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7331, title: '角色', body: '语雀版角色' });
+    const root = makeLocalSet({ '角色.md': '手写旧角色' });
+
+    const r = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(r.code, 0, r.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '角色.md'), 'utf-8'), '语雀版角色\n');
+    assert.match(r.stdout, /已建同步基线/);
+    assert.match(fs.readFileSync(path.join(root, '.yuque-sync-state.json'), 'utf-8'), /7331/);
+  });
+});
+
+test('有基线却缺这篇：默认跳过，--force 才覆盖', async () => {
+  await withServer({}, async srv => {
+    seedDoc(srv, { id: 7341, title: '角色', body: 'v1 角色' });
+    const root = makeLocalSet({ '角色.md': 'v1 角色' });
+    await runCli(apiArgs(srv, ['sync', '--local', root]));
+
+    // 语雀上新写一篇，本地同名档是手写的（从没同步过，来历不明）
+    seedDoc(srv, { id: 7342, title: '道具', body: '语雀上的道具' });
+    fs.writeFileSync(path.join(root, '设定', '道具.md'), '本地手写的道具', 'utf-8');
+
+    const blocked = await runCli(apiArgs(srv, ['pull', '--local', root, '--write']));
+    assert.strictEqual(blocked.code, 1);
+    assert.match(blocked.stdout, /没有同步基线/);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '道具.md'), 'utf-8'), '本地手写的道具');
+
+    const forced = await runCli(apiArgs(srv, ['pull', '--local', root, '--write', '--force']));
+    assert.strictEqual(forced.code, 0, forced.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(root, '设定', '道具.md'), 'utf-8'), '语雀上的道具\n');
+  });
+});

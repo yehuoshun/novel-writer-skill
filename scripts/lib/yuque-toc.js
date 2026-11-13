@@ -10,6 +10,7 @@
  */
 
 const path = require('path');
+const crypto = require('crypto');
 
 // HTTP 状态 → 人话（照 MCP common/errors.ts:8-16）
 const STATUS_MAP = {
@@ -124,6 +125,15 @@ function bodiesEqual(a, b) {
 }
 
 /**
+ * 正文指纹：按 bodiesEqual 的口径算（先剥标题头与尾部空白），
+ * 否则语雀自动补的那行标题头会让「内容其实没变」被当成本地改动。
+ * 取 16 位够用了——这是同步基线，不是防篡改。
+ */
+function contentHash(text) {
+  return crypto.createHash('sha1').update(stripHeading(text), 'utf8').digest('hex').slice(0, 16);
+}
+
+/**
  * 本地路径 → 语雀分组名（方案 A 镜像：设定/<分组>/xxx.md）。
  * 设定根下的散档与正文档一律回 null（落在 TOC 根或由 --group 显式指定）。
  */
@@ -162,6 +172,7 @@ module.exports = {
   isBodyFile,
   stripHeading,
   bodiesEqual,
+  contentHash,
   groupFromLocalPath,
   formatApiError,
 };

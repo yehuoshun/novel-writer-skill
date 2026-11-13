@@ -61,7 +61,7 @@
 ### 语雀（可选）
 正文和设定存同一个知识库，语雀内用 TITLE 节点做分组目录（正文/ + 21 个设定组）。全部语雀操作细节（建库分组/API 速查/上传挂载/changes 归档/audit/sync）见 `references/integrations/yuque-integration.md`；纯本地模式无需语雀。
 
-语雀批量操作用 `node scripts/yuque-doc.js`（`--help` 看用法）：建文档+挂载、挪档、查分组、对账、同步、反向拉取、取文档。调用口径照 `code/yuque-ai-mcp`：30s 超时 + 429/5xx 指数退避重试、错误翻中文、先定分组再建文档（不留孤儿）、挂载后回读 TOC 校验（语雀 TOC 高频写会静默失败）。反向拉取（`pull`）默认只列清单，`--write` 才落盘，覆盖前把本地旧版存进 `设定/.sync-backup/<时间戳>/`；正文不参与反向同步（语雀正文是剥过 CHANGES 的上传版）。
+语雀批量操作用 `node scripts/yuque-doc.js`（`--help` 看用法）：建文档+挂载、挪档、查分组、对账、同步、反向拉取、取文档。调用口径照 `code/yuque-ai-mcp`：30s 超时 + 429/5xx 指数退避重试、错误翻中文、先定分组再建文档（不留孤儿）、挂载后回读 TOC 校验（语雀 TOC 高频写会静默失败）。反向拉取（`pull`）默认只列清单，`--write` 才落盘，覆盖前把本地旧版存进 `设定/.sync-backup/<时间戳>/`；正文不参与反向同步（语雀正文是剥过 CHANGES 的上传版）。`sync`/`pull` 会在小说根写 `.yuque-sync-state.json` 记两边的正文指纹：只有本地改过的档 pull 不动并提示去 `sync`，两边都改过则跳过、`--force` 才覆盖。
 
 ## 配置文件
 

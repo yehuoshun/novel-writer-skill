@@ -33,6 +33,7 @@ const {
   findDocByTitle,
   isBodyFile,
   bodiesEqual,
+  contentHash,
   groupFromLocalPath,
   formatApiError,
 } = require('./lib/yuque-toc');
@@ -57,7 +58,7 @@ const USAGE = `
   move          把已存在的文档挪进分组（挂载失败留下的孤儿用它修）
   audit         本地 ↔ 语雀 对账（本地有语雀无 / 语雀有本地无 / 两边一致）
   sync          把本地设定档推到语雀（正文除外；按内容比对，只写有差异的）
-  pull          把语雀设定档拉回本地（默认只列清单，--write 才落盘，覆盖前自动备份）
+  pull          把语雀设定档拉回本地（默认只列清单；两边都改过会跳过，--force 才盖）
   get           取回一篇文档的正文
 
 通用选项:
@@ -82,6 +83,7 @@ audit / sync / pull / get:
   --local <小说根目录>    含 设定/ 与 第NNN章*.md（audit、sync、pull 必填）
   --dry-run               sync 只列要改的，不写
   --write                 pull 真落盘（默认只列清单）
+  --force                 pull 连「两边都改过」的档案也盖（默认跳过等你看）
   --only <关键字>         sync / pull 只处理标题含该关键字的档案
   --doc <doc_id|标题>     get 要取的文档
   --out <路径>            get 存到文件（不传则打印正文）
@@ -548,6 +550,10 @@ async function cmdSync(cfg, book, opts) {
   if (only) targets = targets.filter(x => x.yqTitle.includes(only) || x.local.includes(only));
   const skipped = ok.filter(x => !x.isBody && !x.docId).length;
 
+  // 顺手维护同步基线：push 成功后本地=远端，记下来 pull 才知道"是谁改的"
+  const state = loadState(localDir);
+  let stateDirty = false;
+
   let updated = 0;
   let same = 0;
   let skippedFormat = 0;
@@ -565,15 +571,26 @@ async function cmdSync(cfg, book, opts) {
       skippedFormat++;
       continue;
     }
-    if (bodiesEqual(doc.body || '', localBody)) { same++; continue; }
+    if (bodiesEqual(doc.body || '', localBody)) {
+      same++;
+      recordBaseline(state, book, t.docId, t.yqTitle, path.relative(localDir, t.local),
+        contentHash(localBody), contentHash(doc.body || ''));
+      stateDirty = true;
+      continue;
+    }
     console.log(`${dryRun ? '[待更新]' : '[更新]'} ${t.yqTitle} (${t.docId})`);
     if (dryRun) { updated++; continue; }
     if (!firstWrite) await sleep(SYNC_DELAY_MS);
     firstWrite = false;
     const w = await request(cfg, 'PUT', `/repos/${bookPath(book)}/docs/${t.docId}`, { format: 'markdown', body: localBody }, { soft: true });
     if (!w.ok) { failures.push(`${t.yqTitle}：写入失败（${w.message}）`); continue; }
+    recordBaseline(state, book, t.docId, t.yqTitle, path.relative(localDir, t.local),
+      contentHash(localBody), contentHash(localBody));
+    stateDirty = true;
     updated++;
   }
+
+  if (!dryRun && stateDirty) saveState(localDir, state);
 
   const summary = { dryRun, targets: targets.length, updated, same, skipped, skippedFormat, failures };
   if (isOn(opts.json)) {
@@ -600,10 +617,64 @@ function timestamp() {
 }
 
 /**
+ * 同步基线：记「上次确认两边一致」时的本地/远端正文指纹。
+ *
+ * 为什么需要它：只比「现在两边一不一样」分不清是谁改的。本地这两天补了两段设定、语雀那头也有人动过，
+ * 一次 pull 就把本地改动盖了——备份里有，但得事后自己去翻目录捞。有了基线就能三方对比：
+ * 只有语雀动 → 覆盖；只有本地动 → 提示去 sync；两边都动 → 停下来要 --force。
+ *
+ * 存在小说根目录（不在 设定/ 里），audit/sync 的目录扫描碰不到它。
+ */
+const STATE_FILE = '.yuque-sync-state.json';
+
+function statePath(localDir) {
+  return path.join(localDir, STATE_FILE);
+}
+
+function loadState(localDir) {
+  const p = statePath(localDir);
+  if (!fs.existsSync(p)) return { version: 1, books: {}, firstRun: true };
+  try {
+    const raw = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    if (!raw || typeof raw !== 'object' || !raw.books) throw new Error('缺 books 字段');
+    return raw;
+  } catch (e) {
+    console.error(`⚠️ 同步基线读不懂（${STATE_FILE}）：${e.message}——这轮按「没有基线」处理`);
+    return { version: 1, books: {}, broken: true };
+  }
+}
+
+function bookState(state, book) {
+  const key = String(book);
+  if (!state.books[key] || typeof state.books[key] !== 'object') state.books[key] = { docs: {} };
+  if (!state.books[key].docs) state.books[key].docs = {};
+  return state.books[key];
+}
+
+function recordBaseline(state, book, docId, title, relLocal, localHash, remoteHash) {
+  bookState(state, book).docs[String(docId)] = {
+    title,
+    local: relLocal,
+    localHash,
+    remoteHash,
+    at: new Date().toISOString(),
+  };
+}
+
+function saveState(localDir, state) {
+  // firstRun / broken 是这一轮的临时判断，别写进文件——否则下次读回来永远以为自己是首次
+  const { firstRun, broken, ...persisted } = state;
+  fs.writeFileSync(statePath(localDir), `${JSON.stringify(persisted, null, 2)}\n`, 'utf-8');
+}
+
+/**
  * 反向同步：语雀 → 本地，只碰设定档。
  * 默认 dry-run（列清单不落盘），--write 才写；覆盖前把本地旧版存 设定/.sync-backup/<时间戳>/<相对路径>。
- * 不判断「谁新」——本地 mtime 会被 checkout/脚本刷，语雀 updated_at 不会骗人，
- * 所以口径只有一条：pull 就是拿语雀版本盖本地，值不值得盖由人看清单决定。
+ *
+ * 三方对比（靠 STATE_FILE 记的基线）：只有语雀改 → 覆盖；只有本地改 → 提示去 sync、不动它；
+ * 两边都改 → 跳过并 exit 1，确认以语雀为准再加 --force。没有基线的档按「不清楚」处理：
+ * 首次拉取（状态文件还不存在）照旧覆盖并提示一次；有状态但缺这篇（标题撞车/手工新建）需 --force。
+ *
  * 正文永远不参与：语雀正文是 prepare-upload 剥过 CHANGES 的上传版，拉回来会把本地完整版的 CHANGES 抹掉。
  */
 async function cmdPull(cfg, book, opts) {
@@ -611,6 +682,7 @@ async function cmdPull(cfg, book, opts) {
   if (!localDir) die('缺少 --local <小说根目录>');
   if (!fs.existsSync(localDir)) die(`本地目录不存在: ${localDir}`, 1);
   const write = isOn(opts.write);
+  const force = isOn(opts.force);
   const only = strOpt(opts, 'only');
 
   const { ok } = await buildMapping(cfg, book, localDir);
@@ -619,7 +691,13 @@ async function cmdPull(cfg, book, opts) {
 
   const setDir = path.join(localDir, '设定');
   const backupRoot = path.join(setDir, BACKUP_DIR, timestamp());
+  const state = loadState(localDir);
+  const docs = bookState(state, book).docs;
+  let stateDirty = false;
   const failures = [];
+  const conflicts = [];
+  const localAhead = [];
+  let noBaseline = 0;
   let updated = 0;
   let same = 0;
   let backedUp = 0;
@@ -634,8 +712,42 @@ async function cmdPull(cfg, book, opts) {
     }
     const remoteBody = doc.body || '';
     if (!remoteBody.trim()) { failures.push(`${t.yqTitle}：远端正文是空的，不拿空内容覆盖本地`); continue; }
+
     const localBody = fs.readFileSync(t.local, 'utf-8');
-    if (bodiesEqual(remoteBody, localBody)) { same++; continue; }
+    const relLocal = path.relative(localDir, t.local);
+    const localHash = contentHash(localBody);
+    const remoteHash = contentHash(remoteBody);
+
+    // 两边本来就一致：不动文件，顺手校准基线（sync 过但还没 pull 过的项目全靠这一步建基线）
+    if (bodiesEqual(remoteBody, localBody)) {
+      same++;
+      recordBaseline(state, book, t.docId, t.yqTitle, relLocal, localHash, remoteHash);
+      stateDirty = true;
+      continue;
+    }
+
+    const base = docs[String(t.docId)];
+    const localChanged = base ? base.localHash !== localHash : false;
+    const remoteChanged = base ? base.remoteHash !== remoteHash : false;
+
+    // 没有基线：首次拉取（状态文件还不存在）照旧覆盖；有状态却缺这篇说明来源不明，要 --force
+    if (!base && !state.firstRun && !force) {
+      conflicts.push({ title: t.yqTitle, local: relLocal, reason: '无基线' });
+      console.log(`⚠️ 跳过：${t.yqTitle}（这篇没有同步基线，分不清是谁改的；确认以语雀为准加 --force）`);
+      continue;
+    }
+    if (base && localChanged && remoteChanged && !force) {
+      conflicts.push({ title: t.yqTitle, local: relLocal, reason: '两边都改过' });
+      console.log(`⚠️ 跳过：${t.yqTitle}（本地和语雀都改过；确认以语雀为准加 --force，本地版本在备份里）`);
+      continue;
+    }
+    if (base && localChanged && !remoteChanged && !force) {
+      localAhead.push({ title: t.yqTitle, local: relLocal });
+      console.log(`⚠️ 本地比语雀新：${t.yqTitle}（这篇该跑 sync 推上去，pull 不动它）`);
+      continue;
+    }
+    if (!base) noBaseline++;
+
     console.log(`${write ? '[覆盖]' : '[待覆盖]'} ${t.yqTitle}（本地 ${localBody.trim().length} 字 → 语雀 ${remoteBody.trim().length} 字）`);
     if (!write) { updated++; continue; }
     const bak = path.join(backupRoot, path.relative(setDir, t.local));
@@ -643,8 +755,12 @@ async function cmdPull(cfg, book, opts) {
     fs.copyFileSync(t.local, bak);
     backedUp++;
     fs.writeFileSync(t.local, remoteBody.endsWith('\n') ? remoteBody : `${remoteBody}\n`, 'utf-8');
+    recordBaseline(state, book, t.docId, t.yqTitle, relLocal, remoteHash, remoteHash);
+    stateDirty = true;
     updated++;
   }
+
+  if (write && stateDirty) saveState(localDir, state);
 
   const summary = {
     write,
@@ -652,6 +768,9 @@ async function cmdPull(cfg, book, opts) {
     updated,
     same,
     backedUp,
+    noBaseline,
+    conflicts,
+    localAhead,
     backupDir: backedUp ? path.relative(localDir, backupRoot) : null,
     failures,
   };
@@ -661,12 +780,21 @@ async function cmdPull(cfg, book, opts) {
     console.log(`\npull ${write ? '完成' : '预演（默认只列清单）'}：${write ? '覆盖' : '待覆盖'} ${updated}，一致跳过 ${same}，备份 ${backedUp}`);
     if (backedUp) console.log(`🗂 本地旧版已存 ${path.relative(localDir, backupRoot)}/（要还原就拷回去）`);
     if (!write && updated) console.log('（确认清单无误后加 --write 落盘；正文不在 pull 范围内）');
+    if (write && state.firstRun && (updated || same)) {
+      console.log(`ℹ️ 已建同步基线 ${STATE_FILE}：以后 pull 能分辨「本地改的」和「语雀改的」，两边都动过就停下来等你定`);
+    }
+    if (localAhead.length) {
+      console.log(`⚠️ ${localAhead.length} 篇本地比语雀新，该跑 sync：${localAhead.map(x => x.title).join('、')}`);
+    }
+    if (conflicts.length) {
+      console.log(`⚠️ ${conflicts.length} 篇没敢动（两边都改过或无基线）：${conflicts.map(x => x.title).join('、')}——确认以语雀为准就加 --force`);
+    }
   }
   if (failures.length) {
     console.error(`\n❌ ${failures.length} 篇没拉成：`);
     for (const f of failures) console.error(`   · ${f}`);
-    return 1;
   }
+  if (failures.length || conflicts.length) return 1;
   return 0;
 }
 
