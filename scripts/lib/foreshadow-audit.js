@@ -79,6 +79,13 @@ function cellNo(cell) {
   return m ? Number(m[0]) : null;
 }
 
+// 「推进章」一格是累积清单（如 11,19,24,25,29,30），算账要取**最后一次**推进，不是第一次。
+// 取第一次会把「早就推进过很多次」的伏笔误判成逾期未回收（v1 明明第30章刚推进，却按第11章算成逾期）。
+function cellLastNo(cell) {
+  const nums = String(cell || '').match(/\d+/g);
+  return nums && nums.length ? Number(nums[nums.length - 1]) : null;
+}
+
 function stripNote(s) {
   return String(s || '').trim().replace(/[（(][^）)]*[）)]$/, '');
 }
@@ -98,7 +105,7 @@ function snapshotRows(snapshotText) {
       effect: cells[3] || '',
       state: stripNote(cells[4]),
       plant: cellNo(cells[5]),
-      progress: cellNo(cells[6]),
+      progress: cellLastNo(cells[6]),
       payoff: cellNo(cells[7]),
     });
   }
