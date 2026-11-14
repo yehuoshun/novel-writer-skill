@@ -197,7 +197,9 @@ const fsDocState = (id) => {
   if (!file) return null;
   const text = fs.readFileSync(path.join(fsDir, file), 'utf8');
   const m = /^-\s*状态[：:]\s*(.+)$/m.exec(text);
-  return m ? { file, state: m[1].trim().replace(/[（(][^）)]*[）)]$/, '') } : null;
+  // 状态列常写成 `**已推进**（第32章…）`：先剥尾部括号备注，再剥 Markdown 加粗/斜体星号，
+  // 否则 `**已推进**` 永远不等于快照里的 `已推进`，伏笔双写会天天误报。
+  return m ? { file, state: m[1].trim().replace(/[（(][^）)]*[）)]$/, '').replace(/[*_]+/g, '').trim() } : null;
 };
 for (const id of [...new Set([...registered, ...Object.keys(stateOf)])]) {
   const file = fsDocFile(id);

@@ -10,8 +10,9 @@ function snapshotStates(snapshotText) {
   const sec = (String(snapshotText || '').split(/^##\s*伏笔状态/m)[1] || '').split(/^##\s/m)[0];
   const out = {};
   for (const m of sec.matchAll(/^\|\s*(v\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*([^|]+?)\s*\|/gm)) {
-    // 状态列可能带备注（「已埋设（第1章埋设）」）→ 剥括号，否则两边永远对不上
-    out[m[1]] = m[2].trim().replace(/[（(][^）)]*[）)]$/, '');
+    // 状态列可能带备注（「已埋设（第1章埋设）」）→ 剥括号；再剥 `**` 加粗（canon 档案习惯写成 `**已推进**`），
+    // 否则两边永远对不上
+    out[m[1]] = m[2].trim().replace(/[（(][^）)]*[）)]$/, '').replace(/[*_]+/g, '').trim();
   }
   return out;
 }
@@ -25,7 +26,7 @@ function docStates(settingsDir) {
     if (!m) continue;
     const text = fs.readFileSync(path.join(dir, f), 'utf8');
     const st = /^-\s*状态[：:]\s*(.+)$/m.exec(text);
-    out.set(m[1], { file: f, state: st ? st[1].trim().replace(/[（(][^）)]*[）)]$/, '') : null });
+    out.set(m[1], { file: f, state: st ? st[1].trim().replace(/[（(][^）)]*[）)]$/, '').replace(/[*_]+/g, '').trim() : null });
   }
   return out;
 }
