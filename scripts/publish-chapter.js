@@ -74,11 +74,16 @@ function parseArgs(argv) {
 /** 在正文目录里按「章号」找已存在的章节文件（不靠文件名补零位数猜） */
 function findChapterFile(contentDir, n) {
   if (!fs.existsSync(contentDir)) return null;
+  // 兼容两种落盘命名：「第024章.md」与「第024章 扫地.md」（带章名，团队约定）。
+  // 两者并存时优先带章名的那个（那是发布后手工改名过的成品）。
+  const hits = [];
   for (const name of fs.readdirSync(contentDir)) {
-    const m = name.match(/^第\s*0*(\d+)\s*章\.md$/);
-    if (m && Number(m[1]) === n) return path.join(contentDir, name);
+    const m = name.match(/^第\s*0*(\d+)\s*章(?:\s+(\S.*?))?\.md$/);
+    if (m && Number(m[1]) === n) hits.push({ name, titled: Boolean(m[2]) });
   }
-  return null;
+  if (!hits.length) return null;
+  hits.sort((a, b) => Number(b.titled) - Number(a.titled));
+  return path.join(contentDir, hits[0].name);
 }
 
 const opts = parseArgs(process.argv.slice(2));
