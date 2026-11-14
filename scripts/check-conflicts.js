@@ -130,7 +130,9 @@ const files = [];
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name);
     if (e.isDirectory()) {
-      if (['已故', 'changes', '伏笔追踪', '大纲', '变更日志'].includes(e.name)) continue;
+      // 2026-11-15：原跳过「已故」目录，导致快照里已故角色（开山祖师、老哑）永远报
+      //   「无同名档案」假告警；已故角色同样有档案、同样该被对账，故不再跳过。
+      if (['changes', '伏笔追踪', '大纲', '变更日志'].includes(e.name)) continue;
       walk(p);
     } else if (e.name.endsWith('.md')) files.push(path.basename(e.name, '.md'));
   }
