@@ -67,7 +67,8 @@ function scanChapters(dir) {
   const found = new Map();
   if (!fs.existsSync(dir)) return found;
   for (const name of fs.readdirSync(dir)) {
-    const m = name.match(/^第\s*0*(\d+)\s*章\.md$/);
+    // 认两种命名：`第024章.md`（工具默认）与 `第024章 扫地.md`（团队约定带章名）
+    const m = name.match(/^第\s*0*(\d+)\s*章(?:\s+[^\\/]*)?\.md$/);
     if (m) found.set(Number(m[1]), path.join(dir, name));
   }
   return found;
