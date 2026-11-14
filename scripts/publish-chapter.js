@@ -362,7 +362,16 @@ gate.writeJsonAtomic(reportPath, report);
 // ---- 5.9 可选：把本章 CHANGES 机械回写到状态快照（--apply-changes）----
 // 发布成功才回写；回写失败不改发布结果（正文与账本已落地），但会喊一声，别让欠账悄悄留下
 let snapshotApplied = null;
-if (opts.applyChanges) {
+// 倒序回写保护：快照只有一个「截止第N章」，用旧章重发时回写会把快照版本、交接包、时间线整体拽回去
+const maxPublished = Math.max(0, ...Object.keys(ledgers || {}).map((k) => Number(k) || 0));
+if (opts.applyChanges && chapter < maxPublished) {
+  console.error(`   ⛔ 跳过快照回写：本章第${chapter}章早于已发布的最新第${maxPublished}章，回写会把快照整体倒退。`);
+  console.error('   要补记本章状态请手工改 `设定/状态快照.md`，或先回退后续章账本。');
+  out.snapshotApplied = false;
+  out.snapshotSkipped = 'out-of-order';
+  snapshotApplied = false;
+}
+if (opts.applyChanges && chapter >= maxPublished) {
   const r = spawnSync(process.execPath, [path.join(__dirname, 'apply-changes.js'), configPath, targetPath, '--write', '--quiet'], { encoding: 'utf-8' });
   snapshotApplied = r.status === 0;
   out.snapshotApplied = snapshotApplied;
