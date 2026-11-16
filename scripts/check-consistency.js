@@ -289,11 +289,22 @@ if (outlinePath) {
       // 占位符（无/—/待定 等）不是实体名：过滤后再判缺失，否则「无、无」会被当未出场误拦
       // （2026-10-10 扫描暴露：蓝图势力列写「无」→ 真实实体全出场仍误报）
       const PLACEHOLDER = /^(无|—|-{1,2}|－|待定|N\/A|n\/a|na|不涉及|空)$/;
-      const names = [m[2], m[4], m[5]].join('、').split(/[、,，/]/).map(s => s.trim()).filter(Boolean).filter(n => !PLACEHOLDER.test(n));
+      // 蓝图单元格里的括注是说明（如「看榜的闲人（无名，3）」——括号里的逗号会被当分隔符切成两个
+      // 半截名字，两个都判「未出场」）→ 切分前先把括号内容整段剥掉，再按 、,，/ 切、去重。
+      const splitNames = (cell) =>
+        String(cell || '')
+          .replace(/（[^）]*）/g, '')
+          .replace(/\([^)]*\)/g, '')
+          .split(/[、,，/]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((n) => !PLACEHOLDER.test(n))
+          .filter((n, i, a) => a.indexOf(n) === i);
+      const names = splitNames([m[2], m[4], m[5]].join('、'));
       const missing = names.filter(n => !body.includes(n));
       if (missing.length > 1) problems.push(`[蓝图出场合规] 蓝图未出场：${missing.join('、')}（缺 ${missing.length} 个）——补写该角色/地点/势力出场戏份，或调整蓝图清单`);
       // 视角/主要角色仅出场 1 次 → 叙事力度不足（警告，SKILL 门禁15 明文要求）
-      for (const rn of (m[2] || '').split(/[、,，/]/).map(s => s.trim()).filter(Boolean)) {
+      for (const rn of splitNames(m[2])) {
         if (body.split(rn).length - 1 === 1) {
           warnings.push(`[蓝图出场合规] 「${rn}」全章仅出场 1 次——叙事力度可能不足（视角/主要角色建议 ≥3 次有效出场）`);
         }
