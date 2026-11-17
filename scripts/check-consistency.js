@@ -72,8 +72,28 @@ function walk(d) {
 }
 const settingFiles = walk(setDir);
 const stems = settingFiles.map(f => path.basename(f, '.md'));
-// 实体档案按文件名匹配（命名约定：文档名=实体名，允许「地点前缀_实体名」）
-const hasEntity = (name) => stems.some(s => s === name || s.endsWith('_' + name));
+// 短名 → 正档 别名表：快照与 CHANGES 长期用「土坪/门柱/石阶/界石」这类短名，而设定目录只建了
+// 「青云宗山门/青云宗正堂」这类正档（映射写 设定/实体别名.md）。没有别名表时引用校验会把短名
+// 整批判成「未登记实体」，131 章之后只能靠人肉豁免。
+const aliasOf = {};
+{
+  const aliasPath = path.join(setDir, '实体别名.md');
+  if (fs.existsSync(aliasPath)) {
+    for (const line of fs.readFileSync(aliasPath, 'utf8').split('\n')) {
+      const m = line.match(/^\s*[-|*]\s*([^|→>*][^|→*]*?)\s*[|→]\s*([^|→*][^|→*]*?)\s*\|?\s*$/);
+      if (!m) continue;
+      const alias = m[1].trim();
+      const target = m[2].trim();
+      if (!alias || !target) continue;
+      if (/^(短名|别名|实体|-+)$/.test(alias) || /^(正档|对应档案|档案|-+)$/.test(target)) continue;
+      aliasOf[alias] = target;
+    }
+  }
+}
+const stemMatch = (name) => stems.some(s => s === name || s.endsWith('_' + name));
+// 实体档案按文件名匹配（命名约定：文档名=实体名，允许「地点前缀_实体名」）；
+// 短名先查 实体别名.md，正档存在即算登记。
+const hasEntity = (name) => stemMatch(name) || (aliasOf[name] ? stemMatch(aliasOf[name]) : false);
 
 // ---- 门禁 1：引用校验 ----
 const refs = [
@@ -102,6 +122,9 @@ for (const n of changes.newPlotNodes || []) {
 }
 
 // ---- 门禁 2：一致性（角色移动出发地 vs 快照当前位置）----
+// CHANGES 左值（出发态）习惯用反引号包裹（`第288天晨在官道岔口…`），若不剥掉，`cur.includes(from)`
+// 永远判不等，一致性门禁会对每一章每一个人报「出发态 vs 快照现值不符」——整族假错。
+const stripMark = (s) => String(s == null ? '' : s).replace(/`/g, '').trim();
 const snap = fs.readFileSync(snapPath, 'utf8');
 const posSection = (snap.split(/^##\s*角色状态/m)[1] || '').split(/^##\s/m)[0];
 const posOf = {};
@@ -127,7 +150,7 @@ for (const line of posSection.split('\n')) {
 for (const mv of changes.characterMoves || []) {
   const m = mv.detail && mv.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
-  const from = m[1].trim();
+  const from = stripMark(m[1]);
   const cur = posOf[mv.name];
   // 快照位置为「—」/空/未知时无对照基准，不判矛盾
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
@@ -233,7 +256,7 @@ for (const m of locStateSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm
 for (const lc of changes.locationChanges || []) {
   const m = lc.detail && lc.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
-  const from = m[1].trim();
+  const from = stripMark(m[1]);
   const cur = locStateOf[lc.name];
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
@@ -255,7 +278,7 @@ for (const m of itemSection.matchAll(/^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm)) {
 for (const it of changes.itemTransfers || []) {
   const m = it.detail && it.detail.match(/^(.+?)(?:→|->)(.+)$/);
   if (!m) continue;
-  const from = m[1].trim();
+  const from = stripMark(m[1]);
   const cur = ownerOf[it.name];
   const unknown = /^(—|-{1,2}|－|未知|不详|不明|待定|无|？|\?)$/;
   if (cur && !unknown.test(cur) && from && !unknown.test(from) && !cur.includes(from) && !from.includes(cur)) {
