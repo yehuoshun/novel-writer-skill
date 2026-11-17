@@ -68,6 +68,25 @@ function parseChanges(text) {
       continue;
     }
 
+    // 兼容 Markdown 标题写法（`## 时间推进` / `### 伏笔动作` 等）。
+    // 背景（2026-11-17 实测）：131–134 章的 CHANGES 全部用 `## 分节名` 写，
+    // 只有下章交接包用了 `<!-- 交接包 -->`，于是 parseChanges 只解析出交接包，
+    // 角色移动/地点状态/物品归属/伏笔闭环几条门禁整族空转。这里把「已知分节名的
+    // Markdown 标题」等同注释标记；不认识的标题（如 `## 本章指标`、`## 物品状态`、
+    // `## 下章交接包`）按分节结束处理，不报错（它们本来就不是协议分节，且
+    // `## 下章交接包` 后面紧跟 `<!-- 交接包 -->`）。
+    const md = trimmed.match(/^#{2,4}\s*(.+?)\s*$/);
+    if (md) {
+      const S = SECTIONS.find(s => md[1] === s.marker || md[1].startsWith(s.marker));
+      if (S) {
+        currentSection = S.key;
+        RESULT[currentSection] = RESULT[currentSection] || [];
+      } else {
+        currentSection = null;
+      }
+      continue;
+    }
+
     // Parse line based on current section
     if (!currentSection) continue;
 
