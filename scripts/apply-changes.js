@@ -415,11 +415,39 @@ for (const fc of changes.factionChanges || []) {
 }
 
 // 6) 物品流转
+//   体例本应是 `名：旧持有者→新持有者｜状态：…`，但生成侧（mkchanges 的 items[].left/right、
+//   以及手写 CHANGES）经常写成 `名：旧持有者→第NNN天…整句状态`——箭头右边不是持有者而是状态句。
+//   老逻辑无条件把箭头右边写进「持有者」列，于是每章把一批行的持有者写成状态句
+//   （第149、157、158、159 章各坏 5~10 行，只能靠补账脚本回滚）。
+//   这里加一道判定：箭头右边看起来是状态句（以「第N天/第N日」开头，或含「；」「。」），
+//   就当状态写进「状态」列（追加在末尾，保留历史链），「持有者」列保持箭头左边的原持有者。
+function looksLikeState(s) {
+  const t = String(s || '').trim();
+  if (!t) return false;
+  if (/^第\s*\d+\s*[天日]/.test(t)) return true;
+  return /[；。]/.test(t);
+}
+
 for (const it of changes.itemTransfers || []) {
   if (!it.name) continue;
   const segs = segments(it.detail);
   const tr = transition(segs[0]);
   if (!tr) { problems.push(`物品流转「${it.name}」的声明读不出「原持有者→新持有者」：${it.detail}`); continue; }
+
+  if (looksLikeState(tr.to)) {
+    const holder = tr.from || '';
+    const { rowIdx, header, existed } = upsertRow(lines, COL.item, it.name, holder ? { '持有者': holder } : {});
+    const prevState = existed ? getCell(lines, rowIdx, header, ['状态']) : '';
+    if (holder) setCell(lines, rowIdx, header, ['持有者'], holder);
+    const nextState = prevState
+      ? (prevState.includes(tr.to) ? prevState : `${prevState.replace(/[。；;，,\s]+$/, '')}；${tr.to}`)
+      : tr.to;
+    setCell(lines, rowIdx, header, ['状态'], nextState);
+    if (!existed) notes.push(`+ 物品归属 ${it.name}：状态 ${tr.to}（新增行）`);
+    else notes.push(`~ 物品归属 ${it.name}：持有者保持「${holder || RULE}」，状态追加`);
+    continue;
+  }
+
   const { rowIdx, header, existed } = upsertRow(lines, COL.item, it.name, { '持有者': tr.to });
   const prev = existed ? getCell(lines, rowIdx, header, ['持有者']) : '';
   setCell(lines, rowIdx, header, ['持有者'], tr.to);
